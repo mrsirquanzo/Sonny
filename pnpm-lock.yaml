@@ -33,6 +33,18 @@ importers:
         specifier: workspace:*
         version: link:../../packages/shared
 
+  apps/web:
+    dependencies:
+      '@sonny/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@sonny/mcp-gateway':
+        specifier: workspace:*
+        version: link:../../packages/mcp-gateway
+      '@sonny/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
+
   eval:
     dependencies:
       '@sonny/core':
