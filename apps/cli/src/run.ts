@@ -1,5 +1,5 @@
 import type { TraceEvent } from '@sonny/shared';
-import { runOrchestration, AnthropicModel, MODEL_ROUTER } from '@sonny/core';
+import { runOrchestration, AnthropicModel } from '@sonny/core';
 import { openTargetsTool, pubmedTool } from '@sonny/mcp-gateway';
 
 export function formatTrace(events: TraceEvent[]): string {
@@ -22,11 +22,9 @@ export async function main(argv: string[]): Promise<void> {
   const symbol = (query.match(/\b[A-Z0-9]{2,7}\b/)?.[0]) ?? 'EGFR';
   const specialistModel = new AnthropicModel();
   const verifierModel = new AnthropicModel();
-  const events: TraceEvent[] = [];
   await runOrchestration({
     query, symbol, tools: [openTargetsTool, pubmedTool],
     specialistModel, verifierModel,
-    emit: (e) => { events.push(e); process.stdout.write(formatTrace([e]) + '\n'); },
+    emit: (e) => { process.stdout.write(formatTrace([e]) + '\n'); },
   });
-  void MODEL_ROUTER;
 }

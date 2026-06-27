@@ -4,6 +4,7 @@ import { EvidenceStore } from './evidenceStore.js';
 import { groundClaims } from './grounding.js';
 import { verifyClaims } from './verifier.js';
 import type { StructuredModel } from './model.js';
+import { MODEL_ROUTER } from './model.js';
 
 const SPECIALIST_SYSTEM = `You are a Target-Biology specialist. Using ONLY the provided evidence, write factual claims.
 Every claim MUST cite the evidence id(s) it is based on (e.g. "ENSG00000146648", "PMID:123"). If the evidence does not
@@ -45,7 +46,7 @@ export async function runOrchestration(opts: {
   const drafted = await specialistModel.generateStructured({
     system: SPECIALIST_SYSTEM,
     prompt: `QUESTION:\n${query}\n\nEVIDENCE:\n${evidenceList}`,
-    schema: ClaimsSchema, model: 'claude-opus-4-8',
+    schema: ClaimsSchema, model: MODEL_ROUTER.specialist,
   });
   for (const c of drafted.claims) emit({ type: 'claim_drafted', claim: c });
 

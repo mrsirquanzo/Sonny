@@ -1,9 +1,9 @@
 // Live eval runner (opt-in): runs the orchestrator on each golden case and prints metrics.
-// Usage: ANTHROPIC_API_KEY=... pnpm --filter @sonny/eval exec node --loader ts-node/esm src/index.ts
+// Usage: ANTHROPIC_API_KEY=... pnpm --filter @sonny/eval exec tsx src/index.ts
 import { readFileSync } from 'node:fs';
 import { runOrchestration, AnthropicModel } from '@sonny/core';
 import { openTargetsTool, pubmedTool } from '@sonny/mcp-gateway';
-import type { Evidence, TraceEvent } from '@sonny/shared';
+import type { TraceEvent } from '@sonny/shared';
 import { recallAtK, faithfulness } from './score.js';
 
 const gold = JSON.parse(readFileSync(new URL('../golden/egfr.json', import.meta.url), 'utf8')) as
@@ -17,4 +17,3 @@ const out = await runOrchestration({
 });
 console.log('recall@k :', recallAtK(retrieved, gold.expectedEvidenceIds));
 console.log('faithfulness :', faithfulness(out.shipped, out.verdicts));
-void ({} as Evidence);
