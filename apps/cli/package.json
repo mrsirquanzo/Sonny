@@ -1,0 +1,8 @@
+{
+  "name": "@sonny/cli",
+  "version": "0.0.0",
+  "type": "module",
+  "bin": { "sonny": "dist/index.js" },
+  "scripts": { "test": "vitest run", "build": "tsc -p tsconfig.json", "start": "tsx src/index.ts" },
+  "dependencies": { "@sonny/core": "workspace:*", "@sonny/mcp-gateway": "workspace:*", "@sonny/shared": "workspace:*" }
+}
