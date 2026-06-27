@@ -4,5 +4,5 @@
   "type": "module",
   "exports": { ".": "./src/index.ts" },
   "scripts": { "test": "vitest run", "build": "tsc -p tsconfig.json" },
-  "dependencies": { "@sonny/shared": "workspace:*", "zod": "^3.23.0", "@anthropic-ai/sdk": "^0.37.0", "zod-to-json-schema": "^3.24.1" }
+  "dependencies": { "@sonny/shared": "workspace:*", "@sonny/mcp-gateway": "workspace:*", "zod": "^3.23.0", "@anthropic-ai/sdk": "^0.37.0", "zod-to-json-schema": "^3.24.1" }
 }
