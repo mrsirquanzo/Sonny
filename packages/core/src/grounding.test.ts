@@ -21,4 +21,10 @@ describe('groundClaims', () => {
     const r = groundClaims([claim('c1', ['PMID:999'])], new EvidenceStore());
     expect(r.stripped[0].reason).toMatch(/does not resolve/i);
   });
+  it('strips a claim where one citation resolves but another does not', () => {
+    const s = new EvidenceStore(); s.register(ev('PMID:1'));
+    const r = groundClaims([claim('c1', ['PMID:1', 'PMID:999'])], s);
+    expect(r.shippable).toHaveLength(0);
+    expect(r.stripped[0].reason).toMatch(/does not resolve/i);
+  });
 });
