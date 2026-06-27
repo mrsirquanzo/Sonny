@@ -1,3 +1,31 @@
+<!-- apps/web/public/index.html -->
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="utf-8"><title>Sonny</title></head>
-<body><div id="app">Sonny glass-box</div><script src="/app.js"></script></body></html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sonny — grounded biomedical due diligence</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="page">
+    <main class="sheet">
+      <div class="composer">
+        <input id="query" type="text" placeholder="Ask a target-biology question, e.g. Is EGFR a druggable target in NSCLC?">
+        <button id="run">Run</button>
+        <span id="edits-toggle" class="lnk" hidden>View agent edits</span>
+      </div>
+      <h1 id="verdict" class="verdict">Sonny</h1>
+      <div id="meta" class="meta"></div>
+      <hr class="rule">
+      <section id="dossier" class="dossier"></section>
+      <h2 class="lane">Supporting evidence</h2>
+      <div id="evidence-list" class="evidence"></div>
+      <details class="proc"><summary>Research process</summary><div id="trace" class="trace"></div></details>
+    </main>
+  </div>
+  <div class="scrim" id="scrim"></div>
+  <aside class="drawer" id="drawer"><span class="x" id="drawer-close">&#x2715;</span><div id="drawer-body"></div></aside>
+  <script src="/app.js"></script>
+</body>
+</html>
