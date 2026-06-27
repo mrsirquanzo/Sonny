@@ -3,11 +3,13 @@ const $ = (id) => document.getElementById(id);
 const evidence = new Map();         // id -> {id, title}
 let es = null;
 
+function esc(s) { return String(s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
+
 function openDrawer(id) {
   const e = evidence.get(id);
   $('drawer-body').innerHTML = e
-    ? `<div style="font-family:var(--mono);color:var(--accent)">${e.id}</div><div style="font-weight:600;margin-top:6px">${e.title}</div>`
-    : `<div>${id}</div>`;
+    ? `<div style="font-family:var(--mono);color:var(--accent)">${esc(e.id)}</div><div style="font-weight:600;margin-top:6px">${esc(e.title)}</div>`
+    : `<div>${esc(id)}</div>`;
   $('drawer').classList.add('open'); $('scrim').classList.add('on');
 }
 function closeDrawer() { $('drawer').classList.remove('open'); $('scrim').classList.remove('on'); }
@@ -31,15 +33,17 @@ function handle(ev) {
     case 'evidence_registered': {
       evidence.set(ev.id, { id: ev.id, title: ev.title });
       const row = document.createElement('div'); row.className = 'erow';
-      row.innerHTML = `<div><div class="eid" data-id="${ev.id}">${ev.id}</div><div class="et">${ev.title}</div></div>`;
+      row.innerHTML = `<div><div class="eid" data-id="${esc(ev.id)}">${esc(ev.id)}</div><div class="et">${esc(ev.title)}</div></div>`;
       $('evidence-list').appendChild(row); break;
     }
     case 'claim_drafted': appendTrace(`  claim ${ev.claim.id}: ${ev.claim.text}`); break;
     case 'verdict': appendTrace(`  verdict ${ev.verdict.claimId}: ${ev.verdict.status}`); break;
     case 'synthesis': {
       // section is plain text with [ID] tokens — render with clickable citation chips.
-      const html = ev.section.split('\n').map((line) =>
-        `<p>${line.replace(/\[([^\]]+)\]/g, (_, id) => `<span class="cite" data-id="${id}">[${id}]</span>`)}</p>`).join('');
+      const html = ev.section.split('\n').map((line) => {
+        const escaped = esc(line);
+        return `<p>${escaped.replace(/\[([^\]]+)\]/g, (_, id) => `<span class="cite" data-id="${esc(id)}">[${esc(id)}]</span>`)}</p>`;
+      }).join('');
       $('dossier').innerHTML = html; break;
     }
     case 'error': appendTrace(`  ! ${ev.message}`); break;
