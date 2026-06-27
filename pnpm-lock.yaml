@@ -18,11 +18,26 @@ importers:
         specifier: ^3.23.0
         version: 3.25.2(zod@3.25.76)
 
+  apps/cli:
+    dependencies:
+      '@sonny/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@sonny/mcp-gateway':
+        specifier: workspace:*
+        version: link:../../packages/mcp-gateway
+      '@sonny/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
+
   packages/core:
     dependencies:
       '@anthropic-ai/sdk':
         specifier: ^0.37.0
         version: 0.37.0
+      '@sonny/mcp-gateway':
+        specifier: workspace:*
+        version: link:../mcp-gateway
       '@sonny/shared':
         specifier: workspace:*
         version: link:../shared
@@ -32,6 +47,12 @@ importers:
       zod-to-json-schema:
         specifier: ^3.24.1
         version: 3.25.2(zod@3.25.76)
+
+  packages/mcp-gateway:
+    dependencies:
+      '@sonny/shared':
+        specifier: workspace:*
+        version: link:../shared
 
   packages/shared:
     dependencies:
