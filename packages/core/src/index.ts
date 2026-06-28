@@ -6,3 +6,4 @@ export { runOrchestration } from './orchestrator.js';
 export { computeRag } from './rag.js';
 export { SPECIALISTS, type Specialist } from './specialists.js';
 export { selectSpecialists } from './planner.js';
+export { produceSection } from './produceSection.js';
