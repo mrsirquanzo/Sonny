@@ -14,7 +14,8 @@ describe('streamRun', () => {
     expect(chunks).toHaveLength(3);
     expect(chunks[0]).toContain('"type":"plan"');
     expect(chunks[1]).toContain('PMID:1');
-    expect(chunks[2]).toContain('"verdict":"done text"');
+    // strict SSE framing matters for EventSource — assert the full frame, not just a substring
+    expect(chunks[2]).toMatch(/^event: done\ndata: \{.*"verdict":"done text".*\}\n\n$/);
   });
 
   it('writes an error frame (message only) when the runner throws', async () => {
