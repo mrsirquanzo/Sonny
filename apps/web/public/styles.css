@@ -5,8 +5,8 @@
   --accent:#1D4ED8; --ok:#0F766E; --warn:#B45309; --mono:'IBM Plex Mono',ui-monospace,monospace; --fig:'Figtree',system-ui,sans-serif; }
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--text);font-family:var(--fig);font-size:14px;line-height:1.6;-webkit-font-smoothing:antialiased}
-.page{max-width:920px;margin:24px auto;padding:0 16px}
-.sheet{background:var(--sheet);border:1px solid var(--border);border-radius:12px;padding:36px 44px 44px}
+.page{max-width:1140px;margin:24px auto;padding:0 16px;display:flex;gap:20px;align-items:flex-start}
+.sheet{flex:1;min-width:0;background:var(--sheet);border:1px solid var(--border);border-radius:12px;padding:36px 44px 44px}
 .composer{display:flex;gap:10px;align-items:center;margin-bottom:22px}
 #query{flex:1;border:1px solid var(--border);border-radius:8px;padding:9px 12px;font:inherit;color:var(--ink)}
 #run{border:1px solid var(--accent);color:#fff;background:var(--accent);border-radius:8px;padding:9px 16px;font:inherit;font-weight:600;cursor:pointer}
@@ -29,3 +29,13 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:var(--fig);font
 .drawer.open{right:0}.drawer .x{position:absolute;top:16px;right:18px;color:var(--muted);cursor:pointer}
 .scrim{position:fixed;inset:0;background:rgba(16,24,40,.18);opacity:0;pointer-events:none;transition:opacity .2s;z-index:40}.scrim.on{opacity:1;pointer-events:auto}
 body.show-edits .rl{display:block}.rl{display:none;margin-top:8px;border-left:3px solid var(--warn);background:#faf7f2;border-radius:0 6px 6px 0;padding:9px 12px;font-size:12.5px}
+.contents{position:sticky;top:24px;flex:0 0 180px;font-size:12.5px;padding-top:8px}
+.contents a{display:flex;align-items:center;gap:8px;padding:4px 8px;border-radius:6px;color:var(--muted);text-decoration:none}
+.contents a:hover{color:var(--ink)}
+.rag{width:7px;height:7px;border-radius:50%;display:inline-block}
+.rag.green{background:var(--ok)}.rag.amber{background:var(--warn)}.rag.red{background:#b9544f}
+.section{padding:20px 0;border-bottom:1px solid var(--border)}
+.section h2{font-size:18px;font-weight:600;color:var(--ink);margin:0 0 4px}
+.section .take{font-style:italic;color:#475569;margin:0 0 12px}
+.section .src{font-size:11.5px;color:var(--muted);margin-top:8px}
+.skipped{font-size:11.5px;color:var(--muted);margin-bottom:8px}
