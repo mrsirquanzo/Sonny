@@ -16,7 +16,6 @@ function closeDrawer() { $('drawer').classList.remove('open'); $('scrim').classL
 $('drawer-close').onclick = closeDrawer; $('scrim').onclick = closeDrawer;
 $('edits-toggle').onclick = () => { document.body.classList.toggle('show-edits'); $('edits-toggle').classList.toggle('on'); };
 
-function citeHtml(ids) { return (ids || []).map((id) => `<span class="cite" data-id="${id}">[${id}]</span>`).join(' '); }
 function appendTrace(line) { $('trace').textContent += line + '\n'; }
 
 function reset() {
