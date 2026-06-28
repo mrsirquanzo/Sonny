@@ -10,8 +10,9 @@ const payload = {
       { score: 0.62, disease: { id: 'EFO_0000311', name: 'cancer' } },
       { score: 0.41, disease: { id: 'MONDO_0005233', name: 'non-small cell lung carcinoma' } },
     ] },
-    knownDrugs: { rows: [
-      { drug: { id: 'CHEMBL1201585', name: 'EXAMPLEMAB' }, mechanismOfAction: 'CDCP1 inhibitor', phase: 1 },
+    drugAndClinicalCandidates: { rows: [
+      { maxClinicalStage: 'Phase I', drug: { id: 'CHEMBL1201585', name: 'EXAMPLEMAB' } },
+      { maxClinicalStage: 'Preclinical', drug: null },
     ] },
   } },
 };
@@ -29,7 +30,9 @@ describe('openTargetsTargetTool', () => {
     const target = out.find((e) => e.kind === 'target');
     expect(target?.id).toBe('ENSG00000163814');
     expect(out.filter((e) => e.kind === 'disease').map((e) => e.id)).toEqual(['EFO_0000311', 'MONDO_0005233']);
-    expect(out.find((e) => e.kind === 'drug')?.id).toBe('CHEMBL1201585');
+    // one drug emitted; the null-drug candidate row is skipped, not crashed on
+    expect(out.filter((e) => e.kind === 'drug').map((e) => e.id)).toEqual(['CHEMBL1201585']);
+    expect(out.find((e) => e.kind === 'drug')?.snippet).toContain('Phase I');
     // safety/tractability folded into the target record raw
     expect((target?.raw as { safetyLiabilities?: unknown[] }).safetyLiabilities).toHaveLength(1);
   });

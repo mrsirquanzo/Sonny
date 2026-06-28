@@ -9,7 +9,7 @@ const TARGET = `query Target($id: String!) {
     tractability { modality label value }
     safetyLiabilities { event }
     associatedDiseases(page: { index: 0, size: 8 }) { rows { score disease { id name } } }
-    knownDrugs(size: 8) { rows { drug { id name } mechanismOfAction phase } }
+    drugAndClinicalCandidates { rows { maxClinicalStage drug { id name } } }
   }
 }`;
 
@@ -24,7 +24,7 @@ interface TargetData {
     id: string; approvedSymbol: string; approvedName: string;
     tractability?: unknown[]; safetyLiabilities?: unknown[];
     associatedDiseases?: { rows?: Array<{ score: number; disease: { id: string; name: string } }> };
-    knownDrugs?: { rows?: Array<{ drug: { id: string; name: string }; mechanismOfAction?: string; phase?: number }> };
+    drugAndClinicalCandidates?: { rows?: Array<{ maxClinicalStage?: string | null; drug: { id: string; name: string } | null }> };
   } };
 }
 
@@ -52,9 +52,10 @@ export const openTargetsTargetTool: Tool = {
         title: r.disease.name, snippet: `association score ${r.score.toFixed(2)} for ${t.approvedSymbol}`,
         url: `https://platform.opentargets.org/evidence/${t.id}/${r.disease.id}`, raw: r, retrievedAt: now });
     }
-    for (const r of t.knownDrugs?.rows ?? []) {
+    for (const r of t.drugAndClinicalCandidates?.rows ?? []) {
+      if (!r.drug) continue;
       out.push({ id: r.drug.id, kind: 'drug', source: 'Open Targets',
-        title: r.drug.name, snippet: `${r.mechanismOfAction ?? 'mechanism n/a'}${r.phase != null ? ` (phase ${r.phase})` : ''}`,
+        title: r.drug.name, snippet: `clinical candidate for ${t.approvedSymbol}${r.maxClinicalStage ? ` — max clinical stage ${r.maxClinicalStage}` : ''}`,
         url: `https://platform.opentargets.org/drug/${r.drug.id}`, raw: r, retrievedAt: now });
     }
     return out;
