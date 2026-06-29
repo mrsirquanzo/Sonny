@@ -1,4 +1,4 @@
-import type { Claim, Section, TraceEvent } from '@sonny/shared';
+import type { Claim, Evidence, Section, TraceEvent } from '@sonny/shared';
 import type { Tool } from '@sonny/mcp-gateway';
 import { EvidenceStore } from './evidenceStore.js';
 import type { StructuredModel } from './model.js';
@@ -12,6 +12,7 @@ export interface DeepResearchResult {
   target: string;
   sections: Section[];
   weighing: { takeaway: string; claims: Claim[] };
+  evidence: Evidence[];
 }
 
 export async function runDeepResearch(opts: {
@@ -43,5 +44,5 @@ export async function runDeepResearch(opts: {
   }
 
   const weighing = await weighAcrossThreads({ sections: finalSections, store, leadModel: opts.leadModel, verifierModel, emit });
-  return { target, sections: finalSections, weighing };
+  return { target, sections: finalSections, weighing, evidence: store.all() };
 }

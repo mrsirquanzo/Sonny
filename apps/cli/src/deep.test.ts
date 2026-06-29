@@ -2,6 +2,15 @@ import { describe, it, expect } from 'vitest';
 import type { TraceEvent } from '@sonny/shared';
 import { formatTrace } from './run.js';
 
+describe('formatTrace recommendation event', () => {
+  it('renders the recommendation verdict line', () => {
+    const events: TraceEvent[] = [{ type: 'recommendation', verdict: 'watch' }];
+    const out = formatTrace(events);
+    expect(out.toLowerCase()).toContain('recommendation');
+    expect(out).toContain('watch');
+  });
+});
+
 describe('formatTrace research events', () => {
   it('renders research plan, read, and reflect lines', () => {
     const events: TraceEvent[] = [

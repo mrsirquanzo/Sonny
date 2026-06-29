@@ -16,6 +16,8 @@ export function formatTrace(events: TraceEvent[]): string {
       case 'section_complete':
         return `\n[${e.section.rag.toUpperCase()}] ${e.section.title}\n  ${e.section.takeaway}\n` +
           e.section.claims.map((c) => `  - ${c.text} ${c.citations.map((id) => `[${id}]`).join(' ')}`).join('\n');
+      case 'recommendation':
+        return `\nLEAD  recommendation: ${e.verdict}`;
       case 'error': return `  ! ${e.message}`;
       case 'lead_decompose':
         return `\nLEAD  dispatching: ${e.specialists.join(', ')}`;
