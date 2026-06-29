@@ -18,6 +18,15 @@ function asArray<T>(v: T | T[] | undefined): T[] {
   return v == null ? [] : Array.isArray(v) ? v : [v];
 }
 
+function collectSecs(node: unknown, out: Record<string, unknown>[] = []): Record<string, unknown>[] {
+  for (const sec of asArray((node as Record<string, unknown> | undefined)?.sec as unknown)) {
+    const s = sec as Record<string, unknown>;
+    out.push(s);
+    collectSecs(s, out);
+  }
+  return out;
+}
+
 export const pmcFullTextTool: Tool = {
   name: 'pmc_fulltext',
   description: 'Fetch the full text of an open-access PMC article (by PMC id) and return its body sections as passages for grounding.',
@@ -29,23 +38,26 @@ export const pmcFullTextTool: Tool = {
     if (!res.ok) throw new Error(`PMC efetch HTTP ${res.status}`);
     const xml = await res.text();
     const doc = parser.parse(xml) as Record<string, unknown>;
-    const article = (doc.article ?? doc) as Record<string, unknown>;
+    const set = ((doc as Record<string, unknown>)['pmc-articleset'] ?? doc) as Record<string, unknown>;
+    const articleRaw = set.article ?? set;
+    const article = (Array.isArray(articleRaw) ? articleRaw[0] : articleRaw) as Record<string, unknown>;
     const body = (article.body ?? {}) as Record<string, unknown>;
-    const secs = asArray(body.sec as unknown);
+    const allSecs = collectSecs(body);
     const now = new Date().toISOString();
     const out: Evidence[] = [];
-    secs.forEach((sec, i) => {
-      const s = sec as Record<string, unknown>;
-      const title = textOf(s.title).trim() || `Section ${i + 1}`;
+    let emitIdx = 0;
+    for (const s of allSecs) {
       const passage = asArray(s.p as unknown).map(textOf).join(' ').replace(/\s+/g, ' ').trim();
-      if (!passage) return;
+      if (!passage) continue;
+      const title = textOf(s.title).trim() || `Section ${emitIdx + 1}`;
       out.push({
-        id: `PMCID:${pmcid}#sec-${i}`, kind: 'publication', source: 'PMC full text',
+        id: `PMCID:${pmcid}#sec-${emitIdx}`, kind: 'publication', source: 'PMC full text',
         title, snippet: title, passage, locator: title,
         url: `https://www.ncbi.nlm.nih.gov/pmc/articles/${pmcid}/`,
-        raw: { pmcid, sectionIndex: i }, retrievedAt: now,
+        raw: { pmcid, sectionIndex: emitIdx }, retrievedAt: now,
       });
-    });
+      emitIdx++;
+    }
     return out;
   },
 };
