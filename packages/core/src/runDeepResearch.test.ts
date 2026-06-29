@@ -54,3 +54,77 @@ describe('runDeepResearch', () => {
     expect(result.evidence.some((e) => e.id === 'ENSG1')).toBe(true);
   });
 });
+
+describe('runDeepResearch resilience', () => {
+  it('turns a failing specialist into a RED placeholder and still completes', async () => {
+    const ot: Tool = { name: 'open_targets_target', description: '', async call() { return []; } };
+    // a search tool that throws a NON-transient error so the model-layer is reached;
+    // but to force a specialist FAILURE we make the specialist model throw for brief 'b' only.
+    const search: Tool = { name: 'europepmc_search', description: '', async call() { return []; } };
+    const fulltext: Tool = { name: 'pmc_fulltext', description: '', async call() { return []; } };
+
+    const roster: ThreadBrief[] = [
+      { id: 'a', title: 'A', objective: 'oa', promptHint: 'ha' },
+      { id: 'b', title: 'B', objective: 'ob', promptHint: 'hb' },
+    ];
+    // specialistModel: brief 'a' plans/extracts/reflects fine; throw when the plan prompt is for B.
+    const specialistModel = { async generateStructured(o: { prompt: string; system: string }) {
+      if (o.prompt.includes('TARGET: CDCP1') && o.prompt.includes('B')) throw new Error('model exploded for B');
+      if (o.system.includes('Plan the specific')) return { questions: [{ question: 'q', searchQuery: 'kw' }] } as never;
+      if (o.system.includes('rigorous biomedical')) return { claims: [] } as never;
+      return { done: true, followups: [], takeaway: 'ok' } as never;
+    } };
+    const verifierModel = { async generateStructured() { return { claimId: 'x', status: 'supported', rationale: '' } as never; } };
+    const leadModel = { async generateStructured(o: { prompt: string }) {
+      if (o.prompt.includes('THREAD FINDINGS')) return { takeaway: '', claims: [] } as never;
+      return { complete: true, gaps: [] } as never;
+    } };
+
+    const result = await runDeepResearch({
+      target: 'CDCP1', roster, literatureTools: [search, fulltext], structuredTools: [ot],
+      specialistModel, verifierModel, leadModel, emit: () => {}, budget: { maxRounds: 1 },
+    });
+
+    const b = result.sections.find((s) => s.id === 'b')!;
+    expect(b.rag).toBe('red');
+    expect(b.takeaway).toContain('could not complete');
+    expect(result.sections.find((s) => s.id === 'a')).toBeDefined(); // the healthy specialist still produced
+  });
+
+  it('degrades gracefully when completeness assessment throws - specialists work is preserved', async () => {
+    const ot: Tool = { name: 'open_targets_target', description: '', async call() { return []; } };
+    const search: Tool = { name: 'europepmc_search', description: '', async call() { return []; } };
+    const fulltext: Tool = { name: 'pmc_fulltext', description: '', async call() { return []; } };
+
+    const roster: ThreadBrief[] = [
+      { id: 'a', title: 'A', objective: 'oa', promptHint: 'ha' },
+    ];
+
+    const specialistModel = { async generateStructured(o: { system: string }) {
+      if (o.system.includes('Plan the specific')) return { questions: [{ question: 'q?', searchQuery: 'kw' }] } as never;
+      if (o.system.includes('rigorous biomedical')) return { claims: [] } as never;
+      return { done: true, followups: [], takeaway: 'done' } as never;
+    } };
+    const verifierModel = { async generateStructured() { return { claimId: 'x', status: 'supported', rationale: '' } as never; } };
+    // completeness prompt contains 'SECTIONS:'; weighing prompt contains 'THREAD FINDINGS'
+    const leadModel = { async generateStructured(o: { prompt: string }) {
+      if (o.prompt.includes('THREAD FINDINGS')) return { takeaway: '', claims: [] } as never;
+      throw new Error('lead model exploded on completeness');
+    } };
+
+    const events: TraceEvent[] = [];
+    const result = await runDeepResearch({
+      target: 'CDCP1', roster, literatureTools: [search, fulltext], structuredTools: [ot],
+      specialistModel, verifierModel, leadModel, emit: (e) => events.push(e), budget: { maxRounds: 1 },
+    });
+
+    // must resolve (not throw) and return the specialist's section
+    expect(result.sections.map((s) => s.id)).toEqual(['a']);
+    // specialist succeeded, so section should not be a placeholder
+    expect(result.sections[0].takeaway).not.toContain('could not complete');
+    // weighing must be present (gracefully degraded completeness, then weighing ran)
+    expect(result.weighing).toBeDefined();
+    // error event for completeness failure should have been emitted
+    expect(events.some((e) => e.type === 'error' && e.message.includes('completeness assessment failed'))).toBe(true);
+  });
+});

@@ -61,6 +61,21 @@ describe('fillGap', () => {
   });
 });
 
+describe('fillGap resilience', () => {
+  it('does not throw when the search tool fails; returns no claims', async () => {
+    const failingSearch: Tool = { name: 'europepmc_search', description: '', async call() { throw new Error('HTTP 504'); } };
+    const fulltext: Tool = { name: 'pmc_fulltext', description: '', async call() { return []; } };
+    const specialistModel = { async generateStructured() { return { claims: [] } as never; } };
+    const verifierModel = { async generateStructured() { return { claimId: 'x', status: 'supported', rationale: '' } as never; } };
+    const out = await fillGap({
+      gap: { specialistId: 'moa_pathway', question: 'q', searchQuery: 'kw', reason: 'r' },
+      tools: [failingSearch, fulltext], store: new EvidenceStore(),
+      specialistModel, verifierModel, emit: () => {},
+    });
+    expect(out).toEqual([]);
+  });
+});
+
 describe('mergeGapClaims', () => {
   it('appends claims, unions sources, and recomputes RAG to green at two distinct sources', () => {
     const section = { id: 'x', title: 'X', takeaway: 't', claims: [

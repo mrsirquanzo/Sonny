@@ -8,6 +8,7 @@ import { groundClaims } from './grounding.js';
 import { verifyClaims } from './verifier.js';
 import { computeRag } from './rag.js';
 import { extractClaims } from './researcher.js';
+import { safeToolCall } from './safeToolCall.js';
 
 export interface ResearchGap { specialistId: string; question: string; searchQuery: string; reason: string }
 
@@ -46,7 +47,7 @@ export async function fillGap(opts: {
 
   emit({ type: 'gap_filler', specialist: gap.specialistId, question: gap.question });
   emit({ type: 'tool_call', tool: search.name, args: { query: gap.searchQuery } });
-  const hits = await search.call({ query: gap.searchQuery });
+  const hits = await safeToolCall({ tool: search, args: { query: gap.searchQuery }, emit });
   emit({ type: 'tool_result', tool: search.name, count: hits.length });
   for (const h of hits) { store.register(h); emit({ type: 'evidence_registered', id: h.id, title: h.title }); }
 
@@ -54,7 +55,7 @@ export async function fillGap(opts: {
   if (top) {
     const pmcid = (top.raw as { pmcid: string }).pmcid;
     emit({ type: 'tool_call', tool: fulltext.name, args: { pmcid } });
-    const passages = await fulltext.call({ pmcid });
+    const passages = await safeToolCall({ tool: fulltext, args: { pmcid }, emit });
     emit({ type: 'tool_result', tool: fulltext.name, count: passages.length });
     for (const p of passages) {
       store.register(p);

@@ -5,6 +5,7 @@ import { EvidenceStore } from './evidenceStore.js';
 import { runResearcher } from './researcher.js';
 import type { Tool } from '@sonny/mcp-gateway';
 import type { TraceEvent } from '@sonny/shared';
+import { safeToolCall } from './safeToolCall.js'; // ensure import graph is wired
 
 const brief: ThreadBrief = {
   id: 'target_biology', title: 'Target Biology',
@@ -105,6 +106,25 @@ describe('runResearcher loop', () => {
       model, emit: () => {}, budget: { maxRounds: 2 },
     });
     expect(findings).toBeDefined(); // returned, did not loop forever
+  });
+
+  it('does not throw when the search tool fails; the loop continues and returns findings', async () => {
+    const failingSearch: Tool = { name: 'europepmc_search', description: '', async call() { throw new Error('HTTP 504'); } };
+    const fulltext: Tool = { name: 'pmc_fulltext', description: '', async call() { return []; } };
+    const replies = [
+      { questions: [{ question: 'q?', searchQuery: 'kw' }] }, // plan
+      { claims: [] },                                          // extract (no evidence)
+      { done: true, followups: [], takeaway: 'no data available' }, // reflect
+    ];
+    let i = 0;
+    const model = { async generateStructured() { return replies[i++] as never; } };
+
+    const findings = await runResearcher({
+      brief: { id: 'x', title: 'X', objective: 'o', promptHint: 'h' },
+      target: 'CDCP1', tools: [failingSearch, fulltext], store: new EvidenceStore(),
+      model, emit: () => {}, budget: { maxRounds: 1 },
+    });
+    expect(findings.takeaway).toBe('no data available'); // completed, did not throw
   });
 
   it('pins the bug fix: search tool receives the concise searchQuery, not the long question text', async () => {
