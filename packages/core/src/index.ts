@@ -16,3 +16,5 @@ export { seedStructuredEvidence } from './leadSeed.js';
 export { runDeepResearch, type DeepResearchResult } from './runDeepResearch.js';
 export { assessCompleteness, fillGap, mergeGapClaims, type ResearchGap } from './completeness.js';
 export { weighAcrossThreads } from './weighing.js';
+export { synthesizeRecommendation } from './synthesize.js';
+export { assembleReferences, produceBriefing } from './briefing.js';
