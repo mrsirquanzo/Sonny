@@ -54,3 +54,40 @@ describe('runDeepResearch', () => {
     expect(result.evidence.some((e) => e.id === 'ENSG1')).toBe(true);
   });
 });
+
+describe('runDeepResearch resilience', () => {
+  it('turns a failing specialist into a RED placeholder and still completes', async () => {
+    const ot: Tool = { name: 'open_targets_target', description: '', async call() { return []; } };
+    // a search tool that throws a NON-transient error so the model-layer is reached;
+    // but to force a specialist FAILURE we make the specialist model throw for brief 'b' only.
+    const search: Tool = { name: 'europepmc_search', description: '', async call() { return []; } };
+    const fulltext: Tool = { name: 'pmc_fulltext', description: '', async call() { return []; } };
+
+    const roster: ThreadBrief[] = [
+      { id: 'a', title: 'A', objective: 'oa', promptHint: 'ha' },
+      { id: 'b', title: 'B', objective: 'ob', promptHint: 'hb' },
+    ];
+    // specialistModel: brief 'a' plans/extracts/reflects fine; throw when the plan prompt is for B.
+    const specialistModel = { async generateStructured(o: { prompt: string; system: string }) {
+      if (o.prompt.includes('TARGET: CDCP1') && o.prompt.includes('B')) throw new Error('model exploded for B');
+      if (o.system.includes('Plan the specific')) return { questions: [{ question: 'q', searchQuery: 'kw' }] } as never;
+      if (o.system.includes('rigorous biomedical')) return { claims: [] } as never;
+      return { done: true, followups: [], takeaway: 'ok' } as never;
+    } };
+    const verifierModel = { async generateStructured() { return { claimId: 'x', status: 'supported', rationale: '' } as never; } };
+    const leadModel = { async generateStructured(o: { prompt: string }) {
+      if (o.prompt.includes('THREAD FINDINGS')) return { takeaway: '', claims: [] } as never;
+      return { complete: true, gaps: [] } as never;
+    } };
+
+    const result = await runDeepResearch({
+      target: 'CDCP1', roster, literatureTools: [search, fulltext], structuredTools: [ot],
+      specialistModel, verifierModel, leadModel, emit: () => {}, budget: { maxRounds: 1 },
+    });
+
+    const b = result.sections.find((s) => s.id === 'b')!;
+    expect(b.rag).toBe('red');
+    expect(b.takeaway).toContain('could not complete');
+    expect(result.sections.find((s) => s.id === 'a')).toBeDefined(); // the healthy specialist still produced
+  });
+});

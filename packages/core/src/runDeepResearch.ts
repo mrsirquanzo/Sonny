@@ -15,6 +15,10 @@ export interface DeepResearchResult {
   evidence: Evidence[];
 }
 
+function placeholderSection(brief: ThreadBrief, reason: string): Section {
+  return { id: brief.id, title: brief.title, takeaway: `Research could not complete: ${reason}`, claims: [], sources: [], rag: 'red' };
+}
+
 export async function runDeepResearch(opts: {
   target: string; roster: ThreadBrief[];
   literatureTools: Tool[]; structuredTools: Tool[];
@@ -27,9 +31,15 @@ export async function runDeepResearch(opts: {
   await seedStructuredEvidence({ target, tools: structuredTools, store, emit });
 
   emit({ type: 'lead_decompose', specialists: roster.map((b) => b.id) });
-  const sections = await Promise.all(roster.map((brief) =>
+  const settled = await Promise.allSettled(roster.map((brief) =>
     produceResearchSection({ brief, target, tools: literatureTools, store, specialistModel, verifierModel, emit, budget }),
   ));
+  const sections = settled.map((r, i) => {
+    if (r.status === 'fulfilled') return r.value;
+    const reason = String((r.reason as { message?: string })?.message ?? r.reason);
+    emit({ type: 'error', message: `specialist ${roster[i].id} failed: ${reason}` });
+    return placeholderSection(roster[i], reason);
+  });
 
   const { complete, gaps } = await assessCompleteness(sections, opts.leadModel);
   emit({ type: 'completeness_verdict', complete, gaps: gaps.map((g) => g.question) });
@@ -38,11 +48,20 @@ export async function runDeepResearch(opts: {
     for (const gap of gaps) {
       const idx = finalSections.findIndex((s) => s.id === gap.specialistId);
       if (idx === -1) continue;
-      const claims = await fillGap({ gap, tools: literatureTools, store, specialistModel, verifierModel, emit });
-      finalSections = finalSections.map((s, i) => (i === idx ? mergeGapClaims(s, claims) : s));
+      try {
+        const claims = await fillGap({ gap, tools: literatureTools, store, specialistModel, verifierModel, emit });
+        finalSections = finalSections.map((s, i) => (i === idx ? mergeGapClaims(s, claims) : s));
+      } catch (err) {
+        emit({ type: 'error', message: `gap-fill ${gap.specialistId} failed: ${String(err)}` });
+      }
     }
   }
 
-  const weighing = await weighAcrossThreads({ sections: finalSections, store, leadModel: opts.leadModel, verifierModel, emit });
+  let weighing = { takeaway: '', claims: [] as Claim[] };
+  try {
+    weighing = await weighAcrossThreads({ sections: finalSections, store, leadModel: opts.leadModel, verifierModel, emit });
+  } catch (err) {
+    emit({ type: 'error', message: `weighing failed: ${String(err)}` });
+  }
   return { target, sections: finalSections, weighing, evidence: store.all() };
 }
