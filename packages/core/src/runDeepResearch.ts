@@ -6,6 +6,7 @@ import type { ThreadBrief, ResearchBudget } from './researcher.js';
 import { produceResearchSection } from './produceResearchSection.js';
 import { seedStructuredEvidence } from './leadSeed.js';
 import { assessCompleteness, fillGap, mergeGapClaims } from './completeness.js';
+import { weighAcrossThreads } from './weighing.js';
 
 export interface DeepResearchResult {
   target: string;
@@ -41,5 +42,6 @@ export async function runDeepResearch(opts: {
     }
   }
 
-  return { target, sections: finalSections, weighing: { takeaway: '', claims: [] } };
+  const weighing = await weighAcrossThreads({ sections: finalSections, store, leadModel: opts.leadModel, verifierModel, emit });
+  return { target, sections: finalSections, weighing };
 }

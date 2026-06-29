@@ -34,7 +34,10 @@ describe('runDeepResearch', () => {
       return { done: true, followups: [], takeaway: 'takeaway' } as never; // reflect
     } };
     const verifierModel = { async generateStructured() { return { claimId: 'x', status: 'supported', rationale: 'ok' } as never; } };
-    const leadModel = { async generateStructured() { return { complete: true, gaps: [] } as never; } };
+    const leadModel = { async generateStructured(o: { prompt: string }) {
+      if (o.prompt.includes('THREAD FINDINGS')) return { takeaway: '', claims: [] } as never;
+      return { complete: true, gaps: [] } as never;
+    } };
 
     const events: TraceEvent[] = [];
     const result = await runDeepResearch({
@@ -46,6 +49,6 @@ describe('runDeepResearch', () => {
     expect(events.some((e) => e.type === 'lead_decompose')).toBe(true);
     // structured seed evidence is visible to specialists (claim cites the seeded ENSG1)
     expect(result.sections.every((s) => s.claims.length === 1)).toBe(true);
-    expect(result.weighing).toEqual({ takeaway: '', claims: [] });
+    expect(result.weighing.claims).toEqual([]);
   });
 });
