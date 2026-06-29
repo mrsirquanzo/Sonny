@@ -9,6 +9,8 @@ export const EvidenceSchema = z.object({
   source: z.string().min(1),
   title: z.string(),
   snippet: z.string(),
+  passage: z.string().optional(),
+  locator: z.string().optional(),
   url: z.string(),
   raw: z.unknown(),
   retrievedAt: z.string(),

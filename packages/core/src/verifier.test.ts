@@ -23,4 +23,24 @@ describe('verifyClaims', () => {
     expect(verdicts[0]).toMatchObject({ claimId: 'c1', status: 'supported' });
     expect(verdicts[1]).toMatchObject({ claimId: 'c2', status: 'overreach' });
   });
+
+  it('shows the verifier the full-text passage when present, not just the snippet', async () => {
+    const store = new EvidenceStore();
+    store.register({
+      id: 'PMID:1', kind: 'publication', source: 'Europe PMC', title: 'CDCP1 in NPC',
+      snippet: 'abstract line', passage: 'CDCP1 promotes EMT in nasopharyngeal carcinoma cells.',
+      locator: 'Results', url: 'u', raw: {}, retrievedAt: 'now',
+    });
+    let seenPrompt = '';
+    const model: StructuredModel = {
+      async generateStructured({ prompt }) {
+        seenPrompt = prompt;
+        return { claimId: 'x', status: 'supported', rationale: 'ok' } as never;
+      },
+    };
+    const claims: Claim[] = [{ id: 'c1', text: 'CDCP1 drives EMT', citations: ['PMID:1'], confidence: 0.8 }];
+    await verifyClaims(claims, store, model);
+    expect(seenPrompt).toContain('CDCP1 promotes EMT in nasopharyngeal carcinoma cells.');
+    expect(seenPrompt).toContain('Results');
+  });
 });

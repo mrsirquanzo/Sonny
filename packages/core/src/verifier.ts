@@ -20,7 +20,7 @@ export async function verifyClaims(
     const evidenceText = c.citations
       .map((id) => store.get(id))
       .filter((e): e is NonNullable<typeof e> => Boolean(e))
-      .map((e) => `[${e.id}] ${e.title} — ${e.snippet}`)
+      .map((e) => `[${e.id}]${e.locator ? ` (${e.locator})` : ''} ${e.title} — ${e.passage ?? e.snippet}`)
       .join('\n');
     const prompt = `CLAIM:\n${c.text}\n\nEVIDENCE:\n${evidenceText}`;
     const raw = await model.generateStructured({ system: SYSTEM, prompt, schema: VerdictSchema, model: modelId });
