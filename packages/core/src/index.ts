@@ -20,3 +20,4 @@ export { weighAcrossThreads } from './weighing.js';
 export { synthesizeRecommendation } from './synthesize.js';
 export { assembleReferences, produceBriefing } from './briefing.js';
 export { safeToolCall, isTransient } from './safeToolCall.js';
+export { targetTerms, relevanceGate } from './relevance.js';
