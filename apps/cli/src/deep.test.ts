@@ -1,6 +1,16 @@
 import { describe, it, expect } from 'vitest';
 import type { TraceEvent } from '@sonny/shared';
 import { formatTrace } from './run.js';
+import { currentBackend } from '@sonny/core';
+
+describe('deep backend default', () => {
+  it('defaults to the local ollama backend when SONNY_BACKEND is unset', () => {
+    const saved = process.env.SONNY_BACKEND;
+    delete process.env.SONNY_BACKEND;
+    expect(currentBackend()).toBe('ollama');
+    if (saved !== undefined) process.env.SONNY_BACKEND = saved;
+  });
+});
 
 describe('formatTrace recommendation event', () => {
   it('renders the recommendation verdict line', () => {

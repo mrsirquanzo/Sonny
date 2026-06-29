@@ -1,13 +1,25 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 import type { ZodType } from 'zod';
+import { OllamaModel } from './ollamaModel.js';
 
-export const MODEL_ROUTER = {
-  planner: 'claude-opus-4-8',
-  specialist: 'claude-opus-4-8',
-  verifier: 'claude-sonnet-4-6',
-  writer: 'claude-opus-4-8',
-} as const;
+export type Backend = 'ollama' | 'anthropic';
+
+export interface RoleRouter { planner: string; specialist: string; verifier: string; writer: string }
+
+const ROUTERS: Record<Backend, RoleRouter> = {
+  anthropic: { planner: 'claude-opus-4-8', specialist: 'claude-opus-4-8', verifier: 'claude-sonnet-4-6', writer: 'claude-opus-4-8' },
+  ollama: { planner: 'qwen2.5:14b', specialist: 'qwen2.5:14b', verifier: 'llama3.1:8b', writer: 'qwen2.5:14b' },
+};
+
+export function routerFor(b: Backend): RoleRouter { return ROUTERS[b]; }
+
+export function currentBackend(): Backend {
+  return process.env.SONNY_BACKEND === 'anthropic' ? 'anthropic' : 'ollama';
+}
+
+// Evaluated at module load - reflects the backend the process was launched with.
+export const MODEL_ROUTER: RoleRouter = routerFor(currentBackend());
 
 export interface StructuredModel {
   generateStructured<T>(opts: {
@@ -58,4 +70,8 @@ export class AnthropicModel implements StructuredModel {
     }
     return opts.schema.parse(block.input);
   }
+}
+
+export function makeModel(): StructuredModel {
+  return currentBackend() === 'ollama' ? new OllamaModel() : new AnthropicModel();
 }
