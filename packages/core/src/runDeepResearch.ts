@@ -5,7 +5,7 @@ import type { StructuredModel } from './model.js';
 import type { ThreadBrief, ResearchBudget } from './researcher.js';
 import { produceResearchSection } from './produceResearchSection.js';
 import { seedStructuredEvidence } from './leadSeed.js';
-import { assessCompleteness, fillGap, mergeGapClaims } from './completeness.js';
+import { assessCompleteness, fillGap, mergeGapClaims, type ResearchGap } from './completeness.js';
 import { weighAcrossThreads } from './weighing.js';
 
 export interface DeepResearchResult {
@@ -41,7 +41,13 @@ export async function runDeepResearch(opts: {
     return placeholderSection(roster[i], reason);
   });
 
-  const { complete, gaps } = await assessCompleteness(sections, opts.leadModel);
+  let complete = true;
+  let gaps: ResearchGap[] = [];
+  try {
+    ({ complete, gaps } = await assessCompleteness(sections, opts.leadModel));
+  } catch (err) {
+    emit({ type: 'error', message: `completeness assessment failed: ${String(err)}` });
+  }
   emit({ type: 'completeness_verdict', complete, gaps: gaps.map((g) => g.question) });
   let finalSections = sections;
   if (!complete) {
