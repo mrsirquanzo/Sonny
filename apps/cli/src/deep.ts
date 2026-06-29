@@ -1,14 +1,15 @@
-import { AnthropicModel, produceBriefing, RESEARCH_ROSTER } from '@sonny/core';
+import { makeModel, currentBackend, produceBriefing, RESEARCH_ROSTER } from '@sonny/core';
 import { europePmcSearchTool, pmcFullTextTool, openTargetsTargetTool, clinicalTrialsTool } from '@sonny/mcp-gateway';
 import { formatTrace } from './run.js';
 
 export async function runDeep(target: string): Promise<void> {
   const t = target.trim() || 'CDCP1';
+  process.stdout.write(`backend: ${currentBackend()}\n`);
   const briefing = await produceBriefing({
     target: t, roster: RESEARCH_ROSTER,
     literatureTools: [europePmcSearchTool, pmcFullTextTool],
     structuredTools: [openTargetsTargetTool, clinicalTrialsTool],
-    specialistModel: new AnthropicModel(), verifierModel: new AnthropicModel(), leadModel: new AnthropicModel(),
+    specialistModel: makeModel(), verifierModel: makeModel(), leadModel: makeModel(),
     emit: (e) => process.stdout.write(formatTrace([e]) + '\n'),
     budget: { maxRounds: 4 },
   });
