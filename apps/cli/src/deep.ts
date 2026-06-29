@@ -1,9 +1,6 @@
-import { AnthropicModel, runDeepResearch, RESEARCH_ROSTER, EvidenceStore } from '@sonny/core';
+import { AnthropicModel, runDeepResearch, RESEARCH_ROSTER } from '@sonny/core';
 import { europePmcSearchTool, pmcFullTextTool, openTargetsTargetTool, clinicalTrialsTool } from '@sonny/mcp-gateway';
 import { formatTrace } from './run.js';
-
-// EvidenceStore is imported to keep the dependency explicit for future callers; the Lead owns its own store.
-void EvidenceStore;
 
 export async function runDeep(target: string): Promise<void> {
   const t = target.trim() || 'CDCP1';
