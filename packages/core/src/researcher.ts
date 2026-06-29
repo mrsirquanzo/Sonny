@@ -5,14 +5,21 @@ import { MODEL_ROUTER } from './model.js';
 
 export interface ThreadBrief { id: string; title: string; objective: string; promptHint: string }
 
-const QuestionsSchema = z.object({ questions: z.array(z.string().min(1)).min(1).max(5) });
+export interface ResearchQuestion { question: string; searchQuery: string }
+
+const QuestionsSchema = z.object({
+  questions: z.array(z.object({
+    question: z.string().min(1),
+    searchQuery: z.string().min(1),
+  })).min(1).max(5),
+});
 
 export async function planResearchQuestions(
   brief: ThreadBrief, target: string, model: StructuredModel,
-): Promise<string[]> {
+): Promise<ResearchQuestion[]> {
   const { questions } = await model.generateStructured({
-    system: `You are the ${brief.title} research specialist. ${brief.promptHint}\nPlan the specific, answerable research questions you must investigate to assess this target at expert depth. Each question must be precise enough to drive a literature search.`,
-    prompt: `BRIEF: ${brief.title}\nTARGET: ${target}\nOBJECTIVE: ${brief.objective}\nList up to 5 research questions, most important first.`,
+    system: `You are the ${brief.title} research specialist. ${brief.promptHint}\nPlan the specific, answerable research questions you must investigate to assess this target at expert depth.\nFor each item return:\n- question: a precise, answerable research question\n- searchQuery: 3-8 keyword terms that MUST include the target gene symbol and key entities. NO full sentences, NO punctuation - this is sent directly to a PubMed/Europe PMC search API.`,
+    prompt: `BRIEF: ${brief.title}\nTARGET: ${target}\nOBJECTIVE: ${brief.objective}\nList up to 5 research questions, most important first. Each must have a question and a concise keyword searchQuery.`,
     schema: QuestionsSchema,
     model: MODEL_ROUTER.specialist,
   });
@@ -40,15 +47,18 @@ export interface ThreadFindings { takeaway: string; claims: Claim[]; openQuestio
 
 const ReflectSchema = z.object({
   done: z.boolean(),
-  followups: z.array(z.string().min(1)).max(3),
+  followups: z.array(z.object({
+    question: z.string().min(1),
+    searchQuery: z.string().min(1),
+  })).max(3),
   takeaway: z.string(),
 });
 
 export async function reflectOnGaps(
   brief: ThreadBrief, claims: Claim[], model: StructuredModel,
-): Promise<{ done: boolean; followups: string[]; takeaway: string }> {
+): Promise<{ done: boolean; followups: ResearchQuestion[]; takeaway: string }> {
   return model.generateStructured({
-    system: `You are the ${brief.title} research lead reviewing your own progress. Decide whether the thread is sufficiently covered for expert-level assessment. If a critical question remains unanswered, or a source raised a new high-value thread (e.g. a resistance mechanism), list up to 3 follow-up questions. Otherwise set done=true. Always write a one-line takeaway summarizing the thread so far.`,
+    system: `You are the ${brief.title} research lead reviewing your own progress. Decide whether the thread is sufficiently covered for expert-level assessment. If a critical question remains unanswered, or a source raised a new high-value thread (e.g. a resistance mechanism), list up to 3 follow-up questions. Each follow-up needs:\n- question: a precise research question\n- searchQuery: 3-8 keyword terms (NO sentences, NO punctuation) sent directly to PubMed/Europe PMC\nOtherwise set done=true. Always write a one-line takeaway summarizing the thread so far.`,
     prompt: `OBJECTIVE: ${brief.objective}\n\nCLAIMS SO FAR:\n${claims.map((c) => `- ${c.text}`).join('\n') || '(none yet)'}`,
     schema: ReflectSchema,
     model: MODEL_ROUTER.specialist,
@@ -69,17 +79,17 @@ export async function runResearcher(opts: {
   if (!search || !fulltext) throw new Error('runResearcher requires europepmc_search and pmc_fulltext tools');
 
   emit({ type: 'specialist_start', specialist: brief.id });
-  let openQuestions = await planResearchQuestions(brief, target, model);
-  emit({ type: 'research_plan', specialist: brief.id, questions: openQuestions });
+  let openQuestions: ResearchQuestion[] = await planResearchQuestions(brief, target, model);
+  emit({ type: 'research_plan', specialist: brief.id, questions: openQuestions.map((q) => q.question) });
 
   const claims: Claim[] = [];
   let takeaway = '';
 
   for (let round = 0; round < budget.maxRounds && openQuestions.length > 0; round++) {
-    const question = openQuestions[0];
+    const item = openQuestions[0];
 
-    emit({ type: 'tool_call', tool: search.name, args: { query: `${target} ${question}` } });
-    const hits = await search.call({ query: `${target} ${question}` });
+    emit({ type: 'tool_call', tool: search.name, args: { query: item.searchQuery } });
+    const hits = await search.call({ query: item.searchQuery });
     emit({ type: 'tool_result', tool: search.name, count: hits.length });
     for (const h of hits) { store.register(h); emit({ type: 'evidence_registered', id: h.id, title: h.title }); }
 
@@ -98,14 +108,14 @@ export async function runResearcher(opts: {
     }
 
     const evidenceList = store.all().map(evidenceLine).join('\n');
-    const drafted = await extractClaims(question, evidenceList, model);
+    const drafted = await extractClaims(item.question, evidenceList, model);
     for (const c of drafted) { claims.push(c); emit({ type: 'claim_drafted', claim: c }); }
 
     const reflection = await reflectOnGaps(brief, claims, model);
     takeaway = reflection.takeaway;
-    emit({ type: 'research_reflect', specialist: brief.id, note: reflection.takeaway, followups: reflection.followups });
+    emit({ type: 'research_reflect', specialist: brief.id, note: reflection.takeaway, followups: reflection.followups.map((f) => f.question) });
     openQuestions = reflection.done ? [] : reflection.followups;
   }
 
-  return { takeaway, claims, openQuestions };
+  return { takeaway, claims, openQuestions: openQuestions.map((q) => q.question) };
 }

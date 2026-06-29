@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { StructuredModel } from './model.js';
-import { planResearchQuestions, extractClaims, type ThreadBrief } from './researcher.js';
+import { planResearchQuestions, extractClaims, type ThreadBrief, type ResearchQuestion } from './researcher.js';
 import { EvidenceStore } from './evidenceStore.js';
 import { runResearcher } from './researcher.js';
 import type { Tool } from '@sonny/mcp-gateway';
@@ -17,13 +17,17 @@ function modelReturning(value: unknown): StructuredModel {
 }
 
 describe('planResearchQuestions', () => {
-  it('returns the planned questions and includes the target in the prompt', async () => {
+  it('returns objects with question and searchQuery, includes target in prompt', async () => {
     let prompt = '';
     const model: StructuredModel = {
-      async generateStructured(opts) { prompt = opts.prompt; return { questions: ['What is the MOA of CDCP1?'] } as never; },
+      async generateStructured(opts) {
+        prompt = opts.prompt;
+        return { questions: [{ question: 'What is the MOA of CDCP1?', searchQuery: 'CDCP1 mechanism action' }] } as never;
+      },
     };
-    const qs = await planResearchQuestions(brief, 'CDCP1', model);
-    expect(qs).toEqual(['What is the MOA of CDCP1?']);
+    const qs: ResearchQuestion[] = await planResearchQuestions(brief, 'CDCP1', model);
+    expect(qs[0].question).toBe('What is the MOA of CDCP1?');
+    expect(qs[0].searchQuery).toBe('CDCP1 mechanism action');
     expect(prompt).toContain('CDCP1');
     expect(prompt).toContain('Target Biology');
   });
@@ -56,9 +60,9 @@ describe('runResearcher loop', () => {
     ]);
 
     const replies = [
-      { questions: ['What is the MOA of CDCP1?'] },                                   // plan
+      { questions: [{ question: 'What is the MOA of CDCP1?', searchQuery: 'CDCP1 mechanism action cancer' }] },   // plan
       { claims: [{ id: 'c1', text: 'CDCP1 promotes EMT.', citations: ['PMCID:PMC1#sec-1'], confidence: 0.8 }] }, // extract
-      { done: true, followups: [], takeaway: 'CDCP1 is an EMT driver.' },             // reflect
+      { done: true, followups: [], takeaway: 'CDCP1 is an EMT driver.' },                                          // reflect
     ];
     let i = 0;
     const model = { async generateStructured() { return replies[i++] as never; } };
@@ -88,11 +92,11 @@ describe('runResearcher loop', () => {
     ]);
     const model = {
       async generateStructured(opts: { schema: { safeParse?: unknown } }) {
-        // plan -> one question; extract -> no claims; reflect -> never done, always a follow-up
+        // plan -> one question with searchQuery; extract -> no claims; reflect -> never done, always a follow-up
         const sys = String((opts as { system?: string }).system ?? '');
-        if (sys.includes('Plan the specific')) return { questions: ['q'] } as never;
+        if (sys.includes('Plan the specific')) return { questions: [{ question: 'q', searchQuery: 'q kw' }] } as never;
         if (sys.includes('rigorous biomedical')) return { claims: [] } as never;
-        return { done: false, followups: ['again'], takeaway: 't' } as never;
+        return { done: false, followups: [{ question: 'again', searchQuery: 'again kw' }], takeaway: 't' } as never;
       },
     };
     const findings = await runResearcher({
@@ -101,5 +105,41 @@ describe('runResearcher loop', () => {
       model, emit: () => {}, budget: { maxRounds: 2 },
     });
     expect(findings).toBeDefined(); // returned, did not loop forever
+  });
+
+  it('pins the bug fix: search tool receives the concise searchQuery, not the long question text', async () => {
+    const recordedQueries: string[] = [];
+
+    const trackingSearch: Tool = {
+      name: 'europepmc_search',
+      description: 'europepmc_search',
+      async call(args: Record<string, unknown>) {
+        recordedQueries.push(String(args['query'] ?? ''));
+        return [] as never;
+      },
+    };
+    const fulltext = tool('pmc_fulltext', []);
+
+    const longQuestion = 'What is the detailed mechanism of action of CDCP1 in the context of epithelial-to-mesenchymal transition and cancer metastasis including downstream signaling?';
+    const conciseSearchQuery = 'CDCP1 EMT metastasis signaling';
+
+    const replies = [
+      { questions: [{ question: longQuestion, searchQuery: conciseSearchQuery }] }, // plan
+      { claims: [] },                                                                 // extract
+      { done: true, followups: [], takeaway: 'done' },                               // reflect
+    ];
+    let i = 0;
+    const model = { async generateStructured() { return replies[i++] as never; } };
+
+    await runResearcher({
+      brief: { id: 'tb', title: 'TB', objective: 'o', promptHint: 'h' },
+      target: 'CDCP1', tools: [trackingSearch, fulltext], store: new EvidenceStore(),
+      model, emit: () => {}, budget: { maxRounds: 1 },
+    });
+
+    expect(recordedQueries).toHaveLength(1);
+    // The search must use the concise keyword query, not the long question
+    expect(recordedQueries[0]).toBe(conciseSearchQuery);
+    expect(recordedQueries[0]).not.toContain(longQuestion);
   });
 });
