@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { ClaimsSchema, type Claim } from '@sonny/shared';
 import type { StructuredModel } from './model.js';
 import { MODEL_ROUTER } from './model.js';
+import { targetTerms, relevanceGate } from './relevance.js';
 
 export interface ThreadBrief { id: string; title: string; objective: string; promptHint: string }
 
@@ -80,6 +81,7 @@ export async function runResearcher(opts: {
   if (!search || !fulltext) throw new Error('runResearcher requires europepmc_search and pmc_fulltext tools');
 
   emit({ type: 'specialist_start', specialist: brief.id });
+  const terms = targetTerms(store, target);
   let openQuestions: ResearchQuestion[] = await planResearchQuestions(brief, target, model);
   emit({ type: 'research_plan', specialist: brief.id, questions: openQuestions.map((q) => q.question) });
 
@@ -90,7 +92,7 @@ export async function runResearcher(opts: {
     const item = openQuestions[0];
 
     emit({ type: 'tool_call', tool: search.name, args: { query: item.searchQuery } });
-    const hits = await safeToolCall({ tool: search, args: { query: item.searchQuery }, emit });
+    const hits = relevanceGate(await safeToolCall({ tool: search, args: { query: item.searchQuery }, emit }), terms);
     emit({ type: 'tool_result', tool: search.name, count: hits.length });
     for (const h of hits) { store.register(h); emit({ type: 'evidence_registered', id: h.id, title: h.title }); }
 
