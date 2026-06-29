@@ -33,3 +33,14 @@ describe('research trace events', () => {
     expect(events.map((e) => e.type)).toEqual(['research_plan', 'research_read', 'research_reflect']);
   });
 });
+
+describe('lead trace events', () => {
+  it('accepts lead_decompose, completeness_verdict, gap_filler', () => {
+    const events: TraceEvent[] = [
+      { type: 'lead_decompose', specialists: ['target_biology', 'moa_pathway'] },
+      { type: 'completeness_verdict', complete: false, gaps: ['resistance mechanisms'] },
+      { type: 'gap_filler', specialist: 'clinical_landscape', question: 'What are the acquired resistance mechanisms?' },
+    ];
+    expect(events.map((e) => e.type)).toEqual(['lead_decompose', 'completeness_verdict', 'gap_filler']);
+  });
+});
