@@ -1,5 +1,6 @@
 export { EvidenceStore } from './evidenceStore.js';
-export { MODEL_ROUTER, AnthropicModel, type StructuredModel } from './model.js';
+export { MODEL_ROUTER, AnthropicModel, makeModel, currentBackend, routerFor, type StructuredModel, type Backend } from './model.js';
+export { OllamaModel } from './ollamaModel.js';
 export { groundClaims } from './grounding.js';
 export { verifyClaims } from './verifier.js';
 export { runOrchestration } from './orchestrator.js';
