@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const EvidenceKindSchema = z.enum(['target', 'publication', 'trial', 'patent', 'dataset']);
+export const EvidenceKindSchema = z.enum(['target', 'publication', 'trial', 'patent', 'dataset', 'disease', 'drug']);
 export type EvidenceKind = z.infer<typeof EvidenceKindSchema>;
 
 export const EvidenceSchema = z.object({
@@ -43,4 +43,20 @@ export type TraceEvent =
   | { type: 'claim_drafted'; claim: Claim }
   | { type: 'verdict'; verdict: Verdict }
   | { type: 'synthesis'; section: string }
-  | { type: 'error'; message: string };
+  | { type: 'error'; message: string }
+  | { type: 'specialist_start'; specialist: string }
+  | { type: 'specialist_skipped'; specialist: string; reason: string }
+  | { type: 'section_complete'; section: Section };
+
+export const RagRatingSchema = z.enum(['green', 'amber', 'red']);
+export type RagRating = z.infer<typeof RagRatingSchema>;
+
+export const SectionSchema = z.object({
+  id: z.string().min(1),
+  title: z.string().min(1),
+  takeaway: z.string(),
+  claims: z.array(ClaimSchema),
+  sources: z.array(z.string()),
+  rag: RagRatingSchema,
+});
+export type Section = z.infer<typeof SectionSchema>;

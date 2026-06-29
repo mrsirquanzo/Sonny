@@ -8,13 +8,14 @@ describe('streamRun', () => {
     const runner: OrchestratorRunner = async (emit) => {
       emit({ type: 'plan', specialists: ['target_biology'], tools: ['t'] } as TraceEvent);
       emit({ type: 'evidence_registered', id: 'PMID:1', title: 'X' } as TraceEvent);
-      return { section: 'done text' };
+      return { verdict: 'done text', sections: [] };
     };
     await streamRun(runner, (c) => chunks.push(c));
     expect(chunks).toHaveLength(3);
     expect(chunks[0]).toContain('"type":"plan"');
     expect(chunks[1]).toContain('PMID:1');
-    expect(chunks[2]).toBe('event: done\ndata: {"section":"done text"}\n\n');
+    // strict SSE framing matters for EventSource — assert the full frame, not just a substring
+    expect(chunks[2]).toMatch(/^event: done\ndata: \{.*"verdict":"done text".*\}\n\n$/);
   });
 
   it('writes an error frame (message only) when the runner throws', async () => {

@@ -9,9 +9,10 @@
 </head>
 <body>
   <div class="page">
+    <nav id="contents" class="contents"></nav>
     <main class="sheet">
       <div class="composer">
-        <input id="query" type="text" placeholder="Ask a target-biology question, e.g. Is EGFR a druggable target in NSCLC?">
+        <input id="query" type="text" placeholder="Ask about a target, e.g. CDCP1">
         <button id="run">Run</button>
         <span id="edits-toggle" class="lnk" hidden>View agent edits</span>
       </div>
@@ -21,7 +22,7 @@
       <section id="dossier" class="dossier"></section>
       <h2 class="lane">Supporting evidence</h2>
       <div id="evidence-list" class="evidence"></div>
-      <details class="proc"><summary>Research process</summary><div id="trace" class="trace"></div></details>
+      <details class="proc"><summary>Research process</summary><div id="skipped" class="skipped"></div><div id="trace" class="trace"></div></details>
     </main>
   </div>
   <div class="scrim" id="scrim"></div>

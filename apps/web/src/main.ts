@@ -1,24 +1,23 @@
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { runOrchestration, AnthropicModel } from '@sonny/core';
-import { openTargetsTool, pubmedTool } from '@sonny/mcp-gateway';
+import { runDossier, AnthropicModel } from '@sonny/core';
+import { openTargetsTargetTool, pubmedTool, clinicalTrialsTool } from '@sonny/mcp-gateway';
 import { createServer, type ServerDeps } from './server.js';
 
 export function buildDeps(publicDir: string): ServerDeps {
   return {
     publicDir,
     makeRunner: (query, symbol) => async (emit) => {
-      const specialistModel = new AnthropicModel();
-      const verifierModel = new AnthropicModel();
-      const { section } = await runOrchestration({
+      const { verdict, sections } = await runDossier({
         query,
         symbol,
-        tools: [openTargetsTool, pubmedTool],
-        specialistModel,
-        verifierModel,
+        tools: [openTargetsTargetTool, pubmedTool, clinicalTrialsTool],
+        plannerModel: new AnthropicModel(),
+        specialistModel: new AnthropicModel(),
+        verifierModel: new AnthropicModel(),
         emit,
       });
-      return { section };
+      return { verdict, sections };
     },
   };
 }
