@@ -5,6 +5,7 @@ import type { StructuredModel } from './model.js';
 import type { ThreadBrief, ResearchBudget } from './researcher.js';
 import { produceResearchSection } from './produceResearchSection.js';
 import { seedStructuredEvidence } from './leadSeed.js';
+import { assessCompleteness, fillGap, mergeGapClaims } from './completeness.js';
 
 export interface DeepResearchResult {
   target: string;
@@ -28,5 +29,17 @@ export async function runDeepResearch(opts: {
     produceResearchSection({ brief, target, tools: literatureTools, store, specialistModel, verifierModel, emit, budget }),
   ));
 
-  return { target, sections, weighing: { takeaway: '', claims: [] } };
+  const { complete, gaps } = await assessCompleteness(sections, opts.leadModel);
+  emit({ type: 'completeness_verdict', complete, gaps: gaps.map((g) => g.question) });
+  let finalSections = sections;
+  if (!complete) {
+    for (const gap of gaps) {
+      const idx = finalSections.findIndex((s) => s.id === gap.specialistId);
+      if (idx === -1) continue;
+      const claims = await fillGap({ gap, tools: literatureTools, store, specialistModel, verifierModel, emit });
+      finalSections = finalSections.map((s, i) => (i === idx ? mergeGapClaims(s, claims) : s));
+    }
+  }
+
+  return { target, sections: finalSections, weighing: { takeaway: '', claims: [] } };
 }

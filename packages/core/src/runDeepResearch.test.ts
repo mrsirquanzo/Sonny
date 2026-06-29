@@ -34,7 +34,7 @@ describe('runDeepResearch', () => {
       return { done: true, followups: [], takeaway: 'takeaway' } as never; // reflect
     } };
     const verifierModel = { async generateStructured() { return { claimId: 'x', status: 'supported', rationale: 'ok' } as never; } };
-    const leadModel = { async generateStructured() { return {} as never; } };
+    const leadModel = { async generateStructured() { return { complete: true, gaps: [] } as never; } };
 
     const events: TraceEvent[] = [];
     const result = await runDeepResearch({
