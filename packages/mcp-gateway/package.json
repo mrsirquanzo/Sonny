@@ -4,5 +4,5 @@
   "type": "module",
   "exports": { ".": "./src/index.ts" },
   "scripts": { "test": "vitest run", "build": "tsc -p tsconfig.json" },
-  "dependencies": { "@sonny/shared": "workspace:*" }
+  "dependencies": { "@sonny/shared": "workspace:*", "fast-xml-parser": "^4.5.0" }
 }
