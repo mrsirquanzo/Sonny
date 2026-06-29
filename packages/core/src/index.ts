@@ -11,3 +11,8 @@ export { runDossier } from './runDossier.js';
 export { planResearchQuestions, extractClaims, reflectOnGaps, runResearcher,
   type ThreadBrief, type ThreadFindings, type ResearchBudget } from './researcher.js';
 export { produceResearchSection } from './produceResearchSection.js';
+export { RESEARCH_ROSTER } from './researchRoster.js';
+export { seedStructuredEvidence } from './leadSeed.js';
+export { runDeepResearch, type DeepResearchResult } from './runDeepResearch.js';
+export { assessCompleteness, fillGap, mergeGapClaims, type ResearchGap } from './completeness.js';
+export { weighAcrossThreads } from './weighing.js';
