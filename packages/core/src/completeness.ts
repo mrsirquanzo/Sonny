@@ -9,6 +9,7 @@ import { verifyClaims } from './verifier.js';
 import { computeRag } from './rag.js';
 import { extractClaims } from './researcher.js';
 import { safeToolCall } from './safeToolCall.js';
+import { targetTerms, relevanceGate } from './relevance.js';
 
 export interface ResearchGap { specialistId: string; question: string; searchQuery: string; reason: string }
 
@@ -46,8 +47,9 @@ export async function fillGap(opts: {
   if (!search || !fulltext) throw new Error('fillGap requires europepmc_search and pmc_fulltext tools');
 
   emit({ type: 'gap_filler', specialist: gap.specialistId, question: gap.question });
+  const terms = targetTerms(store);
   emit({ type: 'tool_call', tool: search.name, args: { query: gap.searchQuery } });
-  const hits = await safeToolCall({ tool: search, args: { query: gap.searchQuery }, emit });
+  const hits = relevanceGate(await safeToolCall({ tool: search, args: { query: gap.searchQuery }, emit }), terms);
   emit({ type: 'tool_result', tool: search.name, count: hits.length });
   for (const h of hits) { store.register(h); emit({ type: 'evidence_registered', id: h.id, title: h.title }); }
 
