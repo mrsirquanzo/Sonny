@@ -50,5 +50,7 @@ describe('runDeepResearch', () => {
     // structured seed evidence is visible to specialists (claim cites the seeded ENSG1)
     expect(result.sections.every((s) => s.claims.length === 1)).toBe(true);
     expect(result.weighing.claims).toEqual([]);
+    // the run's evidence is surfaced for the briefing layer (references)
+    expect(result.evidence.some((e) => e.id === 'ENSG1')).toBe(true);
   });
 });
