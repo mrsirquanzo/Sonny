@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { ClaimsSchema, type Claim } from '@sonny/shared';
 import type { StructuredModel } from './model.js';
 import { MODEL_ROUTER } from './model.js';
+import { targetTerms, relevanceGate } from './relevance.js';
 
 export interface ThreadBrief { id: string; title: string; objective: string; promptHint: string }
 
@@ -18,7 +19,7 @@ export async function planResearchQuestions(
   brief: ThreadBrief, target: string, model: StructuredModel,
 ): Promise<ResearchQuestion[]> {
   const { questions } = await model.generateStructured({
-    system: `You are the ${brief.title} research specialist. ${brief.promptHint}\nPlan the specific, answerable research questions you must investigate to assess this target at expert depth.\nFor each item return:\n- question: a precise, answerable research question\n- searchQuery: 3-8 keyword terms that MUST include the target gene symbol and key entities. NO full sentences, NO punctuation - this is sent directly to a PubMed/Europe PMC search API.`,
+    system: `You are the ${brief.title} research specialist. ${brief.promptHint}\nPlan the specific, answerable research questions you must investigate to assess this target at expert depth.\nFor each item return:\n- question: a precise, answerable research question\n- searchQuery: 3-8 keyword terms that MUST include the target gene symbol and key entities. NO full sentences, NO punctuation - this is sent directly to a PubMed/Europe PMC search API.\nEvery searchQuery MUST contain the target gene symbol and stay strictly about THIS target - do not drift to general pathway or disease biology that does not name the target.`,
     prompt: `BRIEF: ${brief.title}\nTARGET: ${target}\nOBJECTIVE: ${brief.objective}\nList up to 5 research questions, most important first. Each must have a question and a concise keyword searchQuery.`,
     schema: QuestionsSchema,
     model: MODEL_ROUTER.specialist,
@@ -80,6 +81,7 @@ export async function runResearcher(opts: {
   if (!search || !fulltext) throw new Error('runResearcher requires europepmc_search and pmc_fulltext tools');
 
   emit({ type: 'specialist_start', specialist: brief.id });
+  const terms = targetTerms(store, target);
   let openQuestions: ResearchQuestion[] = await planResearchQuestions(brief, target, model);
   emit({ type: 'research_plan', specialist: brief.id, questions: openQuestions.map((q) => q.question) });
 
@@ -90,7 +92,7 @@ export async function runResearcher(opts: {
     const item = openQuestions[0];
 
     emit({ type: 'tool_call', tool: search.name, args: { query: item.searchQuery } });
-    const hits = await safeToolCall({ tool: search, args: { query: item.searchQuery }, emit });
+    const hits = relevanceGate(await safeToolCall({ tool: search, args: { query: item.searchQuery }, emit }), terms);
     emit({ type: 'tool_result', tool: search.name, count: hits.length });
     for (const h of hits) { store.register(h); emit({ type: 'evidence_registered', id: h.id, title: h.title }); }
 

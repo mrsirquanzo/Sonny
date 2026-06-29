@@ -6,6 +6,7 @@ import { runResearcher } from './researcher.js';
 import type { Tool } from '@sonny/mcp-gateway';
 import type { TraceEvent } from '@sonny/shared';
 import { safeToolCall } from './safeToolCall.js'; // ensure import graph is wired
+import { targetTerms } from './relevance.js'; // ensure import graph wired
 
 const brief: ThreadBrief = {
   id: 'target_biology', title: 'Target Biology',
@@ -161,5 +162,42 @@ describe('runResearcher loop', () => {
     // The search must use the concise keyword query, not the long question
     expect(recordedQueries[0]).toBe(conciseSearchQuery);
     expect(recordedQueries[0]).not.toContain(longQuestion);
+  });
+});
+
+describe('planResearchQuestions target anchoring', () => {
+  it('instructs the model to keep the target symbol in every searchQuery', async () => {
+    let system = '';
+    const model = { async generateStructured(o: { system: string }) { system = o.system; return { questions: [{ question: 'q', searchQuery: 'CDCP1 kw' }] } as never; } };
+    await planResearchQuestions({ id: 'x', title: 'X', objective: 'o', promptHint: 'h' }, 'CDCP1', model);
+    expect(system.toLowerCase()).toContain('target gene symbol');
+    expect(system.toLowerCase()).toContain('every');
+  });
+});
+
+describe('runResearcher relevance gating', () => {
+  it('drops search hits that do not mention the target before they reach the evidence store', async () => {
+    const search: Tool = { name: 'europepmc_search', description: '', async call() {
+      return [
+        { id: 'PMID:1', kind: 'publication', source: 'Europe PMC', title: 'CDCP1 drives EMT', snippet: '', passage: 'CDCP1 ...', url: 'u', raw: { pmcid: '', isOpenAccess: false }, retrievedAt: 'now' },
+        { id: 'PMID:2', kind: 'publication', source: 'Europe PMC', title: 'm6A methylation review', snippet: '', passage: 'METTL3 ...', url: 'u', raw: { pmcid: '', isOpenAccess: false }, retrievedAt: 'now' },
+      ] as never;
+    } };
+    const fulltext: Tool = { name: 'pmc_fulltext', description: '', async call() { return []; } };
+    const replies = [
+      { questions: [{ question: 'q?', searchQuery: 'kw' }] },
+      { claims: [] },
+      { done: true, followups: [], takeaway: 't' },
+    ];
+    let i = 0;
+    const model = { async generateStructured() { return replies[i++] as never; } };
+    const store = new EvidenceStore();
+    await runResearcher({
+      brief: { id: 'x', title: 'X', objective: 'o', promptHint: 'h' },
+      target: 'CDCP1', tools: [search, fulltext], store, model, emit: () => {}, budget: { maxRounds: 1 },
+    });
+    // only the CDCP1 hit was registered; the off-topic m6A hit was gated out
+    expect(store.has('PMID:1')).toBe(true);
+    expect(store.has('PMID:2')).toBe(false);
   });
 });

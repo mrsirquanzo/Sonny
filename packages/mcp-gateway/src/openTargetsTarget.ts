@@ -6,6 +6,8 @@ const SEARCH = `query Resolve($q: String!) { search(queryString: $q, entityNames
 const TARGET = `query Target($id: String!) {
   target(ensemblId: $id) {
     id approvedSymbol approvedName
+    symbolSynonyms { label }
+    nameSynonyms { label }
     tractability { modality label value }
     safetyLiabilities { event }
     associatedDiseases(page: { index: 0, size: 8 }) { rows { score disease { id name } } }
@@ -22,6 +24,8 @@ async function gql(fetchImpl: typeof fetch, query: string, variables: Record<str
 interface TargetData {
   data?: { target?: {
     id: string; approvedSymbol: string; approvedName: string;
+    symbolSynonyms?: Array<{ label: string }>;
+    nameSynonyms?: Array<{ label: string }>;
     tractability?: unknown[]; safetyLiabilities?: unknown[];
     associatedDiseases?: { rows?: Array<{ score: number; disease: { id: string; name: string } }> };
     drugAndClinicalCandidates?: { rows?: Array<{ maxClinicalStage?: string | null; drug: { id: string; name: string } | null }> };
@@ -45,7 +49,15 @@ export const openTargetsTargetTool: Tool = {
       id: t.id, kind: 'target', source: 'Open Targets', title: `${t.approvedSymbol} — ${t.approvedName}`,
       snippet: `tractability: ${(t.tractability ?? []).length} modalities; safety liabilities: ${(t.safetyLiabilities ?? []).length}`,
       url: `https://platform.opentargets.org/target/${t.id}`,
-      raw: { tractability: t.tractability ?? [], safetyLiabilities: t.safetyLiabilities ?? [] }, retrievedAt: now,
+      raw: {
+        tractability: t.tractability ?? [],
+        safetyLiabilities: t.safetyLiabilities ?? [],
+        approvedSymbol: t.approvedSymbol,
+        synonyms: [...new Set([
+          ...(t.symbolSynonyms ?? []).map((s) => s.label),
+          ...(t.nameSynonyms ?? []).map((s) => s.label),
+        ])],
+      }, retrievedAt: now,
     });
     for (const r of t.associatedDiseases?.rows ?? []) {
       out.push({ id: r.disease.id, kind: 'disease', source: 'Open Targets',

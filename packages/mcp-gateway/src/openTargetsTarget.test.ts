@@ -6,6 +6,8 @@ const payload = {
     id: 'ENSG00000163814', approvedSymbol: 'CDCP1', approvedName: 'CUB domain containing protein 1',
     tractability: [{ modality: 'SM', label: 'Approved Drug', value: false }],
     safetyLiabilities: [{ event: 'cardiotoxicity' }],
+    symbolSynonyms: [{ label: 'CD318' }, { label: 'TRASK' }, { label: 'CDCP1' }],
+    nameSynonyms: [{ label: 'CUB domain-containing protein 1' }],
     associatedDiseases: { rows: [
       { score: 0.62, disease: { id: 'EFO_0000311', name: 'cancer' } },
       { score: 0.41, disease: { id: 'MONDO_0005233', name: 'non-small cell lung carcinoma' } },
@@ -35,6 +37,11 @@ describe('openTargetsTargetTool', () => {
     expect(out.find((e) => e.kind === 'drug')?.snippet).toContain('Phase I');
     // safety/tractability folded into the target record raw
     expect((target?.raw as { safetyLiabilities?: unknown[] }).safetyLiabilities).toHaveLength(1);
+    const raw = target?.raw as { approvedSymbol?: string; synonyms?: string[] };
+    expect(raw.approvedSymbol).toBe('CDCP1');
+    expect(raw.synonyms).toContain('CD318');
+    expect(raw.synonyms).toContain('TRASK');
+    expect(new Set(raw.synonyms).size).toBe(raw.synonyms!.length); // deduped
   });
 
   it('returns [] for an unresolved symbol', async () => {

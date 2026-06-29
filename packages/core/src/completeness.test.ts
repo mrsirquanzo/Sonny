@@ -76,6 +76,29 @@ describe('fillGap resilience', () => {
   });
 });
 
+describe('fillGap relevance gating', () => {
+  it('drops off-target search hits using the seeded target terms', async () => {
+    const store = new EvidenceStore();
+    store.register({ id: 'ENSG1', kind: 'target', source: 'Open Targets', title: 'CDCP1', snippet: '', url: 'u', retrievedAt: 'now',
+      raw: { approvedSymbol: 'CDCP1', synonyms: ['CD318'] } });
+    const search: Tool = { name: 'europepmc_search', description: '', async call() {
+      return [
+        { id: 'PMID:1', kind: 'publication', source: 'Europe PMC', title: 'CDCP1 resistance', snippet: '', passage: 'CDCP1 ...', url: 'u', raw: { pmcid: '', isOpenAccess: false }, retrievedAt: 'now' },
+        { id: 'PMID:2', kind: 'publication', source: 'Europe PMC', title: 'unrelated NF-kB review', snippet: '', passage: 'NF-kB ...', url: 'u', raw: { pmcid: '', isOpenAccess: false }, retrievedAt: 'now' },
+      ] as never;
+    } };
+    const fulltext: Tool = { name: 'pmc_fulltext', description: '', async call() { return []; } };
+    const specialistModel = { async generateStructured() { return { claims: [] } as never; } };
+    const verifierModel = { async generateStructured() { return { claimId: 'x', status: 'supported', rationale: '' } as never; } };
+    await fillGap({
+      gap: { specialistId: 'moa_pathway', question: 'q', searchQuery: 'kw', reason: 'r' },
+      tools: [search, fulltext], store, specialistModel, verifierModel, emit: () => {},
+    });
+    expect(store.has('PMID:1')).toBe(true);
+    expect(store.has('PMID:2')).toBe(false);
+  });
+});
+
 describe('mergeGapClaims', () => {
   it('appends claims, unions sources, and recomputes RAG to green at two distinct sources', () => {
     const section = { id: 'x', title: 'X', takeaway: 't', claims: [
