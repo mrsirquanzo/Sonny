@@ -48,7 +48,10 @@ export type TraceEvent =
   | { type: 'error'; message: string }
   | { type: 'specialist_start'; specialist: string }
   | { type: 'specialist_skipped'; specialist: string; reason: string }
-  | { type: 'section_complete'; section: Section };
+  | { type: 'section_complete'; section: Section }
+  | { type: 'research_plan'; specialist: string; questions: string[] }
+  | { type: 'research_read'; specialist: string; sourceId: string; locator: string }
+  | { type: 'research_reflect'; specialist: string; note: string; followups: string[] };
 
 export const RagRatingSchema = z.enum(['green', 'amber', 'red']);
 export type RagRating = z.infer<typeof RagRatingSchema>;

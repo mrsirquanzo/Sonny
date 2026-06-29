@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import type { TraceEvent } from './contracts.js';
 import { ClaimSchema, ClaimsSchema, EvidenceSchema, VerdictSchema } from './contracts.js';
 
 describe('contracts', () => {
@@ -19,5 +20,16 @@ describe('contracts', () => {
 
   it('constrains verdict status', () => {
     expect(() => VerdictSchema.parse({ claimId: 'c1', status: 'maybe', rationale: 'r' })).toThrow();
+  });
+});
+
+describe('research trace events', () => {
+  it('accepts research_plan, research_read, research_reflect', () => {
+    const events: TraceEvent[] = [
+      { type: 'research_plan', specialist: 'target_biology', questions: ['what is the MOA?'] },
+      { type: 'research_read', specialist: 'target_biology', sourceId: 'PMCID:PMC1#sec-0', locator: 'Results' },
+      { type: 'research_reflect', specialist: 'target_biology', note: 'genetics weak vs literature', followups: ['check resistance'] },
+    ];
+    expect(events.map((e) => e.type)).toEqual(['research_plan', 'research_read', 'research_reflect']);
   });
 });
