@@ -165,6 +165,16 @@ describe('runResearcher loop', () => {
   });
 });
 
+describe('planResearchQuestions target anchoring', () => {
+  it('instructs the model to keep the target symbol in every searchQuery', async () => {
+    let system = '';
+    const model = { async generateStructured(o: { system: string }) { system = o.system; return { questions: [{ question: 'q', searchQuery: 'CDCP1 kw' }] } as never; } };
+    await planResearchQuestions({ id: 'x', title: 'X', objective: 'o', promptHint: 'h' }, 'CDCP1', model);
+    expect(system.toLowerCase()).toContain('target gene symbol');
+    expect(system.toLowerCase()).toContain('every');
+  });
+});
+
 describe('runResearcher relevance gating', () => {
   it('drops search hits that do not mention the target before they reach the evidence store', async () => {
     const search: Tool = { name: 'europepmc_search', description: '', async call() {

@@ -19,7 +19,7 @@ export async function planResearchQuestions(
   brief: ThreadBrief, target: string, model: StructuredModel,
 ): Promise<ResearchQuestion[]> {
   const { questions } = await model.generateStructured({
-    system: `You are the ${brief.title} research specialist. ${brief.promptHint}\nPlan the specific, answerable research questions you must investigate to assess this target at expert depth.\nFor each item return:\n- question: a precise, answerable research question\n- searchQuery: 3-8 keyword terms that MUST include the target gene symbol and key entities. NO full sentences, NO punctuation - this is sent directly to a PubMed/Europe PMC search API.`,
+    system: `You are the ${brief.title} research specialist. ${brief.promptHint}\nPlan the specific, answerable research questions you must investigate to assess this target at expert depth.\nFor each item return:\n- question: a precise, answerable research question\n- searchQuery: 3-8 keyword terms that MUST include the target gene symbol and key entities. NO full sentences, NO punctuation - this is sent directly to a PubMed/Europe PMC search API.\nEvery searchQuery MUST contain the target gene symbol and stay strictly about THIS target - do not drift to general pathway or disease biology that does not name the target.`,
     prompt: `BRIEF: ${brief.title}\nTARGET: ${target}\nOBJECTIVE: ${brief.objective}\nList up to 5 research questions, most important first. Each must have a question and a concise keyword searchQuery.`,
     schema: QuestionsSchema,
     model: MODEL_ROUTER.specialist,
