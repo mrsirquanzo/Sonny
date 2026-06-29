@@ -54,7 +54,8 @@ export type TraceEvent =
   | { type: 'research_reflect'; specialist: string; note: string; followups: string[] }
   | { type: 'lead_decompose'; specialists: string[] }
   | { type: 'completeness_verdict'; complete: boolean; gaps: string[] }
-  | { type: 'gap_filler'; specialist: string; question: string };
+  | { type: 'gap_filler'; specialist: string; question: string }
+  | { type: 'recommendation'; verdict: string };
 
 export const RagRatingSchema = z.enum(['green', 'amber', 'red']);
 export type RagRating = z.infer<typeof RagRatingSchema>;
@@ -68,3 +69,39 @@ export const SectionSchema = z.object({
   rag: RagRatingSchema,
 });
 export type Section = z.infer<typeof SectionSchema>;
+
+export const VerdictLabelSchema = z.enum(['go', 'watch', 'no-go']);
+export type VerdictLabel = z.infer<typeof VerdictLabelSchema>;
+
+export const CasePointSchema = z.object({
+  point: z.string().min(1),
+  citations: z.array(z.string()),
+});
+export type CasePoint = z.infer<typeof CasePointSchema>;
+
+export const RecommendationSchema = z.object({
+  verdict: VerdictLabelSchema,
+  thesis: z.string().min(1),
+  bull: z.array(CasePointSchema),
+  bear: z.array(CasePointSchema),
+  conditions: z.array(z.string()),
+});
+export type Recommendation = z.infer<typeof RecommendationSchema>;
+
+export const ReferenceSchema = z.object({
+  id: z.string().min(1),
+  kind: EvidenceKindSchema,
+  source: z.string(),
+  title: z.string(),
+  url: z.string(),
+});
+export type Reference = z.infer<typeof ReferenceSchema>;
+
+export interface Briefing {
+  target: string;
+  recommendation: Recommendation;
+  executiveRead: string;
+  sections: Section[];
+  weighing: { takeaway: string; claims: Claim[] };
+  references: Reference[];
+}

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import type { TraceEvent } from './contracts.js';
-import { ClaimSchema, ClaimsSchema, EvidenceSchema, VerdictSchema } from './contracts.js';
+import type { TraceEvent, Briefing } from './contracts.js';
+import { ClaimSchema, ClaimsSchema, EvidenceSchema, VerdictSchema, RecommendationSchema, ReferenceSchema } from './contracts.js';
 
 describe('contracts', () => {
   it('accepts a valid evidence record', () => {
@@ -42,5 +42,32 @@ describe('lead trace events', () => {
       { type: 'gap_filler', specialist: 'clinical_landscape', question: 'What are the acquired resistance mechanisms?' },
     ];
     expect(events.map((e) => e.type)).toEqual(['lead_decompose', 'completeness_verdict', 'gap_filler']);
+  });
+});
+
+describe('briefing contracts', () => {
+  it('parses a recommendation and accepts the recommendation trace event', () => {
+    const rec = RecommendationSchema.parse({
+      verdict: 'watch', thesis: 'Interesting but under-validated.',
+      bull: [{ point: 'Tractable surface antigen.', citations: ['ENSG1'] }],
+      bear: [{ point: 'Weak human genetics.', citations: ['ENSG1'] }],
+      conditions: ['A positive Phase 1 readout would move this to GO.'],
+    });
+    expect(rec.verdict).toBe('watch');
+    const ref = ReferenceSchema.parse({ id: 'PMID:1', kind: 'publication', source: 'Europe PMC', title: 'X', url: 'u' });
+    expect(ref.id).toBe('PMID:1');
+    const ev: TraceEvent = { type: 'recommendation', verdict: 'watch' };
+    expect(ev.type).toBe('recommendation');
+    const briefing: Briefing = {
+      target: 'CDCP1', recommendation: rec, executiveRead: 'read',
+      sections: [], weighing: { takeaway: '', claims: [] }, references: [ref],
+    };
+    expect(briefing.references).toHaveLength(1);
+  });
+
+  it('rejects an invalid verdict', () => {
+    expect(() => RecommendationSchema.parse({
+      verdict: 'maybe', thesis: 't', bull: [], bear: [], conditions: [],
+    })).toThrow();
   });
 });
