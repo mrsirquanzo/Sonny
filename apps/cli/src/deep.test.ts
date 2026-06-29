@@ -16,3 +16,18 @@ describe('formatTrace research events', () => {
     expect(out).toContain('check resistance');
   });
 });
+
+describe('formatTrace lead events', () => {
+  it('renders decompose, completeness, and gap-filler lines', () => {
+    const events: TraceEvent[] = [
+      { type: 'lead_decompose', specialists: ['target_biology', 'moa_pathway'] },
+      { type: 'completeness_verdict', complete: false, gaps: ['resistance mechanisms'] },
+      { type: 'gap_filler', specialist: 'moa_pathway', question: 'How does resistance arise?' },
+    ];
+    const out = formatTrace(events);
+    expect(out).toContain('target_biology');
+    expect(out).toContain('gap');
+    expect(out).toContain('resistance mechanisms');
+    expect(out).toContain('How does resistance arise?');
+  });
+});

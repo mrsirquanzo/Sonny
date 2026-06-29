@@ -17,6 +17,12 @@ export function formatTrace(events: TraceEvent[]): string {
         return `\n[${e.section.rag.toUpperCase()}] ${e.section.title}\n  ${e.section.takeaway}\n` +
           e.section.claims.map((c) => `  - ${c.text} ${c.citations.map((id) => `[${id}]`).join(' ')}`).join('\n');
       case 'error': return `  ! ${e.message}`;
+      case 'lead_decompose':
+        return `\nLEAD  dispatching: ${e.specialists.join(', ')}`;
+      case 'completeness_verdict':
+        return `LEAD  completeness: ${e.complete ? 'complete' : 'gaps -> ' + e.gaps.join('; ')}`;
+      case 'gap_filler':
+        return `  + gap-fill [${e.specialist}]: ${e.question}`;
       case 'research_plan':
         return `  ▸ ${e.specialist} plan:\n` + e.questions.map((q) => `      ? ${q}`).join('\n');
       case 'research_read':
