@@ -41,6 +41,7 @@ export async function extractClaims(
 import type { Evidence, TraceEvent } from '@sonny/shared';
 import type { EvidenceStore } from './evidenceStore.js';
 import type { Tool } from '@sonny/mcp-gateway';
+import { safeToolCall } from './safeToolCall.js';
 
 export interface ResearchBudget { maxRounds: number }
 export interface ThreadFindings { takeaway: string; claims: Claim[]; openQuestions: string[] }
@@ -89,7 +90,7 @@ export async function runResearcher(opts: {
     const item = openQuestions[0];
 
     emit({ type: 'tool_call', tool: search.name, args: { query: item.searchQuery } });
-    const hits = await search.call({ query: item.searchQuery });
+    const hits = await safeToolCall({ tool: search, args: { query: item.searchQuery }, emit });
     emit({ type: 'tool_result', tool: search.name, count: hits.length });
     for (const h of hits) { store.register(h); emit({ type: 'evidence_registered', id: h.id, title: h.title }); }
 
@@ -98,7 +99,7 @@ export async function runResearcher(opts: {
     if (top) {
       const pmcid = (top.raw as { pmcid: string }).pmcid;
       emit({ type: 'tool_call', tool: fulltext.name, args: { pmcid } });
-      const passages = await fulltext.call({ pmcid });
+      const passages = await safeToolCall({ tool: fulltext, args: { pmcid }, emit });
       emit({ type: 'tool_result', tool: fulltext.name, count: passages.length });
       for (const p of passages) {
         store.register(p);
