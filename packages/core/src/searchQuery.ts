@@ -8,3 +8,10 @@ export function buildSearchQuery(target: string, concept: string): string {
   if (!c) return pinned;
   return /\s/.test(c) ? `${pinned} AND "${c}"` : `${pinned} AND ${c}`;
 }
+
+// Find review articles on the target: pin the target to TITLE_ABS and constrain to
+// review publications. PUB_TYPE:"review" returns actual reviews; free-text "review"
+// returns primary papers that merely use the word.
+export function buildReviewQuery(target: string): string {
+  return `TITLE_ABS:${target} AND PUB_TYPE:"review"`;
+}

@@ -5,6 +5,7 @@ import type { StructuredModel } from './model.js';
 import type { ThreadBrief, ResearchBudget } from './researcher.js';
 import { produceResearchSection } from './produceResearchSection.js';
 import { seedStructuredEvidence } from './leadSeed.js';
+import { orientWithReview } from './orientation.js';
 import { assessCompleteness, fillGap, mergeGapClaims, type ResearchGap } from './completeness.js';
 import { weighAcrossThreads } from './weighing.js';
 
@@ -29,6 +30,12 @@ export async function runDeepResearch(opts: {
   const store = new EvidenceStore();
 
   await seedStructuredEvidence({ target, tools: structuredTools, store, emit });
+
+  try {
+    await orientWithReview({ target, tools: literatureTools, store, emit });
+  } catch (err) {
+    emit({ type: 'error', message: `orientation failed: ${String(err)}` });
+  }
 
   emit({ type: 'lead_decompose', specialists: roster.map((b) => b.id) });
   const settled = await Promise.allSettled(roster.map((brief) =>

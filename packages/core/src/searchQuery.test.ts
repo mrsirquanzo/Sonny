@@ -19,3 +19,11 @@ describe('buildSearchQuery', () => {
     expect(buildSearchQuery('CDCP1', '  oncology  ')).toBe('TITLE_ABS:CDCP1 AND oncology');
   });
 });
+
+import { buildReviewQuery } from './searchQuery.js';
+
+describe('buildReviewQuery', () => {
+  it('builds a TITLE_ABS target query constrained to review publications', () => {
+    expect(buildReviewQuery('CDCP1')).toBe('TITLE_ABS:CDCP1 AND PUB_TYPE:"review"');
+  });
+});
