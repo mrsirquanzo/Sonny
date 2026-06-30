@@ -1,4 +1,4 @@
-import type { Claim, Evidence, Section, TraceEvent } from '@sonny/shared';
+import type { Claim, Evidence, Section, TraceEvent, KOLCluster } from '@sonny/shared';
 import type { Tool } from '@sonny/mcp-gateway';
 import { EvidenceStore } from './evidenceStore.js';
 import type { StructuredModel } from './model.js';
@@ -9,12 +9,14 @@ import { orientWithReview } from './orientation.js';
 import { assessCompleteness, fillGap, mergeGapClaims, type ResearchGap } from './completeness.js';
 import { weighAcrossThreads } from './weighing.js';
 import { assessDevelopability } from './critique/developability.js';
+import { mapSpecialtyLabs } from './kolDetector.js';
 
 export interface DeepResearchResult {
   target: string;
   sections: Section[];
   weighing: { takeaway: string; claims: Claim[] };
   evidence: Evidence[];
+  kolCluster: KOLCluster;
 }
 
 function placeholderSection(brief: ThreadBrief, reason: string): Section {
@@ -81,11 +83,19 @@ export async function runDeepResearch(opts: {
     emit({ type: 'error', message: `developability assessment failed: ${String(err)}` });
   }
 
+  let kolCluster: KOLCluster = { target, labs: [] };
+  try {
+    kolCluster = mapSpecialtyLabs(store, target);
+    emit({ type: 'kol_cluster', cluster: kolCluster });
+  } catch (err) {
+    emit({ type: 'error', message: `kol mapping failed: ${String(err)}` });
+  }
+
   let weighing = { takeaway: '', claims: [] as Claim[] };
   try {
     weighing = await weighAcrossThreads({ sections: finalSections, store, leadModel: opts.leadModel, verifierModel, emit });
   } catch (err) {
     emit({ type: 'error', message: `weighing failed: ${String(err)}` });
   }
-  return { target, sections: finalSections, weighing, evidence: store.all() };
+  return { target, sections: finalSections, weighing, evidence: store.all(), kolCluster };
 }
