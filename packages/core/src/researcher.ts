@@ -3,15 +3,16 @@ import { ClaimsSchema, type Claim } from '@sonny/shared';
 import type { StructuredModel } from './model.js';
 import { MODEL_ROUTER } from './model.js';
 import { targetTerms, relevanceGate, titleMentionsTarget } from './relevance.js';
+import { buildSearchQuery } from './searchQuery.js';
 
 export interface ThreadBrief { id: string; title: string; objective: string; promptHint: string }
 
-export interface ResearchQuestion { question: string; searchQuery: string }
+export interface ResearchQuestion { question: string; concept: string }
 
 const QuestionsSchema = z.object({
   questions: z.array(z.object({
     question: z.string().min(1),
-    searchQuery: z.string().min(1),
+    concept: z.string().min(1),
   })).min(1).max(5),
 });
 
@@ -19,8 +20,8 @@ export async function planResearchQuestions(
   brief: ThreadBrief, target: string, model: StructuredModel,
 ): Promise<ResearchQuestion[]> {
   const { questions } = await model.generateStructured({
-    system: `You are the ${brief.title} research specialist. ${brief.promptHint}\nPlan the specific, answerable research questions you must investigate to assess this target at expert depth.\nFor each item return:\n- question: a precise, answerable research question\n- searchQuery: 3-8 keyword terms that MUST include the target gene symbol and key entities. NO full sentences, NO punctuation - this is sent directly to a PubMed/Europe PMC search API.\nEvery searchQuery MUST contain the target gene symbol and stay strictly about THIS target - do not drift to general pathway or disease biology that does not name the target.`,
-    prompt: `BRIEF: ${brief.title}\nTARGET: ${target}\nOBJECTIVE: ${brief.objective}\nList up to 5 research questions, most important first. Each must have a question and a concise keyword searchQuery.`,
+    system: `You are the ${brief.title} research specialist. ${brief.promptHint}\nPlan the specific, answerable research questions you must investigate to assess this target at expert depth.\nFor each item return:\n- question: a precise, answerable research question\n- concept: ONE short topic facet of 1-2 words that narrows the search (examples: 'ADC', 'oncology', 'signaling', 'metastasis', 'resistance'). Do NOT include the target gene symbol - it is added automatically. Do NOT write a sentence or a list of keywords, just the single concept.`,
+    prompt: `BRIEF: ${brief.title}\nTARGET: ${target}\nOBJECTIVE: ${brief.objective}\nList up to 5 research questions, most important first. Each must have a question and a single short concept.`,
     schema: QuestionsSchema,
     model: MODEL_ROUTER.specialist,
   });
@@ -51,7 +52,7 @@ const ReflectSchema = z.object({
   done: z.boolean(),
   followups: z.array(z.object({
     question: z.string().min(1),
-    searchQuery: z.string().min(1),
+    concept: z.string().min(1),
   })).max(3),
   takeaway: z.string(),
 });
@@ -60,7 +61,7 @@ export async function reflectOnGaps(
   brief: ThreadBrief, claims: Claim[], model: StructuredModel,
 ): Promise<{ done: boolean; followups: ResearchQuestion[]; takeaway: string }> {
   return model.generateStructured({
-    system: `You are the ${brief.title} research lead reviewing your own progress. Decide whether the thread is sufficiently covered for expert-level assessment. If a critical question remains unanswered, or a source raised a new high-value thread (e.g. a resistance mechanism), list up to 3 follow-up questions. Each follow-up needs:\n- question: a precise research question\n- searchQuery: 3-8 keyword terms (NO sentences, NO punctuation) sent directly to PubMed/Europe PMC\nOtherwise set done=true. Always write a one-line takeaway summarizing the thread so far.`,
+    system: `You are the ${brief.title} research lead reviewing your own progress. Decide whether the thread is sufficiently covered for expert-level assessment. If a critical question remains unanswered, or a source raised a new high-value thread (e.g. a resistance mechanism), list up to 3 follow-up questions. Each follow-up needs:\n- question: a precise research question\n- concept: ONE short topic facet of 1-2 words (no sentence, no keyword list) and do NOT include the target gene symbol - it is added automatically\nOtherwise set done=true. Always write a one-line takeaway summarizing the thread so far.`,
     prompt: `OBJECTIVE: ${brief.objective}\n\nCLAIMS SO FAR:\n${claims.map((c) => `- ${c.text}`).join('\n') || '(none yet)'}`,
     schema: ReflectSchema,
     model: MODEL_ROUTER.specialist,
@@ -91,8 +92,9 @@ export async function runResearcher(opts: {
   for (let round = 0; round < budget.maxRounds && openQuestions.length > 0; round++) {
     const item = openQuestions[0];
 
-    emit({ type: 'tool_call', tool: search.name, args: { query: item.searchQuery } });
-    const hits = relevanceGate(await safeToolCall({ tool: search, args: { query: item.searchQuery }, emit }), terms);
+    const query = buildSearchQuery(target, item.concept);
+    emit({ type: 'tool_call', tool: search.name, args: { query } });
+    const hits = relevanceGate(await safeToolCall({ tool: search, args: { query }, emit }), terms);
     emit({ type: 'tool_result', tool: search.name, count: hits.length });
     for (const h of hits) { store.register(h); emit({ type: 'evidence_registered', id: h.id, title: h.title }); }
 
