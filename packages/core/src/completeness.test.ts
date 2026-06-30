@@ -6,6 +6,7 @@ import { EvidenceStore } from './evidenceStore.js';
 import { fillGap, mergeGapClaims } from './completeness.js';
 import type { Tool } from '@sonny/mcp-gateway';
 import type { Claim } from '@sonny/shared';
+import { buildSearchQuery } from './searchQuery.js';
 
 const sections: Section[] = [
   { id: 'target_biology', title: 'Target Biology', takeaway: 'Solid.', claims: [], sources: ['ENSG1', 'PMID:1'], rag: 'green' },
@@ -19,7 +20,7 @@ describe('assessCompleteness', () => {
       async generateStructured(opts) {
         prompt = opts.prompt;
         return { complete: false, gaps: [
-          { specialistId: 'clinical_landscape', question: 'What trials exist?', searchQuery: 'CDCP1 clinical trial', reason: 'section is red' },
+          { specialistId: 'clinical_landscape', question: 'What trials exist?', concept: 'trials', reason: 'section is red' },
         ] } as never;
       },
     };
@@ -54,8 +55,8 @@ describe('fillGap', () => {
       return [{ claimId: 'x', status: 'supported', rationale: 'ok' }, { claimId: 'x', status: 'unsupported', rationale: 'no' }][v++] as never;
     } };
     const out = await fillGap({
-      gap: { specialistId: 'moa_pathway', question: 'How does resistance arise?', searchQuery: 'CDCP1 resistance', reason: 'gap' },
-      tools: [search, fulltext], store: new EvidenceStore(), specialistModel, verifierModel, emit: () => {},
+      gap: { specialistId: 'moa_pathway', question: 'How does resistance arise?', concept: 'resistance', reason: 'gap' },
+      target: 'CDCP1', tools: [search, fulltext], store: new EvidenceStore(), specialistModel, verifierModel, emit: () => {},
     });
     expect(out.map((c) => c.id)).toEqual(['g1']); // only the supported claim survives
   });
@@ -68,8 +69,8 @@ describe('fillGap resilience', () => {
     const specialistModel = { async generateStructured() { return { claims: [] } as never; } };
     const verifierModel = { async generateStructured() { return { claimId: 'x', status: 'supported', rationale: '' } as never; } };
     const out = await fillGap({
-      gap: { specialistId: 'moa_pathway', question: 'q', searchQuery: 'kw', reason: 'r' },
-      tools: [failingSearch, fulltext], store: new EvidenceStore(),
+      gap: { specialistId: 'moa_pathway', question: 'q', concept: 'kw', reason: 'r' },
+      target: 'CDCP1', tools: [failingSearch, fulltext], store: new EvidenceStore(),
       specialistModel, verifierModel, emit: () => {},
     });
     expect(out).toEqual([]);
@@ -91,11 +92,26 @@ describe('fillGap relevance gating', () => {
     const specialistModel = { async generateStructured() { return { claims: [] } as never; } };
     const verifierModel = { async generateStructured() { return { claimId: 'x', status: 'supported', rationale: '' } as never; } };
     await fillGap({
-      gap: { specialistId: 'moa_pathway', question: 'q', searchQuery: 'kw', reason: 'r' },
-      tools: [search, fulltext], store, specialistModel, verifierModel, emit: () => {},
+      gap: { specialistId: 'moa_pathway', question: 'q', concept: 'kw', reason: 'r' },
+      target: 'CDCP1', tools: [search, fulltext], store, specialistModel, verifierModel, emit: () => {},
     });
     expect(store.has('PMID:1')).toBe(true);
     expect(store.has('PMID:2')).toBe(false);
+  });
+});
+
+describe('fillGap query', () => {
+  it('searches the broad target AND concept query', async () => {
+    const recordedQueries: string[] = [];
+    const search: Tool = { name: 'europepmc_search', description: '', async call(args: Record<string, unknown>) { recordedQueries.push(String(args['query'] ?? '')); return [] as never; } };
+    const fulltext: Tool = { name: 'pmc_fulltext', description: '', async call() { return [] as never; } };
+    const specialistModel = { async generateStructured() { return { claims: [] } as never; } };
+    const verifierModel = { async generateStructured() { return { claimId: 'x', status: 'supported', rationale: '' } as never; } };
+    await fillGap({
+      gap: { specialistId: 'moa_pathway', question: 'How does resistance arise?', concept: 'resistance', reason: 'gap' },
+      target: 'CDCP1', tools: [search, fulltext], store: new EvidenceStore(), specialistModel, verifierModel, emit: () => {},
+    });
+    expect(recordedQueries[0]).toBe(buildSearchQuery('CDCP1', 'resistance')); // 'CDCP1 AND resistance'
   });
 });
 

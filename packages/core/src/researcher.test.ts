@@ -7,6 +7,7 @@ import type { Tool } from '@sonny/mcp-gateway';
 import type { TraceEvent } from '@sonny/shared';
 import { safeToolCall } from './safeToolCall.js'; // ensure import graph is wired
 import { targetTerms } from './relevance.js'; // ensure import graph wired
+import { buildSearchQuery } from './searchQuery.js';
 
 const brief: ThreadBrief = {
   id: 'target_biology', title: 'Target Biology',
@@ -19,17 +20,17 @@ function modelReturning(value: unknown): StructuredModel {
 }
 
 describe('planResearchQuestions', () => {
-  it('returns objects with question and searchQuery, includes target in prompt', async () => {
+  it('returns objects with question and concept, includes target in prompt', async () => {
     let prompt = '';
     const model: StructuredModel = {
       async generateStructured(opts) {
         prompt = opts.prompt;
-        return { questions: [{ question: 'What is the MOA of CDCP1?', searchQuery: 'CDCP1 mechanism action' }] } as never;
+        return { questions: [{ question: 'What is the MOA of CDCP1?', concept: 'mechanism' }] } as never;
       },
     };
     const qs: ResearchQuestion[] = await planResearchQuestions(brief, 'CDCP1', model);
     expect(qs[0].question).toBe('What is the MOA of CDCP1?');
-    expect(qs[0].searchQuery).toBe('CDCP1 mechanism action');
+    expect(qs[0].concept).toBe('mechanism');
     expect(prompt).toContain('CDCP1');
     expect(prompt).toContain('Target Biology');
   });
@@ -62,7 +63,7 @@ describe('runResearcher loop', () => {
     ]);
 
     const replies = [
-      { questions: [{ question: 'What is the MOA of CDCP1?', searchQuery: 'CDCP1 mechanism action cancer' }] },   // plan
+      { questions: [{ question: 'What is the MOA of CDCP1?', concept: 'mechanism' }] },   // plan
       { claims: [{ id: 'c1', text: 'CDCP1 promotes EMT.', citations: ['PMCID:PMC1#sec-1'], confidence: 0.8 }] }, // extract
       { done: true, followups: [], takeaway: 'CDCP1 is an EMT driver.' },                                          // reflect
     ];
@@ -94,11 +95,11 @@ describe('runResearcher loop', () => {
     ]);
     const model = {
       async generateStructured(opts: { schema: { safeParse?: unknown } }) {
-        // plan -> one question with searchQuery; extract -> no claims; reflect -> never done, always a follow-up
+        // plan -> one question with concept; extract -> no claims; reflect -> never done, always a follow-up
         const sys = String((opts as { system?: string }).system ?? '');
-        if (sys.includes('Plan the specific')) return { questions: [{ question: 'q', searchQuery: 'q kw' }] } as never;
+        if (sys.includes('Plan the specific')) return { questions: [{ question: 'q', concept: 'kw' }] } as never;
         if (sys.includes('rigorous biomedical')) return { claims: [] } as never;
-        return { done: false, followups: [{ question: 'again', searchQuery: 'again kw' }], takeaway: 't' } as never;
+        return { done: false, followups: [{ question: 'again', concept: 'again' }], takeaway: 't' } as never;
       },
     };
     const findings = await runResearcher({
@@ -113,7 +114,7 @@ describe('runResearcher loop', () => {
     const failingSearch: Tool = { name: 'europepmc_search', description: '', async call() { throw new Error('HTTP 504'); } };
     const fulltext: Tool = { name: 'pmc_fulltext', description: '', async call() { return []; } };
     const replies = [
-      { questions: [{ question: 'q?', searchQuery: 'kw' }] }, // plan
+      { questions: [{ question: 'q?', concept: 'kw' }] }, // plan
       { claims: [] },                                          // extract (no evidence)
       { done: true, followups: [], takeaway: 'no data available' }, // reflect
     ];
@@ -139,7 +140,7 @@ describe('runResearcher loop', () => {
     const fulltext: Tool = { name: 'pmc_fulltext', description: '', async call() { fulltextCalls++; return [] as never; } };
 
     const replies = [
-      { questions: [{ question: 'Is CDCP1 detected?', searchQuery: 'cdcp1 proteomics' }] },  // plan
+      { questions: [{ question: 'Is CDCP1 detected?', concept: 'proteomics' }] },  // plan
       { claims: [{ id: 'c1', text: 'CDCP1 was detected.', citations: ['PMID:9'], confidence: 0.5 }] }, // extract
       { done: true, followups: [], takeaway: 't' },                                          // reflect
     ];
@@ -172,7 +173,7 @@ describe('runResearcher loop', () => {
     ]);
 
     const replies = [
-      { questions: [{ question: 'What is the MOA of CDCP1?', searchQuery: 'cdcp1 mechanism' }] }, // plan
+      { questions: [{ question: 'What is the MOA of CDCP1?', concept: 'mechanism' }] }, // plan
       { claims: [] },                                                                             // extract
       { done: true, followups: [], takeaway: 't' },                                               // reflect
     ];
@@ -191,9 +192,8 @@ describe('runResearcher loop', () => {
     expect(ids).not.toContain('PMCID:PMC1#sec-1'); // off-target MIS-C section dropped
   });
 
-  it('pins the bug fix: search tool receives the concise searchQuery, not the long question text', async () => {
+  it('sends the broad target AND concept query to the search tool, not the question text', async () => {
     const recordedQueries: string[] = [];
-
     const trackingSearch: Tool = {
       name: 'europepmc_search',
       description: 'europepmc_search',
@@ -202,39 +202,34 @@ describe('runResearcher loop', () => {
         return [] as never;
       },
     };
-    const fulltext = tool('pmc_fulltext', []);
-
-    const longQuestion = 'What is the detailed mechanism of action of CDCP1 in the context of epithelial-to-mesenchymal transition and cancer metastasis including downstream signaling?';
-    const conciseSearchQuery = 'CDCP1 EMT metastasis signaling';
-
+    const fulltext: Tool = { name: 'pmc_fulltext', description: '', async call() { return [] as never; } };
     const replies = [
-      { questions: [{ question: longQuestion, searchQuery: conciseSearchQuery }] }, // plan
-      { claims: [] },                                                                 // extract
-      { done: true, followups: [], takeaway: 'done' },                               // reflect
+      { questions: [{ question: 'What is the long-winded mechanism of action question?', concept: 'mechanism' }] },
+      { claims: [] },
+      { done: true, followups: [], takeaway: 't' },
     ];
     let i = 0;
     const model = { async generateStructured() { return replies[i++] as never; } };
 
     await runResearcher({
-      brief: { id: 'tb', title: 'TB', objective: 'o', promptHint: 'h' },
+      brief: { id: 'x', title: 'X', objective: 'o', promptHint: 'h' },
       target: 'CDCP1', tools: [trackingSearch, fulltext], store: new EvidenceStore(),
       model, emit: () => {}, budget: { maxRounds: 1 },
     });
 
     expect(recordedQueries).toHaveLength(1);
-    // The search must use the concise keyword query, not the long question
-    expect(recordedQueries[0]).toBe(conciseSearchQuery);
-    expect(recordedQueries[0]).not.toContain(longQuestion);
+    expect(recordedQueries[0]).toBe(buildSearchQuery('CDCP1', 'mechanism')); // 'CDCP1 AND mechanism'
+    expect(recordedQueries[0]).not.toContain('long-winded');
   });
 });
 
 describe('planResearchQuestions target anchoring', () => {
-  it('instructs the model to keep the target symbol in every searchQuery', async () => {
+  it('instructs the model to emit a single concept without the target symbol', async () => {
     let system = '';
-    const model = { async generateStructured(o: { system: string }) { system = o.system; return { questions: [{ question: 'q', searchQuery: 'CDCP1 kw' }] } as never; } };
-    await planResearchQuestions({ id: 'x', title: 'X', objective: 'o', promptHint: 'h' }, 'CDCP1', model);
-    expect(system.toLowerCase()).toContain('target gene symbol');
-    expect(system.toLowerCase()).toContain('every');
+    const model = { async generateStructured(o: { system: string }) { system = o.system; return { questions: [{ question: 'q', concept: 'mechanism' }] } as never; } };
+    await planResearchQuestions({ id: 'target_biology', title: 'Target Biology', objective: 'o', promptHint: 'h' }, 'CDCP1', model);
+    expect(system).toContain('concept');
+    expect(system.toLowerCase()).toContain('do not include the target');
   });
 });
 
@@ -248,7 +243,7 @@ describe('runResearcher relevance gating', () => {
     } };
     const fulltext: Tool = { name: 'pmc_fulltext', description: '', async call() { return []; } };
     const replies = [
-      { questions: [{ question: 'q?', searchQuery: 'kw' }] },
+      { questions: [{ question: 'q?', concept: 'kw' }] },
       { claims: [] },
       { done: true, followups: [], takeaway: 't' },
     ];

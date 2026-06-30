@@ -29,7 +29,7 @@ describe('runDeepResearch', () => {
     // Discriminate by the call's system prompt - NOT a positional counter, which would
     // hand one specialist's plan call another specialist's extract reply under Promise.all.
     const specialistModel = { async generateStructured(o: { system: string }) {
-      if (o.system.includes('Plan the specific')) return { questions: [{ question: 'q?', searchQuery: 'kw' }] } as never;
+      if (o.system.includes('Plan the specific')) return { questions: [{ question: 'q?', concept: 'kw' }] } as never;
       if (o.system.includes('rigorous biomedical')) return { claims: [{ id: 'c1', text: 'A claim citing ENSG1.', citations: ['ENSG1'], confidence: 0.8 }] } as never;
       return { done: true, followups: [], takeaway: 'takeaway' } as never; // reflect
     } };
@@ -70,7 +70,7 @@ describe('runDeepResearch resilience', () => {
     // specialistModel: brief 'a' plans/extracts/reflects fine; throw when the plan prompt is for B.
     const specialistModel = { async generateStructured(o: { prompt: string; system: string }) {
       if (o.prompt.includes('TARGET: CDCP1') && o.prompt.includes('B')) throw new Error('model exploded for B');
-      if (o.system.includes('Plan the specific')) return { questions: [{ question: 'q', searchQuery: 'kw' }] } as never;
+      if (o.system.includes('Plan the specific')) return { questions: [{ question: 'q', concept: 'kw' }] } as never;
       if (o.system.includes('rigorous biomedical')) return { claims: [] } as never;
       return { done: true, followups: [], takeaway: 'ok' } as never;
     } };
@@ -101,7 +101,7 @@ describe('runDeepResearch resilience', () => {
     ];
 
     const specialistModel = { async generateStructured(o: { system: string }) {
-      if (o.system.includes('Plan the specific')) return { questions: [{ question: 'q?', searchQuery: 'kw' }] } as never;
+      if (o.system.includes('Plan the specific')) return { questions: [{ question: 'q?', concept: 'kw' }] } as never;
       if (o.system.includes('rigorous biomedical')) return { claims: [] } as never;
       return { done: true, followups: [], takeaway: 'done' } as never;
     } };

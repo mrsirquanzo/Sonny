@@ -20,7 +20,7 @@ describe('produceResearchSection', () => {
     ]);
 
     const specialistReplies = [
-      { questions: ['What is the MOA?'] },
+      { questions: [{ question: 'What is the MOA?', concept: 'mechanism' }] },
       { claims: [{ id: 'c1', text: 'CDCP1 promotes EMT.', citations: ['PMCID:PMC1#sec-1'], confidence: 0.8 }] },
       { done: true, followups: [], takeaway: 'CDCP1 drives EMT.' },
     ];
