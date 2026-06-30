@@ -95,7 +95,7 @@ describe('runResearcher loop', () => {
     ]);
     const model = {
       async generateStructured(opts: { schema: { safeParse?: unknown } }) {
-        // plan -> one question with searchQuery; extract -> no claims; reflect -> never done, always a follow-up
+        // plan -> one question with concept; extract -> no claims; reflect -> never done, always a follow-up
         const sys = String((opts as { system?: string }).system ?? '');
         if (sys.includes('Plan the specific')) return { questions: [{ question: 'q', concept: 'kw' }] } as never;
         if (sys.includes('rigorous biomedical')) return { claims: [] } as never;
@@ -217,6 +217,7 @@ describe('runResearcher loop', () => {
       model, emit: () => {}, budget: { maxRounds: 1 },
     });
 
+    expect(recordedQueries).toHaveLength(1);
     expect(recordedQueries[0]).toBe(buildSearchQuery('CDCP1', 'mechanism')); // 'CDCP1 AND mechanism'
     expect(recordedQueries[0]).not.toContain('long-winded');
   });
