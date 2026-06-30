@@ -45,4 +45,11 @@ export async function runDeep(target: string): Promise<void> {
   for (const ref of briefing.references) {
     process.stdout.write(`  ${ref.id}  ${ref.title}  ${ref.url}\n`);
   }
+
+  if (briefing.kolCluster && briefing.kolCluster.labs.length) {
+    process.stdout.write(`\nKOL & INSTITUTIONAL TERRAIN\n`);
+    for (const lab of briefing.kolCluster.labs) {
+      process.stdout.write(`  ${lab.investigator}${lab.institution ? ` - ${lab.institution}` : ''}  (${lab.paperCount} papers)\n`);
+    }
+  }
 }

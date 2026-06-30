@@ -8,7 +8,7 @@ const xml = `<?xml version="1.0"?><pmc-articleset><article><body>
   </sec>
 </body></article></pmc-articleset>`;
 
-const fakeFetch = (async (url) => {
+const fakeFetch = (async (url: RequestInfo | URL) => {
   expect(String(url)).toContain('efetch.fcgi');
   expect(String(url)).toContain('db=pmc');
   expect(String(url)).toContain('id=7897327');

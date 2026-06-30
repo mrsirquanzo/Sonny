@@ -3,6 +3,19 @@ import { z } from 'zod';
 export const EvidenceKindSchema = z.enum(['target', 'publication', 'trial', 'patent', 'dataset', 'disease', 'drug']);
 export type EvidenceKind = z.infer<typeof EvidenceKindSchema>;
 
+export const AuthorSchema = z.object({
+  name: z.string().min(1),
+  affiliation: z.string().optional(),
+  orcid: z.string().optional(),
+});
+export type Author = z.infer<typeof AuthorSchema>;
+
+export const EvidenceMetadataSchema = z.object({
+  authors: z.array(AuthorSchema).optional(),
+  institutions: z.array(z.string()).optional(),
+});
+export type EvidenceMetadata = z.infer<typeof EvidenceMetadataSchema>;
+
 export const EvidenceSchema = z.object({
   id: z.string().min(1),
   kind: EvidenceKindSchema,
@@ -14,6 +27,7 @@ export const EvidenceSchema = z.object({
   url: z.string(),
   raw: z.unknown(),
   retrievedAt: z.string(),
+  metadata: EvidenceMetadataSchema.optional(),
 });
 export type Evidence = z.infer<typeof EvidenceSchema>;
 
@@ -82,6 +96,21 @@ export const VerdictSchema = z.object({
 });
 export type Verdict = z.infer<typeof VerdictSchema>;
 
+export const SpecialtyLabSchema = z.object({
+  investigator: z.string().min(1),
+  institution: z.string().optional(),
+  paperCount: z.number().int().nonnegative(),
+  weight: z.number(),
+  evidenceIds: z.array(z.string()),
+});
+export type SpecialtyLab = z.infer<typeof SpecialtyLabSchema>;
+
+export const KOLClusterSchema = z.object({
+  target: z.string(),
+  labs: z.array(SpecialtyLabSchema),
+});
+export type KOLCluster = z.infer<typeof KOLClusterSchema>;
+
 export type TraceEvent =
   | { type: 'plan'; specialists: string[]; tools: string[] }
   | { type: 'tool_call'; tool: string; args: Record<string, unknown> }
@@ -102,6 +131,7 @@ export type TraceEvent =
   | { type: 'gap_filler'; specialist: string; question: string }
   | { type: 'methodological_critique'; specialist: string; critique: MethodologicalCritique }
   | { type: 'developability_assessment'; risks: DevelopabilityRisk[] }
+  | { type: 'kol_cluster'; cluster: KOLCluster }
   | { type: 'recommendation'; verdict: string };
 
 export const RagRatingSchema = z.enum(['green', 'amber', 'red']);
@@ -153,4 +183,5 @@ export interface Briefing {
   sections: Section[];
   weighing: { takeaway: string; claims: Claim[] };
   references: Reference[];
+  kolCluster?: KOLCluster;
 }

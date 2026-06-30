@@ -40,6 +40,8 @@ export function formatTrace(events: TraceEvent[]): string {
         const r = e.risks.filter((x) => x.severity !== 'manageable');
         return `LEAD  developability: ` + (r.length ? r.map((x) => `${x.severity} ${x.category}`).join('; ') : 'no material risks');
       }
+      case 'kol_cluster':
+        return `\nLEAD  KOL terrain: ` + (e.cluster.labs.length ? e.cluster.labs.map((l) => l.investigator).join(', ') : 'no dominant labs');
       default: return `  [${e.type}]`;
     }
   }).join('\n');

@@ -29,5 +29,6 @@ export async function produceBriefing(opts: {
   return {
     target: result.target, recommendation, executiveRead,
     sections: result.sections, weighing: result.weighing, references: assembleReferences(result),
+    kolCluster: result.kolCluster,
   };
 }

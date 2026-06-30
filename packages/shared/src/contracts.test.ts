@@ -150,3 +150,30 @@ describe('DevelopabilityRisk schema', () => {
     expect(SectionSchema.parse(s).developabilityRisks?.[0].severity).toBe('severe');
   });
 });
+
+import { EvidenceMetadataSchema, KOLClusterSchema } from './contracts.js';
+
+describe('Evidence metadata and KOLCluster schemas', () => {
+  it('Evidence accepts optional metadata with authors and institutions', () => {
+    const e = { id: 'PMID:1', kind: 'publication', source: 's', title: 't', snippet: '', url: 'u', raw: {}, retrievedAt: 'now',
+      metadata: { authors: [{ name: 'Smith J', affiliation: 'MIT', orcid: '0000-0001' }], institutions: ['MIT'] } };
+    expect(EvidenceSchema.parse(e).metadata?.authors?.[0].name).toBe('Smith J');
+  });
+
+  it('Evidence is valid without metadata', () => {
+    expect(EvidenceSchema.parse({ id: 'PMID:1', kind: 'publication', source: 's', title: 't', snippet: '', url: 'u', raw: {}, retrievedAt: 'now' }).metadata).toBeUndefined();
+  });
+
+  it('an author requires a name', () => {
+    expect(() => EvidenceMetadataSchema.parse({ authors: [{ affiliation: 'x' }] })).toThrow();
+  });
+
+  it('KOLCluster validates labs', () => {
+    const c = { target: 'CDCP1', labs: [{ investigator: 'Smith J', institution: 'MIT', paperCount: 3, weight: 9, evidenceIds: ['PMID:1'] }] };
+    expect(KOLClusterSchema.parse(c).labs[0].investigator).toBe('Smith J');
+  });
+
+  it('KOLCluster rejects a non-integer paperCount', () => {
+    expect(() => KOLClusterSchema.parse({ target: 't', labs: [{ investigator: 'x', paperCount: 1.5, weight: 1, evidenceIds: [] }] })).toThrow();
+  });
+});
