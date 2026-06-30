@@ -6,7 +6,14 @@ import { MODEL_ROUTER } from './model.js';
 const SynthesisSchema = RecommendationSchema.extend({ executiveRead: z.string().min(1) });
 
 function claimLines(claims: Claim[]): string {
-  return claims.map((c) => `- ${c.text} ${c.citations.map((id) => `[${id}]`).join(' ')}`).join('\n');
+  return claims.map((c) => {
+    const cites = c.citations.map((id) => `[${id}]`).join(' ');
+    const flags = (c.redFlags ?? []).filter((f) => f.biasRisk === 'moderate' || f.biasRisk === 'high');
+    const note = flags.length
+      ? ` (AUDIT: ${flags.map((f) => `${f.biasRisk} ${f.category} - ${f.explanation}`).join('; ')})`
+      : '';
+    return `- ${c.text} ${cites}${note}`;
+  }).join('\n');
 }
 
 export async function synthesizeRecommendation(opts: {
@@ -19,7 +26,7 @@ export async function synthesizeRecommendation(opts: {
     + `\n\n## Cross-thread weighing\n${weighing.takeaway}\n${claimLines(weighing.claims)}`;
 
   const draft = await model.generateStructured({
-    system: `You are the lead scientist writing the recommendation for a target-assessment briefing. Base your judgment ONLY on the verified findings provided - do not introduce facts that are not in them. Decide a verdict: "go" (pursue), "watch" (monitor, not yet), or "no-go" (do not pursue). Write a one-line thesis, a bull case and a bear case (each a list of points, every point citing the evidence id(s) it rests on, copied verbatim from the findings), the conditions that would change the verdict, and a 3-4 sentence executive read (what the target is, why it matters, the core bull, the core bear, the call). The verdict is your conditioned judgment, not a fact.`,
+    system: `You are the lead scientist writing the recommendation for a target-assessment briefing. Base your judgment ONLY on the verified findings provided - do not introduce facts that are not in them. Decide a verdict: "go" (pursue), "watch" (monitor, not yet), or "no-go" (do not pursue). Write a one-line thesis, a bull case and a bear case (each a list of points, every point citing the evidence id(s) it rests on, copied verbatim from the findings), the conditions that would change the verdict, and a 3-4 sentence executive read (what the target is, why it matters, the core bull, the core bear, the call). The verdict is your conditioned judgment, not a fact. Some findings carry an AUDIT note (a methodological bias risk and explanation). When you cite such a finding, state the finding AND its audit caveat in the same sentence - report what was found, then note the limitation. Never drop a finding because of a methodological flag; surface the context.`,
     prompt: `TARGET FINDINGS (verified):\n${digest}\n\nReturn the verdict, thesis, bull, bear, conditions, and executiveRead.`,
     schema: SynthesisSchema,
     model: MODEL_ROUTER.writer,
