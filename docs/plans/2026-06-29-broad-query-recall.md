@@ -407,6 +407,81 @@ git commit -m "feat(core): gap-filler emits concept and searches target AND conc
 
 ---
 
+### Task 4: Pin the target to the TITLE_ABS field
+
+**Files:**
+- Modify: `packages/core/src/searchQuery.ts`
+- Test: `packages/core/src/searchQuery.test.ts`
+
+**Why:** Discovered in the local smoke. Europe PMC matches `query=` across full text and the tool sorts by `CITED desc`, so a bare `CDCP1 AND signaling` returns 1223 hits whose top 8 are famous reviews that only cite a CDCP1 paper - none has CDCP1 in title/abstract, so the relevance gate drops all 8 and the loop sees 0 records. Pinning the target to Europe PMC's `TITLE_ABS:` field returns papers actually about the target (`TITLE_ABS:CDCP1 AND signaling` -> 199 hits, top 8 all CDCP1-centric). The concept stays free text.
+
+**Interfaces:**
+- `buildSearchQuery(target, concept)` keeps its signature; its output changes from `<target> AND <concept>` to `TITLE_ABS:<target> AND <concept>` (and `TITLE_ABS:<target>` when the concept is empty). The two consumer tests (`researcher.test.ts`, `completeness.test.ts`) assert against `buildSearchQuery(...)` directly, so they update automatically - do not edit them.
+
+- [ ] **Step 1: Update the failing unit tests**
+
+In `packages/core/src/searchQuery.test.ts`, update the expected strings to the field-pinned form:
+
+```ts
+describe('buildSearchQuery', () => {
+  it('pins the target to TITLE_ABS and joins a single-word concept with AND', () => {
+    expect(buildSearchQuery('CDCP1', 'ADC')).toBe('TITLE_ABS:CDCP1 AND ADC');
+  });
+
+  it('phrase-quotes a multi-word concept so it is not AND-split', () => {
+    expect(buildSearchQuery('CDCP1', 'cell therapy')).toBe('TITLE_ABS:CDCP1 AND "cell therapy"');
+  });
+
+  it('returns the field-pinned target alone when the concept is empty or whitespace', () => {
+    expect(buildSearchQuery('CDCP1', '')).toBe('TITLE_ABS:CDCP1');
+    expect(buildSearchQuery('CDCP1', '   ')).toBe('TITLE_ABS:CDCP1');
+  });
+
+  it('trims surrounding whitespace from the concept', () => {
+    expect(buildSearchQuery('CDCP1', '  oncology  ')).toBe('TITLE_ABS:CDCP1 AND oncology');
+  });
+});
+```
+
+- [ ] **Step 2: Run the tests to verify they fail**
+
+Run: `pnpm --filter @sonny/core test -- searchQuery`
+Expected: FAIL - output is `CDCP1 AND ADC`, expected `TITLE_ABS:CDCP1 AND ADC`.
+
+- [ ] **Step 3: Field-pin the target in the helper**
+
+Replace `packages/core/src/searchQuery.ts` with:
+
+```ts
+// Assemble a broad two-term Europe PMC query: the target plus one concept facet.
+// The target is pinned to the TITLE_ABS field so Europe PMC returns papers where the
+// target is a subject (in title or abstract), not papers that merely cite it in full
+// text. The concept stays free text and is phrase-quoted when multi-word.
+export function buildSearchQuery(target: string, concept: string): string {
+  const c = concept.trim();
+  const pinned = `TITLE_ABS:${target}`;
+  if (!c) return pinned;
+  return /\s/.test(c) ? `${pinned} AND "${c}"` : `${pinned} AND ${c}`;
+}
+```
+
+- [ ] **Step 4: Run the helper tests, then the full core suite**
+
+Run: `pnpm --filter @sonny/core test -- searchQuery`
+Expected: PASS - all 4 cases green.
+
+Run: `pnpm --filter @sonny/core test`
+Expected: PASS - full core suite green. The `researcher.test.ts` and `completeness.test.ts` query assertions compare against `buildSearchQuery(...)` directly, so they track the new output with no edits.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add packages/core/src/searchQuery.ts packages/core/src/searchQuery.test.ts
+git commit -m "feat(core): pin target to TITLE_ABS so broad queries return on-target papers"
+```
+
+---
+
 ## Notes for the controller
 
 - After all tasks, run `pnpm -r test` before the whole-branch review (the CLI/web packages do not reference `searchQuery`, but confirm).
