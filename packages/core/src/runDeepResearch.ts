@@ -8,6 +8,7 @@ import { seedStructuredEvidence } from './leadSeed.js';
 import { orientWithReview } from './orientation.js';
 import { assessCompleteness, fillGap, mergeGapClaims, type ResearchGap } from './completeness.js';
 import { weighAcrossThreads } from './weighing.js';
+import { assessDevelopability } from './critique/developability.js';
 
 export interface DeepResearchResult {
   target: string;
@@ -68,6 +69,16 @@ export async function runDeepResearch(opts: {
         emit({ type: 'error', message: `gap-fill ${gap.specialistId} failed: ${String(err)}` });
       }
     }
+  }
+
+  try {
+    const mi = finalSections.findIndex((s) => s.id === 'modality_developability');
+    if (mi !== -1) {
+      const risks = await assessDevelopability({ section: finalSections[mi], store, model: verifierModel, emit });
+      finalSections = finalSections.map((s, i) => (i === mi ? { ...s, developabilityRisks: risks } : s));
+    }
+  } catch (err) {
+    emit({ type: 'error', message: `developability assessment failed: ${String(err)}` });
   }
 
   let weighing = { takeaway: '', claims: [] as Claim[] };

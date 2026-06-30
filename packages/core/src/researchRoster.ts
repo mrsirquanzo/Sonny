@@ -26,4 +26,9 @@ export const RESEARCH_ROSTER: ThreadBrief[] = [
     objective: 'Map who is pursuing the target and the surrounding intellectual-property position.',
     promptHint: 'Map the competitive landscape: which companies and academic groups pursue this target, the modalities in play, and the differentiation. Note the patent and exclusivity signals visible in the literature and known drug records.',
   },
+  {
+    id: 'modality_developability', title: 'Modality & Developability',
+    objective: 'Assess whether the target can actually be drugged: half-life, dosing route, immunogenicity, off-target toxicity, Fc-engineering, and manufacturability.',
+    promptHint: 'Assess ONLY the physical and developability constraints of drugging this target, not its disease biology. Cover antibody or protein half-life and dosing route (IV versus subcutaneous), immunogenicity and anti-drug-antibody (ADA) risk, off-target and on-target/off-tumor toxicity, Fc-engineering and format risk, and manufacturability. Where the literature reports a developability liability, state it plainly. Ignore general pathway and disease-mechanism questions - other specialists cover those.',
+  },
 ];

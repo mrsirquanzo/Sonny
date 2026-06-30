@@ -45,6 +45,22 @@ export const MethodologicalCritiqueSchema = z.object({
 });
 export type MethodologicalCritique = z.infer<typeof MethodologicalCritiqueSchema>;
 
+export const DevelopabilitySeveritySchema = z.enum(['manageable', 'significant', 'severe']);
+export type DevelopabilitySeverity = z.infer<typeof DevelopabilitySeveritySchema>;
+
+export const DevelopabilityCategorySchema = z.enum([
+  'immunogenicity', 'half_life', 'dosing', 'off_target_toxicity', 'fc_engineering', 'manufacturability',
+]);
+export type DevelopabilityCategory = z.infer<typeof DevelopabilityCategorySchema>;
+
+export const DevelopabilityRiskSchema = z.object({
+  evidenceId: z.string().min(1),
+  category: DevelopabilityCategorySchema,
+  severity: DevelopabilitySeveritySchema,
+  explanation: z.string().min(1),
+});
+export type DevelopabilityRisk = z.infer<typeof DevelopabilityRiskSchema>;
+
 export const ClaimSchema = z.object({
   id: z.string().min(1),
   text: z.string().min(1),
@@ -85,6 +101,7 @@ export type TraceEvent =
   | { type: 'completeness_verdict'; complete: boolean; gaps: string[] }
   | { type: 'gap_filler'; specialist: string; question: string }
   | { type: 'methodological_critique'; specialist: string; critique: MethodologicalCritique }
+  | { type: 'developability_assessment'; risks: DevelopabilityRisk[] }
   | { type: 'recommendation'; verdict: string };
 
 export const RagRatingSchema = z.enum(['green', 'amber', 'red']);
@@ -98,6 +115,7 @@ export const SectionSchema = z.object({
   sources: z.array(z.string()),
   rag: RagRatingSchema,
   critiques: z.array(MethodologicalCritiqueSchema).optional(),
+  developabilityRisks: z.array(DevelopabilityRiskSchema).optional(),
 });
 export type Section = z.infer<typeof SectionSchema>;
 
