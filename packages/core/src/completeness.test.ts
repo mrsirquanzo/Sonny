@@ -126,3 +126,65 @@ describe('mergeGapClaims', () => {
     expect(merged.rag).toBe('green');
   });
 });
+
+import { titleMentionsTarget } from './relevance.js'; // ensure import graph wired
+
+describe('fillGap deep-read gating', () => {
+  function seededStore() {
+    const store = new EvidenceStore();
+    store.register({ id: 'ENSG1', kind: 'target', source: 'Open Targets', title: 'CDCP1', snippet: '', url: 'u', retrievedAt: 'now',
+      raw: { approvedSymbol: 'CDCP1', synonyms: ['CD318'] } });
+    return store;
+  }
+
+  it('does not deep-read a hit whose title lacks the target (passage-only match)', async () => {
+    const search: Tool = { name: 'europepmc_search', description: '', async call() {
+      return [
+        { id: 'PMID:9', kind: 'publication', source: 'Europe PMC', title: 'Generic proteomics survey', snippet: '',
+          passage: 'CDCP1 was among the detected proteins.', url: 'u', raw: { pmcid: 'PMC9', isOpenAccess: true }, retrievedAt: 'now' },
+      ] as never;
+    } };
+    let fulltextCalls = 0;
+    const fulltext: Tool = { name: 'pmc_fulltext', description: '', async call() { fulltextCalls++; return [] as never; } };
+    const specialistModel = { async generateStructured() { return { claims: [] } as never; } };
+    const verifierModel = { async generateStructured() { return { claimId: 'x', status: 'supported', rationale: '' } as never; } };
+
+    await fillGap({
+      gap: { specialistId: 'moa_pathway', question: 'q', concept: 'proteomics', reason: 'r' },
+      target: 'CDCP1', tools: [search, fulltext], store: seededStore(),
+      specialistModel, verifierModel, emit: () => {},
+    });
+
+    expect(fulltextCalls).toBe(0); // title-gate skipped the deep-read
+  });
+
+  it('drops off-topic full-text sections before registering', async () => {
+    const search: Tool = { name: 'europepmc_search', description: '', async call() {
+      return [
+        { id: 'PMID:1', kind: 'publication', source: 'Europe PMC', title: 'CDCP1 in pancreatic cancer', snippet: '',
+          passage: 'CDCP1 is overexpressed.', url: 'u', raw: { pmcid: 'PMC1', isOpenAccess: true }, retrievedAt: 'now' },
+      ] as never;
+    } };
+    const fulltext: Tool = { name: 'pmc_fulltext', description: '', async call() {
+      return [
+        { id: 'PMCID:PMC1#sec-0', kind: 'publication', source: 'PMC full text', title: 'CDCP1 signaling', snippet: '',
+          passage: 'CDCP1 promotes EMT.', locator: 'CDCP1 signaling', url: 'u', raw: {}, retrievedAt: 'now' },
+        { id: 'PMCID:PMC1#sec-1', kind: 'publication', source: 'PMC full text', title: 'Cohort', snippet: '',
+          passage: 'Patients with MIS-C after COVID showed elevated markers.', locator: 'Cohort', url: 'u', raw: {}, retrievedAt: 'now' },
+      ] as never;
+    } };
+    const specialistModel = { async generateStructured() { return { claims: [] } as never; } };
+    const verifierModel = { async generateStructured() { return { claimId: 'x', status: 'supported', rationale: '' } as never; } };
+
+    const store = seededStore();
+    await fillGap({
+      gap: { specialistId: 'moa_pathway', question: 'q', concept: 'mechanism', reason: 'r' },
+      target: 'CDCP1', tools: [search, fulltext], store,
+      specialistModel, verifierModel, emit: () => {},
+    });
+
+    const ids = store.all().map((e) => e.id);
+    expect(ids).toContain('PMCID:PMC1#sec-0');     // on-target section registered
+    expect(ids).not.toContain('PMCID:PMC1#sec-1'); // off-target MIS-C section dropped
+  });
+});

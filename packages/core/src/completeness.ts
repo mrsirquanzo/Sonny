@@ -9,7 +9,7 @@ import { verifyClaims } from './verifier.js';
 import { computeRag } from './rag.js';
 import { extractClaims } from './researcher.js';
 import { safeToolCall } from './safeToolCall.js';
-import { targetTerms, relevanceGate } from './relevance.js';
+import { targetTerms, relevanceGate, titleMentionsTarget } from './relevance.js';
 import { buildSearchQuery } from './searchQuery.js';
 
 export interface ResearchGap { specialistId: string; question: string; concept: string; reason: string }
@@ -55,11 +55,14 @@ export async function fillGap(opts: {
   emit({ type: 'tool_result', tool: search.name, count: hits.length });
   for (const h of hits) { store.register(h); emit({ type: 'evidence_registered', id: h.id, title: h.title }); }
 
-  const top = hits.find((h) => (h.raw as { pmcid?: string; isOpenAccess?: boolean })?.pmcid && (h.raw as { isOpenAccess?: boolean })?.isOpenAccess !== false);
+  const top = hits.find((h) =>
+    titleMentionsTarget(h, terms) &&
+    (h.raw as { pmcid?: string })?.pmcid &&
+    (h.raw as { isOpenAccess?: boolean })?.isOpenAccess !== false);
   if (top) {
     const pmcid = (top.raw as { pmcid: string }).pmcid;
     emit({ type: 'tool_call', tool: fulltext.name, args: { pmcid } });
-    const passages = await safeToolCall({ tool: fulltext, args: { pmcid }, emit });
+    const passages = relevanceGate(await safeToolCall({ tool: fulltext, args: { pmcid }, emit }), terms);
     emit({ type: 'tool_result', tool: fulltext.name, count: passages.length });
     for (const p of passages) {
       store.register(p);
