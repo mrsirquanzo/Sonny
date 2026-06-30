@@ -34,11 +34,20 @@ Patent PDFs are OCR-noisy, and a single wrong residue in an antibody sequence is
 Each slice is independently shippable and gets its own spec, plan, and implementation cycle.
 The three pure `sequence -> X` tools come first because each is fully self-contained and testable in isolation; PDF ingest and the orchestrating specialist come last.
 
-1. **`blast_verify` tool** (this build's first slice). Given a sequence, submit to real NCBI BLAST and return ranked top hits as `Evidence[]`. The linchpin of "make sure it's correct."
-2. **ANARCI confirm/species tool.** Given a sequence and the patent's claimed region label, confirm the label against IMGT and report closest-germline species.
-3. **EPO OPS patent-lookup tool.** Given a patent number, return authoritative bibliographic data, claims, and full text.
+1. **`blast_verify` tool** (DONE). Given a sequence, submit to real NCBI BLAST and return ranked top hits as `Evidence[]`. The linchpin of "make sure it's correct."
+2. **ANARCI confirm/species tool.** Given a sequence and the patent's claimed region label, confirm the label against IMGT and report closest-germline species. Its output MUST carry per-residue region annotations, IMGT alignment coordinates, and the closest-germline reference, so the later viewer (slice 6) is a pure consumer.
+3. **EPO OPS patent-lookup tool (expanded).** Given a patent number, return authoritative bibliographic data, claims, and full text, PLUS the applicant/assignee, the INPADOC patent family across jurisdictions (US, EP, JP, ...), and per-member legal status. Legal status requires interpreting raw INPADOC event codes into human status (granted / lapsed / fee-not-paid / withdrawn / expired) via a maintained code-mapping table plus expiry computation (filing + 20y + adjustments). This turns a sequence match into a freedom-to-operate / ownership signal.
 4. **PDF ingest + SEQ-ID -> region extraction.** Adds the file-upload surface; extracts the patent number, the region map, and the disclosed sequences.
-5. **Competitive IP specialist.** Orchestrates slices 1-4, reconciles sources, and emits the per-region verified sequence table plus the narrative.
+5. **Competitive IP specialist.** Orchestrates slices 1-4, reconciles sources, and emits the per-region verified sequence table plus the narrative. Also emits a clean, provenance-tagged, GRAPH-READY relationship structure (see Enhancement decisions) - but does NOT persist it; no graph/triple store is built now.
+6. **Sequence alignment viewer (presentation, later).** Front-end component rendering verified sequences against germline / primary claim with CDR-H1/2/3 and CDR-L1/2/3 highlighted. Pure consumer of slice 2 + slice 5 outputs. Use a mature library (EBI Nightingale / react-msa-viewer), not hand-rolled rendering. Build only once the pipeline produces real verified data.
+
+## Enhancement decisions (2026-06-30)
+
+Three enhancements were reviewed; decisions:
+
+- **Assignee + legal status: ACCEPTED, folded into slice 3** (above). Highest value-per-effort: turns molecular confirmation into a commercial / lifecycle signal. Assignee is a trivial biblio read; robust legal status (family walk + code interpretation + expiry computation) is the meaty sub-task.
+- **Sequence alignment viewer: ACCEPTED as slice 6 (deferred build).** Design the slice 2 + slice 5 data contracts now to carry region annotations + germline reference + alignment coordinates; build the component later when there is real data to render. No rich front-end exists yet (Sonny's surface is CLI + a thin SSE web app).
+- **Persistent knowledge graph publishing: DEFERRED (not built now).** Sonny has NO persistent store today - `EvidenceStore` is a per-run in-memory `Map` and there is zero graph/DB infrastructure. Standing up a persistent graph is a foundational project of its own and is out of scope here. INSTEAD, slice 5 emits verified relationships as a clean, strictly-schema'd, provenance-tagged, graph-ready structure (e.g. `[Patent]-DISCLOSES->[Sequence]`, `[Sequence]-CLAIMED_TO_BIND->[Target]` with provenance = patent claim, `[Patent]-OWNED_BY->[Company]`, legal status as edge/node properties) so a future GraphRAG core can ingest it with no rework. Governance requirement: every edge carries provenance + confidence; verified facts (BLAST sequence identity) are distinguished from patent claims (`CLAIMED_TO_BIND`, not asserted `BINDS`).
 
 ## Out of scope (for now)
 
