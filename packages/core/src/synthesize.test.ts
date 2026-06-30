@@ -66,4 +66,40 @@ describe('synthesizeRecommendation', () => {
     expect(prompt).not.toContain('open label');              // low flag not surfaced
     expect(system.toLowerCase()).toContain('audit');         // writer instructed to weave the caveat
   });
+
+  it('forces NO-GO when any section carries a severe developability risk, even on a go draft', async () => {
+    let prompt = '';
+    const model: StructuredModel = {
+      async generateStructured(opts) { prompt = opts.prompt;
+        return { verdict: 'go', thesis: 'strong biology', bull: [], bear: [], conditions: [], executiveRead: 'er' } as never; },
+    };
+    const sections = [
+      { id: 'target_biology', title: 'Target Biology', takeaway: 'great', rag: 'green', sources: [], claims: [] },
+      { id: 'modality_developability', title: 'Modality & Developability', takeaway: 'tough', rag: 'red', sources: ['PMID:9'], claims: [],
+        developabilityRisks: [{ evidenceId: 'PMID:9', category: 'immunogenicity', severity: 'severe', explanation: 'High ADA incidence.' }] },
+    ];
+    const { recommendation } = await synthesizeRecommendation({
+      sections: sections as never, weighing: { takeaway: '', claims: [] },
+      evidence: [{ id: 'PMID:9', kind: 'publication', source: 's', title: 't', snippet: '', url: 'u', raw: {}, retrievedAt: 'now' }] as never,
+      model,
+    });
+    expect(recommendation.verdict).toBe('no-go');          // severe developability overrides the go draft
+    expect(prompt).toContain('High ADA incidence.');       // risk surfaced to the writer
+  });
+
+  it('does not override the verdict for a significant-only developability risk', async () => {
+    const model: StructuredModel = {
+      async generateStructured() { return { verdict: 'go', thesis: 't', bull: [], bear: [], conditions: [], executiveRead: 'er' } as never; },
+    };
+    const sections = [
+      { id: 'modality_developability', title: 'M', takeaway: 't', rag: 'amber', sources: ['PMID:9'], claims: [],
+        developabilityRisks: [{ evidenceId: 'PMID:9', category: 'half_life', severity: 'significant', explanation: 'Short half-life.' }] },
+    ];
+    const { recommendation } = await synthesizeRecommendation({
+      sections: sections as never, weighing: { takeaway: '', claims: [] },
+      evidence: [{ id: 'PMID:9', kind: 'publication', source: 's', title: 't', snippet: '', url: 'u', raw: {}, retrievedAt: 'now' }] as never,
+      model,
+    });
+    expect(recommendation.verdict).toBe('go');             // significant informs but does not override
+  });
 });
