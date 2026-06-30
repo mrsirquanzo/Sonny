@@ -18,7 +18,7 @@ const payload = { resultList: { result: [
     pubTypeList: { pubType: ['Journal Article'] } },
 ] } };
 
-const fakeFetch = (async (url) => {
+const fakeFetch = (async (url: RequestInfo | URL) => {
   expect(String(url)).toContain('/europepmc/webservices/rest/search');
   return new Response(JSON.stringify(payload), { status: 200 });
 }) as unknown as typeof fetch;

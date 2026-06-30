@@ -18,7 +18,7 @@ const payload = {
     ] },
   } },
 };
-const fakeFetch = (async (_url, init) => {
+const fakeFetch = (async (_url: RequestInfo | URL, init?: RequestInit) => {
   const body = JSON.parse(String((init as RequestInit).body));
   if (body.query.includes('mapIds') || body.variables?.q) {
     return new Response(JSON.stringify({ data: { search: { hits: [{ id: 'ENSG00000163814', entity: 'target' }] } } }), { status: 200 });
