@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { ClaimsSchema, type Claim } from '@sonny/shared';
 import type { StructuredModel } from './model.js';
 import { MODEL_ROUTER } from './model.js';
-import { targetTerms, relevanceGate } from './relevance.js';
+import { targetTerms, relevanceGate, titleMentionsTarget } from './relevance.js';
 
 export interface ThreadBrief { id: string; title: string; objective: string; promptHint: string }
 
@@ -96,12 +96,17 @@ export async function runResearcher(opts: {
     emit({ type: 'tool_result', tool: search.name, count: hits.length });
     for (const h of hits) { store.register(h); emit({ type: 'evidence_registered', id: h.id, title: h.title }); }
 
-    // Read the full text of the top open-access hit that has a PMC id.
-    const top = hits.find((h) => (h.raw as { pmcid?: string; isOpenAccess?: boolean })?.pmcid && (h.raw as { isOpenAccess?: boolean })?.isOpenAccess !== false);
+    // Deep-read the top open-access hit whose TITLE names the target. Strict: if none
+    // qualifies, read no full text this round rather than deep-read a tangential paper.
+    const top = hits.find((h) =>
+      titleMentionsTarget(h, terms) &&
+      (h.raw as { pmcid?: string })?.pmcid &&
+      (h.raw as { isOpenAccess?: boolean })?.isOpenAccess !== false);
     if (top) {
       const pmcid = (top.raw as { pmcid: string }).pmcid;
       emit({ type: 'tool_call', tool: fulltext.name, args: { pmcid } });
-      const passages = await safeToolCall({ tool: fulltext, args: { pmcid }, emit });
+      // Gate the sections: a title-relevant paper still carries off-topic sections.
+      const passages = relevanceGate(await safeToolCall({ tool: fulltext, args: { pmcid }, emit }), terms);
       emit({ type: 'tool_result', tool: fulltext.name, count: passages.length });
       for (const p of passages) {
         store.register(p);
