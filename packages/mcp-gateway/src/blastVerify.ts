@@ -99,7 +99,7 @@ export const blastVerifyTool: Tool = {
         Record<string, unknown> | undefined;
       const alignLen = Number(hsp?.['Hsp_align-len'] ?? 0);
       const identity = Number(hsp?.['Hsp_identity'] ?? 0);
-      // Reports top HSP only — not summed coverage across HSPs; verdict logic is deferred to a later slice.
+      // Reports top HSP only - not summed coverage across HSPs; verdict logic is deferred to a later slice.
       const percentIdentity = alignLen ? round1((identity / alignLen) * 100) : 0;
       const qFrom = Number(hsp?.['Hsp_query-from'] ?? 0);
       const qTo = Number(hsp?.['Hsp_query-to'] ?? 0);
