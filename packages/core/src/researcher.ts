@@ -3,6 +3,7 @@ import { ClaimsSchema, type Claim } from '@sonny/shared';
 import type { StructuredModel } from './model.js';
 import { MODEL_ROUTER } from './model.js';
 import { targetTerms, relevanceGate, titleMentionsTarget } from './relevance.js';
+import { snowballCitations } from './snowball.js';
 import { buildSearchQuery } from './searchQuery.js';
 
 export interface ThreadBrief { id: string; title: string; objective: string; promptHint: string }
@@ -88,6 +89,7 @@ export async function runResearcher(opts: {
 
   const claims: Claim[] = [];
   let takeaway = '';
+  let snowballed = false;
 
   for (let round = 0; round < budget.maxRounds && openQuestions.length > 0; round++) {
     const item = openQuestions[0];
@@ -114,6 +116,10 @@ export async function runResearcher(opts: {
         store.register(p);
         emit({ type: 'evidence_registered', id: p.id, title: p.title });
         emit({ type: 'research_read', specialist: brief.id, sourceId: p.id, locator: p.locator ?? p.title });
+      }
+      if (!snowballed) {
+        snowballed = true;
+        await snowballCitations({ seed: top, terms, tools, store, emit });
       }
     }
 

@@ -221,6 +221,32 @@ describe('runResearcher loop', () => {
     expect(recordedQueries[0]).toBe(buildSearchQuery('CDCP1', 'mechanism')); // 'CDCP1 AND mechanism'
     expect(recordedQueries[0]).not.toContain('long-winded');
   });
+
+  it('snowballs only once per thread even across multiple deep-reads', async () => {
+    const search = tool('europepmc_search', [
+      { id: 'PMID:1', kind: 'publication', source: 'Europe PMC', title: 'CDCP1 cancer', snippet: '', passage: 'CDCP1', url: 'u', raw: { pmcid: 'PMC1', isOpenAccess: true }, retrievedAt: 'now' },
+    ]);
+    const fulltext = tool('pmc_fulltext', [
+      { id: 'PMCID:PMC1#sec-0', kind: 'publication', source: 'PMC full text', title: 'CDCP1 sec', snippet: '', passage: 'CDCP1 promotes EMT.', locator: 'CDCP1 sec', url: 'u', raw: {}, retrievedAt: 'now' },
+    ]);
+    let citeCalls = 0;
+    const citations: Tool = { name: 'europepmc_citations', description: '', async call() { citeCalls++; return [] as never; } };
+    const replies = [
+      { questions: [{ question: 'q', concept: 'mechanism' }] },                            // plan
+      { claims: [] },                                                                       // extract r1
+      { done: false, followups: [{ question: 'q2', concept: 'invasion' }], takeaway: 't' }, // reflect r1
+      { claims: [] },                                                                       // extract r2
+      { done: true, followups: [], takeaway: 't2' },                                        // reflect r2
+    ];
+    let i = 0;
+    const model = { async generateStructured() { return replies[i++] as never; } };
+    await runResearcher({
+      brief: { id: 'x', title: 'X', objective: 'o', promptHint: 'h' },
+      target: 'CDCP1', tools: [search, fulltext, citations], store: new EvidenceStore(),
+      model, emit: () => {}, budget: { maxRounds: 2 },
+    });
+    expect(citeCalls).toBe(1); // snowball fired once despite two deep-reads
+  });
 });
 
 describe('planResearchQuestions target anchoring', () => {
