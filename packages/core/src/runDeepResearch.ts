@@ -55,7 +55,7 @@ export async function runDeepResearch(opts: {
       const idx = finalSections.findIndex((s) => s.id === gap.specialistId);
       if (idx === -1) continue;
       try {
-        const claims = await fillGap({ gap, tools: literatureTools, store, specialistModel, verifierModel, emit });
+        const claims = await fillGap({ gap, target, tools: literatureTools, store, specialistModel, verifierModel, emit });
         finalSections = finalSections.map((s, i) => (i === idx ? mergeGapClaims(s, claims) : s));
       } catch (err) {
         emit({ type: 'error', message: `gap-fill ${gap.specialistId} failed: ${String(err)}` });
