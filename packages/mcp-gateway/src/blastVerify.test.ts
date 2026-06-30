@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { normalizeSequence, detectProgram } from './blastVerify.js';
+import { normalizeSequence, detectProgram, blastVerifyTool } from './blastVerify.js';
 
 describe('normalizeSequence', () => {
   it('strips a FASTA header, whitespace, digits, and numbering and uppercases', () => {
@@ -22,8 +22,6 @@ describe('detectProgram', () => {
     expect(detectProgram('EVQLVESGGGLVQPG')).toBe('blastp');
   });
 });
-
-import { blastVerifyTool } from './blastVerify.js';
 
 const SUBMIT = '<html><!-- QBlastInfoBegin\n    RID = RID123\n    RTOE = 0\nQBlastInfoEnd --></html>';
 const statusBody = (s: string) => `QBlastInfoBegin\n\tStatus=${s}\nQBlastInfoEnd\n`;
@@ -128,5 +126,42 @@ describe('blastVerifyTool', () => {
       makeFetch(['READY'], { xml: emptyXml }),
     );
     expect(out).toHaveLength(0);
+  });
+
+  it('produces no trailing comma in snippet when Hit_def has no organism bracket', async () => {
+    const noOrganismXml = `<?xml version="1.0"?>
+<BlastOutput>
+  <BlastOutput_query-len>120</BlastOutput_query-len>
+  <BlastOutput_iterations>
+    <Iteration>
+      <Iteration_hits>
+        <Hit>
+          <Hit_def>some antibody construct</Hit_def>
+          <Hit_accession>PAT99999</Hit_accession>
+          <Hit_len>120</Hit_len>
+          <Hit_hsps>
+            <Hsp>
+              <Hsp_bit-score>240</Hsp_bit-score>
+              <Hsp_evalue>1e-80</Hsp_evalue>
+              <Hsp_query-from>1</Hsp_query-from>
+              <Hsp_query-to>120</Hsp_query-to>
+              <Hsp_identity>120</Hsp_identity>
+              <Hsp_align-len>120</Hsp_align-len>
+            </Hsp>
+          </Hit_hsps>
+        </Hit>
+      </Iteration_hits>
+    </Iteration>
+  </BlastOutput_iterations>
+</BlastOutput>`;
+    const out = await blastVerifyTool.call(
+      { sequence: 'EVQLVESGGGLVQPGGSLRL', pollIntervalMs: 0 },
+      makeFetch(['READY'], { xml: noOrganismXml }),
+    );
+    expect(out).toHaveLength(1);
+    const e = out[0];
+    expect(e.snippet).toBe('100% id, E=1e-80');
+    const raw = e.raw as { organism: string };
+    expect(raw.organism).toBe('');
   });
 });

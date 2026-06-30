@@ -17,7 +17,7 @@ export function detectProgram(seq: string): 'blastp' | 'blastn' {
 
 const ENDPOINT = 'https://blast.ncbi.nlm.nih.gov/Blast.cgi';
 const EMAIL = process.env.SONNY_NCBI_EMAIL ?? 'sonny-agent@example.com';
-const parser = new XMLParser({ ignoreAttributes: true, textNodeName: '#text' });
+const parser = new XMLParser({ ignoreAttributes: true, textNodeName: '#text', parseTagValue: false });
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
@@ -109,12 +109,16 @@ export const blastVerifyTool: Tool = {
       const eValue = String(hsp?.['Hsp_evalue'] ?? '');
       const bitScore = Number(hsp?.['Hsp_bit-score'] ?? 0);
 
+      const snippet = organism
+        ? `${percentIdentity}% id, E=${eValue}, ${organism}`
+        : `${percentIdentity}% id, E=${eValue}`;
+
       return {
         id: `BLAST:${accession}`,
         kind: isPatentDb ? 'patent' : 'dataset',
         source: `NCBI BLAST ${program} (${database})`,
         title: def,
-        snippet: `${percentIdentity}% id, E=${eValue}, ${organism}`.trim(),
+        snippet,
         passage: `Aligned ${alignLen} residues, query coverage ${queryCoverage}%.`,
         url: `https://www.ncbi.nlm.nih.gov/${accPath}/${accession}`,
         raw: { accession, percentIdentity, eValue, bitScore, queryCoverage, organism, database, program },
