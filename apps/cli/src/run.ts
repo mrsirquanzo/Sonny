@@ -36,6 +36,10 @@ export function formatTrace(events: TraceEvent[]): string {
         return `      ⚖ skeptic [${e.critique.evidenceId}]: ${e.critique.studyDesign}` +
           (f.length ? ` - ${f.map((r) => `${r.biasRisk}:${r.category}`).join('; ')}` : ' - no flags');
       }
+      case 'developability_assessment': {
+        const r = e.risks.filter((x) => x.severity !== 'manageable');
+        return `LEAD  developability: ` + (r.length ? r.map((x) => `${x.severity} ${x.category}`).join('; ') : 'no material risks');
+      }
       default: return `  [${e.type}]`;
     }
   }).join('\n');
