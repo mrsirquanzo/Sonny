@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { TraceEvent, Briefing } from './contracts.js';
-import { ClaimSchema, ClaimsSchema, EvidenceSchema, VerdictSchema, RecommendationSchema, ReferenceSchema, MethodologicalCritiqueSchema, RedFlagSchema, SectionSchema } from './contracts.js';
+import { ClaimSchema, ClaimsSchema, EvidenceSchema, VerdictSchema, RecommendationSchema, ReferenceSchema, MethodologicalCritiqueSchema, RedFlagSchema, SectionSchema, DevelopabilityRiskSchema } from './contracts.js';
 
 describe('contracts', () => {
   it('accepts a valid evidence record', () => {
@@ -121,5 +121,32 @@ describe('Claim and Section carry optional audit data', () => {
     const s = { id: 'a', title: 'A', takeaway: 't', claims: [], sources: [], rag: 'green',
       critiques: [{ evidenceId: 'PMID:1', studyDesign: 'in_vitro', sampleSize: null, redFlags: [] }] };
     expect(SectionSchema.parse(s).critiques?.[0].studyDesign).toBe('in_vitro');
+  });
+});
+
+describe('DevelopabilityRisk schema', () => {
+  const valid = { evidenceId: 'PMID:9', category: 'immunogenicity', severity: 'severe', explanation: 'High ADA incidence.' };
+
+  it('accepts a valid developability risk', () => {
+    expect(DevelopabilityRiskSchema.parse(valid)).toEqual(valid);
+  });
+
+  it('rejects an invalid severity (no fatal/blocker)', () => {
+    expect(() => DevelopabilityRiskSchema.parse({ ...valid, severity: 'fatal' })).toThrow();
+    expect(() => DevelopabilityRiskSchema.parse({ ...valid, severity: 'blocker' })).toThrow();
+  });
+
+  it('rejects an invalid category', () => {
+    expect(() => DevelopabilityRiskSchema.parse({ ...valid, category: 'potency' })).toThrow();
+  });
+
+  it('rejects an empty explanation', () => {
+    expect(() => DevelopabilityRiskSchema.parse({ ...valid, explanation: '' })).toThrow();
+  });
+
+  it('Section accepts optional developabilityRisks', () => {
+    const s = { id: 'm', title: 'M', takeaway: 't', claims: [], sources: [], rag: 'red',
+      developabilityRisks: [valid] };
+    expect(SectionSchema.parse(s).developabilityRisks?.[0].severity).toBe('severe');
   });
 });
