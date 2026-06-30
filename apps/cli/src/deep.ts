@@ -1,5 +1,5 @@
 import { makeModel, currentBackend, produceBriefing, RESEARCH_ROSTER } from '@sonny/core';
-import { europePmcSearchTool, pmcFullTextTool, openTargetsTargetTool, clinicalTrialsTool } from '@sonny/mcp-gateway';
+import { europePmcSearchTool, pmcFullTextTool, openTargetsTargetTool, clinicalTrialsTool, europePmcCitationsTool } from '@sonny/mcp-gateway';
 import { formatTrace } from './run.js';
 
 export async function runDeep(target: string): Promise<void> {
@@ -7,7 +7,7 @@ export async function runDeep(target: string): Promise<void> {
   process.stdout.write(`backend: ${currentBackend()}\n`);
   const briefing = await produceBriefing({
     target: t, roster: RESEARCH_ROSTER,
-    literatureTools: [europePmcSearchTool, pmcFullTextTool],
+    literatureTools: [europePmcSearchTool, pmcFullTextTool, europePmcCitationsTool],
     structuredTools: [openTargetsTargetTool, clinicalTrialsTool],
     specialistModel: makeModel(), verifierModel: makeModel(), leadModel: makeModel(),
     emit: (e) => process.stdout.write(formatTrace([e]) + '\n'),
