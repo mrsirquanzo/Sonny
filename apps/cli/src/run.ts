@@ -31,6 +31,11 @@ export function formatTrace(events: TraceEvent[]): string {
         return `      reading ${e.sourceId} (${e.locator})`;
       case 'research_reflect':
         return `      reflect: ${e.note}` + (e.followups.length ? `\n      follow-ups: ${e.followups.join('; ')}` : '');
+      case 'methodological_critique': {
+        const f = e.critique.redFlags;
+        return `      ⚖ skeptic [${e.critique.evidenceId}]: ${e.critique.studyDesign}` +
+          (f.length ? ` - ${f.map((r) => `${r.biasRisk}:${r.category}`).join('; ')}` : ' - no flags');
+      }
       default: return `  [${e.type}]`;
     }
   }).join('\n');

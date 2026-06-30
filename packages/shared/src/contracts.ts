@@ -17,11 +17,40 @@ export const EvidenceSchema = z.object({
 });
 export type Evidence = z.infer<typeof EvidenceSchema>;
 
+export const BiasRiskSchema = z.enum(['low', 'moderate', 'high']);
+export type BiasRisk = z.infer<typeof BiasRiskSchema>;
+
+export const RedFlagCategorySchema = z.enum([
+  'surrogate_endpoint', 'high_dropout', 'p_hacking', 'active_control_mismatch', 'unblinded',
+]);
+export type RedFlagCategory = z.infer<typeof RedFlagCategorySchema>;
+
+export const RedFlagSchema = z.object({
+  category: RedFlagCategorySchema,
+  biasRisk: BiasRiskSchema,
+  explanation: z.string().min(1),
+});
+export type RedFlag = z.infer<typeof RedFlagSchema>;
+
+export const StudyDesignSchema = z.enum([
+  'randomized_controlled', 'single_arm', 'post_hoc', 'observational', 'preclinical_nhp', 'in_vitro',
+]);
+export type StudyDesign = z.infer<typeof StudyDesignSchema>;
+
+export const MethodologicalCritiqueSchema = z.object({
+  evidenceId: z.string().min(1),
+  studyDesign: StudyDesignSchema,
+  sampleSize: z.number().int().positive().nullable().optional(),
+  redFlags: z.array(RedFlagSchema),
+});
+export type MethodologicalCritique = z.infer<typeof MethodologicalCritiqueSchema>;
+
 export const ClaimSchema = z.object({
   id: z.string().min(1),
   text: z.string().min(1),
   citations: z.array(z.string()),
   confidence: z.number().min(0).max(1),
+  redFlags: z.array(RedFlagSchema).optional(),
 });
 export type Claim = z.infer<typeof ClaimSchema>;
 
@@ -55,6 +84,7 @@ export type TraceEvent =
   | { type: 'lead_decompose'; specialists: string[] }
   | { type: 'completeness_verdict'; complete: boolean; gaps: string[] }
   | { type: 'gap_filler'; specialist: string; question: string }
+  | { type: 'methodological_critique'; specialist: string; critique: MethodologicalCritique }
   | { type: 'recommendation'; verdict: string };
 
 export const RagRatingSchema = z.enum(['green', 'amber', 'red']);
@@ -67,6 +97,7 @@ export const SectionSchema = z.object({
   claims: z.array(ClaimSchema),
   sources: z.array(z.string()),
   rag: RagRatingSchema,
+  critiques: z.array(MethodologicalCritiqueSchema).optional(),
 });
 export type Section = z.infer<typeof SectionSchema>;
 

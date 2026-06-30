@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { TraceEvent, Briefing } from './contracts.js';
-import { ClaimSchema, ClaimsSchema, EvidenceSchema, VerdictSchema, RecommendationSchema, ReferenceSchema } from './contracts.js';
+import { ClaimSchema, ClaimsSchema, EvidenceSchema, VerdictSchema, RecommendationSchema, ReferenceSchema, MethodologicalCritiqueSchema, RedFlagSchema, SectionSchema } from './contracts.js';
 
 describe('contracts', () => {
   it('accepts a valid evidence record', () => {
@@ -69,5 +69,57 @@ describe('briefing contracts', () => {
     expect(() => RecommendationSchema.parse({
       verdict: 'maybe', thesis: 't', bull: [], bear: [], conditions: [],
     })).toThrow();
+  });
+});
+
+describe('MethodologicalCritique schema', () => {
+  const valid = {
+    evidenceId: 'PMID:1',
+    studyDesign: 'single_arm',
+    sampleSize: 42,
+    redFlags: [{ category: 'surrogate_endpoint', biasRisk: 'high', explanation: 'eGFR is a surrogate.' }],
+  };
+
+  it('accepts a valid critique', () => {
+    expect(MethodologicalCritiqueSchema.parse(valid)).toEqual(valid);
+  });
+
+  it('accepts null sampleSize', () => {
+    expect(MethodologicalCritiqueSchema.parse({ ...valid, sampleSize: null }).sampleSize).toBeNull();
+  });
+
+  it('rejects an invalid studyDesign', () => {
+    expect(() => MethodologicalCritiqueSchema.parse({ ...valid, studyDesign: 'meta_analysis' })).toThrow();
+  });
+
+  it('rejects an invalid biasRisk tier (no fatal/red/amber)', () => {
+    expect(() => RedFlagSchema.parse({ category: 'unblinded', biasRisk: 'fatal', explanation: 'x' })).toThrow();
+    expect(() => RedFlagSchema.parse({ category: 'unblinded', biasRisk: 'red', explanation: 'x' })).toThrow();
+  });
+
+  it('rejects an invalid red-flag category', () => {
+    expect(() => RedFlagSchema.parse({ category: 'small_n', biasRisk: 'low', explanation: 'x' })).toThrow();
+  });
+
+  it('rejects an empty explanation', () => {
+    expect(() => RedFlagSchema.parse({ category: 'unblinded', biasRisk: 'low', explanation: '' })).toThrow();
+  });
+});
+
+describe('Claim and Section carry optional audit data', () => {
+  it('Claim accepts optional redFlags', () => {
+    const c = { id: 'c1', text: 't', citations: ['PMID:1'], confidence: 0.8,
+      redFlags: [{ category: 'high_dropout', biasRisk: 'moderate', explanation: '30% dropout.' }] };
+    expect(ClaimSchema.parse(c).redFlags?.[0].category).toBe('high_dropout');
+  });
+
+  it('Claim is valid without redFlags', () => {
+    expect(ClaimSchema.parse({ id: 'c1', text: 't', citations: [], confidence: 0.5 }).redFlags).toBeUndefined();
+  });
+
+  it('Section accepts optional critiques', () => {
+    const s = { id: 'a', title: 'A', takeaway: 't', claims: [], sources: [], rag: 'green',
+      critiques: [{ evidenceId: 'PMID:1', studyDesign: 'in_vitro', sampleSize: null, redFlags: [] }] };
+    expect(SectionSchema.parse(s).critiques?.[0].studyDesign).toBe('in_vitro');
   });
 });

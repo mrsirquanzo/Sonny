@@ -13,7 +13,7 @@ export async function produceResearchSection(opts: {
   emit: (e: TraceEvent) => void; budget: ResearchBudget;
 }): Promise<Section> {
   const { brief, target, tools, store, specialistModel, verifierModel, emit, budget } = opts;
-  const findings = await runResearcher({ brief, target, tools, store, model: specialistModel, emit, budget });
+  const findings = await runResearcher({ brief, target, tools, store, model: specialistModel, verifierModel, emit, budget });
 
   const { shippable } = groundClaims(findings.claims, store);
   const verdicts = await verifyClaims(shippable, store, verifierModel);
@@ -24,6 +24,7 @@ export async function produceResearchSection(opts: {
   const section: Section = {
     id: brief.id, title: brief.title, takeaway: findings.takeaway,
     claims: supported, sources, rag: computeRag(shippable, verdicts),
+    critiques: findings.critiques,
   };
   emit({ type: 'section_complete', section });
   return section;

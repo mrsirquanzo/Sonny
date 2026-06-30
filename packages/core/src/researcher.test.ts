@@ -5,6 +5,7 @@ import { EvidenceStore } from './evidenceStore.js';
 import { runResearcher } from './researcher.js';
 import type { Tool } from '@sonny/mcp-gateway';
 import type { TraceEvent } from '@sonny/shared';
+import type { MethodologicalCritique } from '@sonny/shared';
 import { safeToolCall } from './safeToolCall.js'; // ensure import graph is wired
 import { targetTerms } from './relevance.js'; // ensure import graph wired
 import { buildSearchQuery } from './searchQuery.js';
@@ -18,6 +19,9 @@ const brief: ThreadBrief = {
 function modelReturning(value: unknown): StructuredModel {
   return { async generateStructured() { return value as never; } };
 }
+
+// A verifier model that returns an audit with no flags - the decorrelated critic.
+const noFlagAudit: StructuredModel = { async generateStructured() { return { studyDesign: 'in_vitro', sampleSize: null, redFlags: [] } as never; } };
 
 describe('planResearchQuestions', () => {
   it('returns objects with question and concept, includes target in prompt', async () => {
@@ -74,7 +78,7 @@ describe('runResearcher loop', () => {
     const findings = await runResearcher({
       brief: { id: 'target_biology', title: 'Target Biology', objective: 'o', promptHint: 'h' },
       target: 'CDCP1', tools: [search, fulltext], store: new EvidenceStore(),
-      model, emit: (e) => events.push(e), budget: { maxRounds: 3 },
+      model, verifierModel: noFlagAudit, emit: (e) => events.push(e), budget: { maxRounds: 3 },
     });
 
     expect(findings.takeaway).toBe('CDCP1 is an EMT driver.');
@@ -105,7 +109,7 @@ describe('runResearcher loop', () => {
     const findings = await runResearcher({
       brief: { id: 'x', title: 'X', objective: 'o', promptHint: 'h' },
       target: 'CDCP1', tools: [search, fulltext], store: new EvidenceStore(),
-      model, emit: () => {}, budget: { maxRounds: 2 },
+      model, verifierModel: noFlagAudit, emit: () => {}, budget: { maxRounds: 2 },
     });
     expect(findings).toBeDefined(); // returned, did not loop forever
   });
@@ -124,7 +128,7 @@ describe('runResearcher loop', () => {
     const findings = await runResearcher({
       brief: { id: 'x', title: 'X', objective: 'o', promptHint: 'h' },
       target: 'CDCP1', tools: [failingSearch, fulltext], store: new EvidenceStore(),
-      model, emit: () => {}, budget: { maxRounds: 1 },
+      model, verifierModel: noFlagAudit, emit: () => {}, budget: { maxRounds: 1 },
     });
     expect(findings.takeaway).toBe('no data available'); // completed, did not throw
   });
@@ -151,7 +155,7 @@ describe('runResearcher loop', () => {
     const findings = await runResearcher({
       brief: { id: 'x', title: 'X', objective: 'o', promptHint: 'h' },
       target: 'CDCP1', tools: [search, fulltext], store: new EvidenceStore(),
-      model, emit: (e) => events.push(e), budget: { maxRounds: 1 },
+      model, verifierModel: noFlagAudit, emit: (e) => events.push(e), budget: { maxRounds: 1 },
     });
 
     expect(fulltextCalls).toBe(0);                              // title-gate skipped the deep-read
@@ -184,7 +188,7 @@ describe('runResearcher loop', () => {
     await runResearcher({
       brief: { id: 'x', title: 'X', objective: 'o', promptHint: 'h' },
       target: 'CDCP1', tools: [search, fulltext], store,
-      model, emit: () => {}, budget: { maxRounds: 1 },
+      model, verifierModel: noFlagAudit, emit: () => {}, budget: { maxRounds: 1 },
     });
 
     const ids = store.all().map((e) => e.id);
@@ -214,7 +218,7 @@ describe('runResearcher loop', () => {
     await runResearcher({
       brief: { id: 'x', title: 'X', objective: 'o', promptHint: 'h' },
       target: 'CDCP1', tools: [trackingSearch, fulltext], store: new EvidenceStore(),
-      model, emit: () => {}, budget: { maxRounds: 1 },
+      model, verifierModel: noFlagAudit, emit: () => {}, budget: { maxRounds: 1 },
     });
 
     expect(recordedQueries).toHaveLength(1);
@@ -243,9 +247,65 @@ describe('runResearcher loop', () => {
     await runResearcher({
       brief: { id: 'x', title: 'X', objective: 'o', promptHint: 'h' },
       target: 'CDCP1', tools: [search, fulltext, citations], store: new EvidenceStore(),
-      model, emit: () => {}, budget: { maxRounds: 2 },
+      model, verifierModel: noFlagAudit, emit: () => {}, budget: { maxRounds: 2 },
     });
     expect(citeCalls).toBe(1); // snowball fired once despite two deep-reads
+  });
+
+  it('attaches audit red flags to claims resting on audited evidence without capping confidence', async () => {
+    const search = tool('europepmc_search', [
+      { id: 'PMID:1', kind: 'publication', source: 'Europe PMC', title: 'CDCP1 trial', snippet: '', passage: 'CDCP1', url: 'u', raw: { pmcid: 'PMC1', isOpenAccess: true }, retrievedAt: 'now' },
+    ]);
+    const fulltext = tool('pmc_fulltext', [
+      { id: 'PMCID:PMC1#sec-0', kind: 'publication', source: 'PMC full text', title: 'CDCP1 results', snippet: '', passage: 'CDCP1 improved a surrogate marker.', locator: 'CDCP1 results', url: 'u', raw: {}, retrievedAt: 'now' },
+    ]);
+    const verifierModel: StructuredModel = { async generateStructured() {
+      return { studyDesign: 'post_hoc', sampleSize: 30,
+        redFlags: [{ category: 'surrogate_endpoint', biasRisk: 'high', explanation: 'Surrogate marker.' }] } as never;
+    } };
+    const replies = [
+      { questions: [{ question: 'q', concept: 'trial' }] },                                          // plan
+      { claims: [{ id: 'c1', text: 'CDCP1 improved a marker.', citations: ['PMCID:PMC1#sec-0'], confidence: 0.9 }] }, // extract
+      { done: true, followups: [], takeaway: 't' },                                                  // reflect
+    ];
+    let i = 0;
+    const model = { async generateStructured() { return replies[i++] as never; } };
+    const events: TraceEvent[] = [];
+
+    const findings = await runResearcher({
+      brief: { id: 'x', title: 'X', objective: 'o', promptHint: 'h' },
+      target: 'CDCP1', tools: [search, fulltext], store: new EvidenceStore(),
+      model, verifierModel, emit: (e) => events.push(e), budget: { maxRounds: 1 },
+    });
+
+    const c1 = findings.claims.find((c) => c.id === 'c1')!;
+    expect(c1.confidence).toBe(0.9);                                  // NOT capped - data preserved
+    expect(c1.redFlags?.[0].category).toBe('surrogate_endpoint');    // context attached
+    expect(findings.critiques.some((cr) => cr.evidenceId === 'PMID:1')).toBe(true);
+    expect(events.some((e) => e.type === 'methodological_critique')).toBe(true);
+  });
+
+  it('does not abort the loop when the skeptic audit throws', async () => {
+    const search = tool('europepmc_search', [
+      { id: 'PMID:1', kind: 'publication', source: 'Europe PMC', title: 'CDCP1 trial', snippet: '', passage: 'CDCP1', url: 'u', raw: { pmcid: 'PMC1', isOpenAccess: true }, retrievedAt: 'now' },
+    ]);
+    const fulltext = tool('pmc_fulltext', [
+      { id: 'PMCID:PMC1#sec-0', kind: 'publication', source: 'PMC full text', title: 'CDCP1 results', snippet: '', passage: 'CDCP1.', locator: 'r', url: 'u', raw: {}, retrievedAt: 'now' },
+    ]);
+    const verifierModel: StructuredModel = { async generateStructured() { throw new Error('audit model down'); } };
+    const replies = [
+      { questions: [{ question: 'q', concept: 'trial' }] },
+      { claims: [] },
+      { done: true, followups: [], takeaway: 't' },
+    ];
+    let i = 0;
+    const model = { async generateStructured() { return replies[i++] as never; } };
+    const findings = await runResearcher({
+      brief: { id: 'x', title: 'X', objective: 'o', promptHint: 'h' },
+      target: 'CDCP1', tools: [search, fulltext], store: new EvidenceStore(),
+      model, verifierModel, emit: () => {}, budget: { maxRounds: 1 },
+    });
+    expect(findings.takeaway).toBe('t'); // completed despite the audit failure
   });
 });
 
@@ -278,7 +338,7 @@ describe('runResearcher relevance gating', () => {
     const store = new EvidenceStore();
     await runResearcher({
       brief: { id: 'x', title: 'X', objective: 'o', promptHint: 'h' },
-      target: 'CDCP1', tools: [search, fulltext], store, model, emit: () => {}, budget: { maxRounds: 1 },
+      target: 'CDCP1', tools: [search, fulltext], store, model, verifierModel: noFlagAudit, emit: () => {}, budget: { maxRounds: 1 },
     });
     // only the CDCP1 hit was registered; the off-topic m6A hit was gated out
     expect(store.has('PMID:1')).toBe(true);
