@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { Evidence } from '@sonny/shared';
 import { EvidenceStore } from './evidenceStore.js';
-import { targetTerms, relevanceGate } from './relevance.js';
+import { targetTerms, relevanceGate, mentionsAny, titleMentionsTarget } from './relevance.js';
 
 function pub(id: string, title: string, passage: string): Evidence {
   return { id, kind: 'publication', source: 's', title, snippet: '', passage, url: 'u', raw: {}, retrievedAt: 'now' };
@@ -44,5 +44,37 @@ describe('relevanceGate', () => {
   it('returns hits unchanged when there are no terms', () => {
     const hits = [pub('PMID:9', 'anything', 'anything')];
     expect(relevanceGate(hits, [])).toEqual(hits);
+  });
+});
+
+describe('mentionsAny', () => {
+  it('returns true for a case-insensitive substring hit', () => {
+    expect(mentionsAny('The CDCP1 receptor', ['cdcp1'])).toBe(true);
+  });
+
+  it('returns false when no term is present', () => {
+    expect(mentionsAny('m6A RNA methylation', ['cdcp1', 'cd318'])).toBe(false);
+  });
+
+  it('returns true (no-op) when there are no terms', () => {
+    expect(mentionsAny('anything at all', [])).toBe(true);
+  });
+});
+
+describe('titleMentionsTarget', () => {
+  const ev = (title: string, passage: string): Evidence =>
+    ({ id: 'x', kind: 'publication', source: 's', title, snippet: '', passage, url: 'u', raw: {}, retrievedAt: 'now' });
+
+  it('matches on the title only, ignoring passage and snippet', () => {
+    expect(titleMentionsTarget(ev('CDCP1 in cancer', 'no mention here'), ['cdcp1'])).toBe(true);
+    expect(titleMentionsTarget(ev('Generic proteomics', 'CDCP1 was detected'), ['cdcp1'])).toBe(false);
+  });
+
+  it('matches an alias in the title', () => {
+    expect(titleMentionsTarget(ev('TRASK drives EMT', ''), ['cdcp1', 'trask'])).toBe(true);
+  });
+
+  it('returns true (no-op) when there are no terms', () => {
+    expect(titleMentionsTarget(ev('whatever', ''), [])).toBe(true);
   });
 });

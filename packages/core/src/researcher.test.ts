@@ -128,6 +128,69 @@ describe('runResearcher loop', () => {
     expect(findings.takeaway).toBe('no data available'); // completed, did not throw
   });
 
+  it('does not deep-read a hit whose title lacks the target, but still drafts claims from abstracts', async () => {
+    // Title lacks the target; passage mentions it, so it passes the search gate but must NOT be deep-read.
+    const search = tool('europepmc_search', [
+      { id: 'PMID:9', kind: 'publication', source: 'Europe PMC', title: 'Generic proteomics survey', snippet: '',
+        passage: 'CDCP1 was among the detected proteins.', url: 'u',
+        raw: { pmcid: 'PMC9', isOpenAccess: true }, retrievedAt: 'now' },
+    ]);
+    let fulltextCalls = 0;
+    const fulltext: Tool = { name: 'pmc_fulltext', description: '', async call() { fulltextCalls++; return [] as never; } };
+
+    const replies = [
+      { questions: [{ question: 'Is CDCP1 detected?', searchQuery: 'cdcp1 proteomics' }] },  // plan
+      { claims: [{ id: 'c1', text: 'CDCP1 was detected.', citations: ['PMID:9'], confidence: 0.5 }] }, // extract
+      { done: true, followups: [], takeaway: 't' },                                          // reflect
+    ];
+    let i = 0;
+    const model = { async generateStructured() { return replies[i++] as never; } };
+
+    const events: TraceEvent[] = [];
+    const findings = await runResearcher({
+      brief: { id: 'x', title: 'X', objective: 'o', promptHint: 'h' },
+      target: 'CDCP1', tools: [search, fulltext], store: new EvidenceStore(),
+      model, emit: (e) => events.push(e), budget: { maxRounds: 1 },
+    });
+
+    expect(fulltextCalls).toBe(0);                              // title-gate skipped the deep-read
+    expect(events.some((e) => e.type === 'research_read')).toBe(false);
+    expect(findings.claims.map((c) => c.id)).toEqual(['c1']);  // claims still drafted from the abstract
+  });
+
+  it('deep-reads a title-matching hit and drops its off-topic sections before registering', async () => {
+    const search = tool('europepmc_search', [
+      { id: 'PMID:1', kind: 'publication', source: 'Europe PMC', title: 'CDCP1 in pancreatic cancer', snippet: '',
+        passage: 'CDCP1 is overexpressed.', url: 'u',
+        raw: { pmcid: 'PMC1', isOpenAccess: true }, retrievedAt: 'now' },
+    ]);
+    const fulltext = tool('pmc_fulltext', [
+      { id: 'PMCID:PMC1#sec-0', kind: 'publication', source: 'PMC full text', title: 'CDCP1 signaling',
+        snippet: '', passage: 'CDCP1 promotes EMT via SRC.', locator: 'CDCP1 signaling', url: 'u', raw: {}, retrievedAt: 'now' },
+      { id: 'PMCID:PMC1#sec-1', kind: 'publication', source: 'PMC full text', title: 'Cohort characteristics',
+        snippet: '', passage: 'Patients with MIS-C after COVID showed elevated markers.', locator: 'Cohort characteristics', url: 'u', raw: {}, retrievedAt: 'now' },
+    ]);
+
+    const replies = [
+      { questions: [{ question: 'What is the MOA of CDCP1?', searchQuery: 'cdcp1 mechanism' }] }, // plan
+      { claims: [] },                                                                             // extract
+      { done: true, followups: [], takeaway: 't' },                                               // reflect
+    ];
+    let i = 0;
+    const model = { async generateStructured() { return replies[i++] as never; } };
+
+    const store = new EvidenceStore();
+    await runResearcher({
+      brief: { id: 'x', title: 'X', objective: 'o', promptHint: 'h' },
+      target: 'CDCP1', tools: [search, fulltext], store,
+      model, emit: () => {}, budget: { maxRounds: 1 },
+    });
+
+    const ids = store.all().map((e) => e.id);
+    expect(ids).toContain('PMCID:PMC1#sec-0');     // on-target section registered
+    expect(ids).not.toContain('PMCID:PMC1#sec-1'); // off-target MIS-C section dropped
+  });
+
   it('pins the bug fix: search tool receives the concise searchQuery, not the long question text', async () => {
     const recordedQueries: string[] = [];
 
