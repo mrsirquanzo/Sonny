@@ -41,5 +41,6 @@ describe('produceResearchSection', () => {
     expect(section.sources).toContain('PMCID:PMC1#sec-1');
     expect(section.rag).toBe('amber'); // one supported claim, single source -> amber
     expect(events.some((e) => e.type === 'section_complete')).toBe(true);
+    expect(Array.isArray(section.critiques)).toBe(true);
   });
 });
