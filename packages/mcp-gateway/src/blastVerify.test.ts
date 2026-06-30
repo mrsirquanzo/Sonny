@@ -128,6 +128,73 @@ describe('blastVerifyTool', () => {
     expect(out).toHaveLength(0);
   });
 
+  it('returns maxHits results when the XML has more hits, preserving order', async () => {
+    const threeHitXml = `<?xml version="1.0"?>
+<BlastOutput>
+  <BlastOutput_query-len>120</BlastOutput_query-len>
+  <BlastOutput_iterations>
+    <Iteration>
+      <Iteration_hits>
+        <Hit>
+          <Hit_def>hit one [Homo sapiens]</Hit_def>
+          <Hit_accession>ACC1</Hit_accession>
+          <Hit_len>120</Hit_len>
+          <Hit_hsps>
+            <Hsp>
+              <Hsp_bit-score>240</Hsp_bit-score>
+              <Hsp_evalue>1e-80</Hsp_evalue>
+              <Hsp_query-from>1</Hsp_query-from>
+              <Hsp_query-to>120</Hsp_query-to>
+              <Hsp_identity>120</Hsp_identity>
+              <Hsp_align-len>120</Hsp_align-len>
+            </Hsp>
+          </Hit_hsps>
+        </Hit>
+        <Hit>
+          <Hit_def>hit two [Mus musculus]</Hit_def>
+          <Hit_accession>ACC2</Hit_accession>
+          <Hit_len>110</Hit_len>
+          <Hit_hsps>
+            <Hsp>
+              <Hsp_bit-score>200</Hsp_bit-score>
+              <Hsp_evalue>1e-60</Hsp_evalue>
+              <Hsp_query-from>1</Hsp_query-from>
+              <Hsp_query-to>110</Hsp_query-to>
+              <Hsp_identity>99</Hsp_identity>
+              <Hsp_align-len>110</Hsp_align-len>
+            </Hsp>
+          </Hit_hsps>
+        </Hit>
+        <Hit>
+          <Hit_def>hit three [Rattus norvegicus]</Hit_def>
+          <Hit_accession>ACC3</Hit_accession>
+          <Hit_len>100</Hit_len>
+          <Hit_hsps>
+            <Hsp>
+              <Hsp_bit-score>180</Hsp_bit-score>
+              <Hsp_evalue>1e-50</Hsp_evalue>
+              <Hsp_query-from>1</Hsp_query-from>
+              <Hsp_query-to>100</Hsp_query-to>
+              <Hsp_identity>90</Hsp_identity>
+              <Hsp_align-len>100</Hsp_align-len>
+            </Hsp>
+          </Hit_hsps>
+        </Hit>
+      </Iteration_hits>
+    </Iteration>
+  </BlastOutput_iterations>
+</BlastOutput>`;
+    const out = await blastVerifyTool.call(
+      { sequence: 'EVQLVESGGGLVQPGGSLRL', maxHits: 2, pollIntervalMs: 0 },
+      makeFetch(['READY'], { xml: threeHitXml }),
+    );
+    expect(out).toHaveLength(2);
+    const raw0 = out[0].raw as { accession: string };
+    const raw1 = out[1].raw as { accession: string };
+    expect(raw0.accession).toBe('ACC1');
+    expect(raw1.accession).toBe('ACC2');
+  });
+
   it('produces no trailing comma in snippet when Hit_def has no organism bracket', async () => {
     const noOrganismXml = `<?xml version="1.0"?>
 <BlastOutput>

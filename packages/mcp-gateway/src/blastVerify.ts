@@ -47,7 +47,7 @@ export const blastVerifyTool: Tool = {
     const database = String(args.database ?? 'nr');
     const expect = Number(args.expect ?? 10);
     const maxHits = Number(args.maxHits ?? 10);
-    const pollIntervalMs = Number(args.pollIntervalMs ?? 15000);
+    const pollIntervalMs = Number(args.pollIntervalMs ?? 60000);
     const timeoutMs = Number(args.timeoutMs ?? 180000);
     const initialDelayMs = Number(args.initialDelayMs ?? 0);
 
@@ -91,7 +91,7 @@ export const blastVerifyTool: Tool = {
     if (hits.length === 0) return [];
 
     const now = new Date().toISOString();
-    const isPatentDb = /pat/i.test(database);
+    const isPatentDb = database === 'pataa' || database === 'patnt';
     const accPath = program === 'blastn' ? 'nuccore' : 'protein';
 
     return hits.slice(0, maxHits).map<Evidence>((hit) => {
@@ -99,6 +99,7 @@ export const blastVerifyTool: Tool = {
         Record<string, unknown> | undefined;
       const alignLen = Number(hsp?.['Hsp_align-len'] ?? 0);
       const identity = Number(hsp?.['Hsp_identity'] ?? 0);
+      // Reports top HSP only — not summed coverage across HSPs; verdict logic is deferred to a later slice.
       const percentIdentity = alignLen ? round1((identity / alignLen) * 100) : 0;
       const qFrom = Number(hsp?.['Hsp_query-from'] ?? 0);
       const qTo = Number(hsp?.['Hsp_query-to'] ?? 0);
