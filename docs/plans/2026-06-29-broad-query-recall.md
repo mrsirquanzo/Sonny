@@ -272,6 +272,7 @@ git commit -m "feat(core): planner emits concept; research loop searches target 
 - Modify: `packages/core/src/runDeepResearch.ts:58` (pass `target` to `fillGap`)
 - Test: `packages/core/src/completeness.test.ts`
 - Test: `packages/core/src/runDeepResearch.test.ts`
+- Test: `packages/core/src/produceResearchSection.test.ts`
 
 **Interfaces:**
 - Consumes: `buildSearchQuery` from `./searchQuery.js`.
@@ -307,10 +308,20 @@ In `packages/core/src/runDeepResearch.test.ts`:
 
 5. Lines ~32, ~73, ~104 (specialistModel plan replies): `searchQuery: 'kw'` -> `concept: 'kw'` (3 occurrences).
 
+In `packages/core/src/produceResearchSection.test.ts`:
+
+6. The `specialistReplies` plan reply uses the old bare-string shape `{ questions: ['What is the MOA?'] }`. This now throws because `runResearcher` reads `item.concept` and `buildSearchQuery` calls `.trim()` on it. Replace it with a proper question object carrying a concept:
+
+```ts
+      { questions: [{ question: 'What is the MOA?', concept: 'mechanism' }] },
+```
+
+(Leave the other two replies - claims, reflect - unchanged. The search hit title is `'CDCP1'`, so the deep-read still fires; the assertions on `section.sources`/`section.rag` are unaffected.)
+
 - [ ] **Step 2: Run the tests to verify they fail**
 
-Run: `pnpm --filter @sonny/core test -- "completeness|runDeepResearch"`
-Expected: FAIL - `ResearchGap.concept` does not exist; `fillGap` does not accept `target`; the gap-filler search is not `CDCP1 AND resistance`.
+Run: `pnpm --filter @sonny/core test -- "completeness|runDeepResearch|produceResearchSection"`
+Expected: FAIL - `ResearchGap.concept` does not exist; `fillGap` does not accept `target`; the gap-filler search is not `CDCP1 AND resistance`; `produceResearchSection` throws on the bare-string question.
 
 - [ ] **Step 3: Update completeness.ts**
 
@@ -379,8 +390,8 @@ In `packages/core/src/runDeepResearch.ts` line ~58, pass `target` to `fillGap`:
 
 - [ ] **Step 5: Run the tests to verify they pass**
 
-Run: `pnpm --filter @sonny/core test -- "completeness|runDeepResearch"`
-Expected: PASS - completeness and runDeepResearch cases green.
+Run: `pnpm --filter @sonny/core test -- "completeness|runDeepResearch|produceResearchSection"`
+Expected: PASS - completeness, runDeepResearch, and produceResearchSection cases green.
 
 - [ ] **Step 6: Run the full core suite**
 
@@ -390,7 +401,7 @@ Expected: PASS - all core tests green (no stray `searchQuery` references remain)
 - [ ] **Step 7: Commit**
 
 ```bash
-git add packages/core/src/completeness.ts packages/core/src/runDeepResearch.ts packages/core/src/completeness.test.ts packages/core/src/runDeepResearch.test.ts
+git add packages/core/src/completeness.ts packages/core/src/runDeepResearch.ts packages/core/src/completeness.test.ts packages/core/src/runDeepResearch.test.ts packages/core/src/produceResearchSection.test.ts
 git commit -m "feat(core): gap-filler emits concept and searches target AND concept"
 ```
 
