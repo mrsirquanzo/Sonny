@@ -22,3 +22,111 @@ describe('detectProgram', () => {
     expect(detectProgram('EVQLVESGGGLVQPG')).toBe('blastp');
   });
 });
+
+import { blastVerifyTool } from './blastVerify.js';
+
+const SUBMIT = '<html><!-- QBlastInfoBegin\n    RID = RID123\n    RTOE = 0\nQBlastInfoEnd --></html>';
+const statusBody = (s: string) => `QBlastInfoBegin\n\tStatus=${s}\nQBlastInfoEnd\n`;
+const RESULT_XML = `<?xml version="1.0"?>
+<BlastOutput>
+  <BlastOutput_program>blastp</BlastOutput_program>
+  <BlastOutput_query-len>120</BlastOutput_query-len>
+  <BlastOutput_iterations>
+    <Iteration>
+      <Iteration_hits>
+        <Hit>
+          <Hit_def>anti-CDCP1 antibody heavy chain [Homo sapiens]</Hit_def>
+          <Hit_accession>ABC12345</Hit_accession>
+          <Hit_len>120</Hit_len>
+          <Hit_hsps>
+            <Hsp>
+              <Hsp_bit-score>240</Hsp_bit-score>
+              <Hsp_evalue>1e-80</Hsp_evalue>
+              <Hsp_query-from>1</Hsp_query-from>
+              <Hsp_query-to>120</Hsp_query-to>
+              <Hsp_identity>120</Hsp_identity>
+              <Hsp_align-len>120</Hsp_align-len>
+            </Hsp>
+          </Hit_hsps>
+        </Hit>
+      </Iteration_hits>
+    </Iteration>
+  </BlastOutput_iterations>
+</BlastOutput>`;
+
+// Stateful fake fetch: POST = submit; GET SearchInfo = status; GET XML = result.
+// `statuses` is consumed one per poll so we can model WAITING then READY.
+function makeFetch(statuses: string[], opts: { xml?: string; submitOk?: boolean } = {}) {
+  const queue = [...statuses];
+  return (async (url: string | URL | Request, init?: RequestInit) => {
+    const u = String(url);
+    if (init?.method === 'POST') {
+      return new Response(SUBMIT, { status: opts.submitOk === false ? 502 : 200 });
+    }
+    if (u.includes('FORMAT_OBJECT=SearchInfo')) {
+      return new Response(statusBody(queue.shift() ?? 'READY'), { status: 200 });
+    }
+    if (u.includes('FORMAT_TYPE=XML')) {
+      return new Response(opts.xml ?? RESULT_XML, { status: 200 });
+    }
+    throw new Error(`unexpected request: ${u}`);
+  }) as unknown as typeof fetch;
+}
+
+describe('blastVerifyTool', () => {
+  it('returns [] for an empty sequence without calling the network', async () => {
+    let called = false;
+    const fetchImpl = (async () => { called = true; return new Response('', { status: 200 }); }) as unknown as typeof fetch;
+    const out = await blastVerifyTool.call({ sequence: '   ' }, fetchImpl);
+    expect(out).toHaveLength(0);
+    expect(called).toBe(false);
+  });
+
+  it('submits via POST, polls until READY, and maps an XML hit to dataset Evidence', async () => {
+    const out = await blastVerifyTool.call(
+      { sequence: 'EVQLVESGGGLVQPGGSLRL', pollIntervalMs: 0 },
+      makeFetch(['WAITING', 'READY']),
+    );
+    expect(out).toHaveLength(1);
+    const e = out[0];
+    expect(e.id).toBe('BLAST:ABC12345');
+    expect(e.kind).toBe('dataset');
+    expect(e.title).toBe('anti-CDCP1 antibody heavy chain [Homo sapiens]');
+    const raw = e.raw as { percentIdentity: number; eValue: string; organism: string; queryCoverage: number; database: string; program: string };
+    expect(raw.percentIdentity).toBe(100);
+    expect(raw.queryCoverage).toBe(100);
+    expect(raw.eValue).toBe('1e-80');
+    expect(raw.organism).toBe('Homo sapiens');
+    expect(raw.program).toBe('blastp');
+    expect(e.snippet).toBe('100% id, E=1e-80, Homo sapiens');
+  });
+
+  it('maps hits from the patent database to kind patent', async () => {
+    const out = await blastVerifyTool.call(
+      { sequence: 'EVQLVESGGGLVQPGGSLRL', database: 'pataa', pollIntervalMs: 0 },
+      makeFetch(['READY']),
+    );
+    expect(out[0].kind).toBe('patent');
+  });
+
+  it('throws when the search status is UNKNOWN', async () => {
+    await expect(
+      blastVerifyTool.call({ sequence: 'EVQLVESGGGLVQPGGSLRL', pollIntervalMs: 0 }, makeFetch(['UNKNOWN'])),
+    ).rejects.toThrow(/UNKNOWN/);
+  });
+
+  it('throws when submission returns a non-OK status', async () => {
+    await expect(
+      blastVerifyTool.call({ sequence: 'EVQLVESGGGLVQPGGSLRL' }, makeFetch(['READY'], { submitOk: false })),
+    ).rejects.toThrow(/HTTP 502/);
+  });
+
+  it('returns [] when the result has no hits', async () => {
+    const emptyXml = '<?xml version="1.0"?><BlastOutput><BlastOutput_query-len>120</BlastOutput_query-len><BlastOutput_iterations><Iteration><Iteration_hits></Iteration_hits></Iteration></BlastOutput_iterations></BlastOutput>';
+    const out = await blastVerifyTool.call(
+      { sequence: 'EVQLVESGGGLVQPGGSLRL', pollIntervalMs: 0 },
+      makeFetch(['READY'], { xml: emptyXml }),
+    );
+    expect(out).toHaveLength(0);
+  });
+});
