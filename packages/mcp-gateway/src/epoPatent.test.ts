@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
   normalizePatentNumber, mapLegalCode, deriveMemberStatus, estimateExpiry,
+  getAccessToken, resetTokenCache,
 } from './epoPatent.js';
-import type { LegalEvent } from './epoPatent.js';
+import type { LegalEvent, Fetch } from './epoPatent.js';
 
 describe('normalizePatentNumber', () => {
   it('strips spaces, commas, and kind code and uppercases the country', () => {
@@ -56,9 +57,6 @@ describe('estimateExpiry', () => {
     expect(estimateExpiry([])).toBeUndefined();
   });
 });
-
-import { getAccessToken, resetTokenCache } from './epoPatent.js';
-import type { Fetch } from './epoPatent.js';
 
 function tokenFetch(token: string, expiresIn: number, calls: { n: number }): Fetch {
   return (async (url: string | URL | Request) => {
