@@ -39,6 +39,7 @@ Division of labor: ANARCI owns variable-domain region confirmation; BLAST owns "
    - Reads JSON on stdin: `{ sequences: [{ id, seq }], scheme: 'imgt' }`.
    - Runs ANARCI's Python API with `assign_germline=True`.
    - Writes JSON on stdout: for each input, the domain numbering, chain type (`H` | `K` | `L`), and closest-germline species and V/J genes.
+   - **stdout carries only the final JSON payload.** ANARCI and its HMMER backend can be noisy (deprecation warnings, alignment alerts). All Python `warnings`, `logging`, and any library chatter must be routed to stderr (suppress/redirect warnings and set logging to stderr at startup), so a rogue line can never corrupt the JSON the TypeScript side parses. A single warning leaking to stdout would break `JSON.parse` even when the biological computation succeeded.
    - Self-checks the `anarci` import at startup; if ANARCI is not importable it writes `{ "status": "anarci_unavailable", "error": "..." }` and exits cleanly (non-crashing), so the TypeScript layer maps it to a soft status.
 
 2. **`anarci.ts`** (TypeScript, `packages/mcp-gateway`).
@@ -47,6 +48,7 @@ Division of labor: ANARCI owns variable-domain region confirmation; BLAST owns "
      ANARCI is local deterministic compute whose output is a structured confirmation report, not an LLM-decided search.
      The slice-5 orchestrator calls it directly; whether to expose an LLM-callable wrapper is a slice-5 decision.
    - Takes an injectable `exec` runner (`deps.exec`) so unit tests mock the subprocess and need no real ANARCI install.
+   - Parses stdout only; stderr is ignored except when surfaced in an error diagnostic. This keeps warning noise from breaking the parse.
 
 ## Data flow
 
@@ -170,6 +172,7 @@ All tests inject `deps.exec` returning canned bridge JSON; no real ANARCI instal
 - A claimed Fc/constant region -> `not_applicable_constant`.
 - The bridge emits the `anarci_unavailable` marker -> `overallStatus` and all region checks are `anarci_unavailable`, `domains` empty, no throw.
 - Normalization: a claimed sequence with lowercase/whitespace still matches the derived region.
+- **IMGT insertion codes:** the mock `exec` returns a VH whose numbering includes CDR-H3 insertion codes (for example positions `111`, `111A`, `111B`, `112B`, `112A`, `112`). The derived CDR-H3 must preserve those inserted residues in IMGT order, and every `residues[].pos` must remain a string with its trailing letter intact - never cast to an integer or dropped. A claimed CDR-H3 that includes the inserted residues then matches the derived region.
 
 ## Setup
 
