@@ -15,3 +15,5 @@ export { lookupPatent } from './epoPatent.js';
 export type { PatentRecord, FamilyMember, LegalEvent, LegalEffect, NormalizedNumber } from './epoPatent.js';
 export { ingestToMarkdown } from './ingest.js';
 export type { MarkitdownExec, IngestResult } from './ingest.js';
+export { extractPatentNumber, extractSequenceListing } from './patentExtract.js';
+export type { ExtractedSequence } from './patentExtract.js';
