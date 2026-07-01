@@ -172,7 +172,12 @@ function checkRegion(
   if (!derived) {
     return { label: claim.label, claimedSeq: claim.sequence, status: 'orphan_unverifiable', note: 'region not present in numbered domain' };
   }
-  const ok = matchRegion(claim.sequence, derived.seq);
+  // VH/VL: ANARCI trims flanking residues outside the variable-domain HMM, so a patent's
+  // declared full-domain sequence may be longer than the derived seq. Use substring matching
+  // for these labels only; CDR and FR labels retain exact equality.
+  const ok = claim.label === 'VH' || claim.label === 'VL'
+    ? normalizeSeq(claim.sequence).includes(normalizeSeq(derived.seq))
+    : matchRegion(claim.sequence, derived.seq);
   return { label: claim.label, claimedSeq: claim.sequence, derivedSeq: derived.seq, status: ok ? 'confirmed' : 'mismatch' };
 }
 

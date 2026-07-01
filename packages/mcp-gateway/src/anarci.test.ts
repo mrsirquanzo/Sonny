@@ -154,6 +154,43 @@ describe('confirmRegions', () => {
     ).rejects.toThrow(/unparseable/);
   });
 
+  // VH/VL substring matching - ANARCI trims N-/C-terminal flanking residues outside the
+  // variable-domain HMM, so a patent's declared full VH may be longer than the derived seq.
+  // The derived seq must be a substring of the claimed seq (not equal) for these labels.
+  //
+  // Derived VH from HEAVY_BRIDGE = 'GFSARGYDSFDY' (12 residues in numbering order).
+  it('confirms a VH claim whose sequence wraps the derived domain with flanking residues', async () => {
+    const derivedVH = 'GFSARGYDSFDY';
+    const flankedClaim = 'XXXFLANKING' + derivedVH + 'FLANKING ZZZ';
+    const out = await confirmRegions(
+      { vh: 'EVQ', claimedRegions: [{ label: 'VH', sequence: flankedClaim }] },
+      { exec: execReturning(HEAVY_BRIDGE) },
+    );
+    const check = out.regionChecks.find((c) => c.label === 'VH');
+    expect(check?.status).toBe('confirmed');
+    expect(check?.derivedSeq).toBe(derivedVH);
+  });
+
+  it('reports mismatch for a VH claim that does not contain the derived domain', async () => {
+    const out = await confirmRegions(
+      { vh: 'EVQ', claimedRegions: [{ label: 'VH', sequence: 'AAAABBBBCCCCDDDDEEEE' }] },
+      { exec: execReturning(HEAVY_BRIDGE) },
+    );
+    const check = out.regionChecks.find((c) => c.label === 'VH');
+    expect(check?.status).toBe('mismatch');
+    expect(check?.derivedSeq).toBe('GFSARGYDSFDY');
+  });
+
+  it('still enforces exact matching for CDR labels (not weakened by VH/VL change)', async () => {
+    // CDR-H1 derived = 'GFS'; claim 'GFX' must still be mismatch
+    const out = await confirmRegions(
+      { vh: 'EVQ', claimedRegions: [{ label: 'CDR-H1', sequence: 'GFX' }] },
+      { exec: execReturning(HEAVY_BRIDGE) },
+    );
+    const check = out.regionChecks.find((c) => c.label === 'CDR-H1');
+    expect(check?.status).toBe('mismatch');
+  });
+
   it('handles an all-gap VH domain without Infinity bounds', async () => {
     const allGapBridge = JSON.stringify({
       status: 'ok',
