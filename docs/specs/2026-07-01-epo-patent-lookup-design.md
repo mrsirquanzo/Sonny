@@ -154,6 +154,10 @@ All tests inject `fetchImpl`; no live network.
 Register for a free EPO OPS account, set `SONNY_EPO_KEY` / `SONNY_EPO_SECRET`.
 A manual smoke (not a unit test) against a known patent validates the OPS JSON nesting and refines `LEGAL_CODE_MAP` against real legal data; the TypeScript contract stays fixed.
 
+Smoke checklist (validate against the real OPS payload, then adjust the parse):
+- **Full IPC symbol.** The fixture-pinned parse currently concatenates section + class only (for example `C07`). Real FTO signal needs the complete symbol (for example `C07K16/28`); capture subclass, main-group, and subgroup from the real classification structure.
+- **Priority date for expiry.** The spec computes expiry from the earliest filing/priority date; the initial implementation uses the application/filing date only. Confirm whether priority should feed the estimate and wire it if so (the estimate is always `expiryEstimated`-flagged regardless).
+
 ## Out of scope
 
 - Claims / full-text retrieval (added in slice 4 when reconciliation needs it).
