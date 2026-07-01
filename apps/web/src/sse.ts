@@ -1,4 +1,4 @@
-import type { TraceEvent } from '@sonny/shared';
+import type { TraceEvent } from '@mrsirquanzo/sonny-shared';
 
 export function encodeEvent(e: TraceEvent): string {
   return `data: ${JSON.stringify(e)}\n\n`;

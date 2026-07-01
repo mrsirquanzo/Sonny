@@ -1,4 +1,4 @@
-import { KOLClusterSchema, type KOLCluster } from '@sonny/shared';
+import { KOLClusterSchema, type KOLCluster } from '@mrsirquanzo/sonny-shared';
 import type { EvidenceStore } from './evidenceStore.js';
 
 const FULLTEXT_WEIGHT = 3;

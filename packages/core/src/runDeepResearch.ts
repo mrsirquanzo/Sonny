@@ -1,5 +1,5 @@
-import type { Claim, Evidence, Section, TraceEvent, KOLCluster } from '@sonny/shared';
-import type { Tool } from '@sonny/mcp-gateway';
+import type { Claim, Evidence, Section, TraceEvent, KOLCluster } from '@mrsirquanzo/sonny-shared';
+import type { Tool } from '@mrsirquanzo/sonny-mcp-gateway';
 import { EvidenceStore } from './evidenceStore.js';
 import type { StructuredModel } from './model.js';
 import type { ThreadBrief, ResearchBudget } from './researcher.js';

@@ -1,5 +1,5 @@
-import { ClaimsSchema, type Claim, type TraceEvent, type Verdict } from '@sonny/shared';
-import type { Tool } from '@sonny/mcp-gateway';
+import { ClaimsSchema, type Claim, type TraceEvent, type Verdict } from '@mrsirquanzo/sonny-shared';
+import type { Tool } from '@mrsirquanzo/sonny-mcp-gateway';
 import { EvidenceStore } from './evidenceStore.js';
 import { groundClaims } from './grounding.js';
 import { verifyClaims } from './verifier.js';

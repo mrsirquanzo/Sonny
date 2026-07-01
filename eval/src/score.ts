@@ -1,4 +1,4 @@
-import type { Claim, Verdict } from '@sonny/shared';
+import type { Claim, Verdict } from '@mrsirquanzo/sonny-shared';
 
 export function recallAtK(retrievedIds: string[], expectedIds: string[]): number {
   if (expectedIds.length === 0) return 1;

@@ -79,7 +79,7 @@ export const ClaimSchema = z.object({
   id: z.string().min(1),
   text: z.string().min(1),
   citations: z.array(z.string()),
-  confidence: z.number().min(0).max(1),
+  confidence: z.number().transform((n) => Math.max(0, Math.min(1, n))),
   redFlags: z.array(RedFlagSchema).optional(),
 });
 export type Claim = z.infer<typeof ClaimSchema>;

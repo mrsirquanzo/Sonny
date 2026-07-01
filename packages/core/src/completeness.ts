@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import type { Claim, Section, TraceEvent, Verdict } from '@sonny/shared';
-import type { Tool } from '@sonny/mcp-gateway';
+import type { Claim, Section, TraceEvent, Verdict } from '@mrsirquanzo/sonny-shared';
+import type { Tool } from '@mrsirquanzo/sonny-mcp-gateway';
 import type { StructuredModel } from './model.js';
 import { MODEL_ROUTER } from './model.js';
 import type { EvidenceStore } from './evidenceStore.js';

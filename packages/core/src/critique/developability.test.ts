@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { Section, TraceEvent } from '@sonny/shared';
+import type { Section, TraceEvent } from '@mrsirquanzo/sonny-shared';
 import type { StructuredModel } from '../model.js';
 import { EvidenceStore } from '../evidenceStore.js';
 import { assessDevelopability } from './developability.js';

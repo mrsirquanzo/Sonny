@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { Claim, Evidence } from '@sonny/shared';
+import type { Claim, Evidence } from '@mrsirquanzo/sonny-shared';
 import { EvidenceStore } from './evidenceStore.js';
 import { groundClaims } from './grounding.js';
 

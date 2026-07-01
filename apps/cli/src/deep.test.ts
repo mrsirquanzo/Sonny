@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import type { TraceEvent } from '@sonny/shared';
+import type { TraceEvent } from '@mrsirquanzo/sonny-shared';
 import { formatTrace } from './run.js';
-import { currentBackend } from '@sonny/core';
+import { currentBackend } from '@mrsirquanzo/sonny-core';
 
 describe('deep backend default', () => {
   it('defaults to the local ollama backend when SONNY_BACKEND is unset', () => {

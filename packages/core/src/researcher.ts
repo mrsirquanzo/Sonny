@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ClaimsSchema, type Claim } from '@sonny/shared';
+import { ClaimsSchema, type Claim } from '@mrsirquanzo/sonny-shared';
 import type { StructuredModel } from './model.js';
 import { MODEL_ROUTER } from './model.js';
 import { targetTerms, relevanceGate, titleMentionsTarget } from './relevance.js';
@@ -41,9 +41,9 @@ export async function extractClaims(
   return claims;
 }
 
-import type { Evidence, TraceEvent, MethodologicalCritique } from '@sonny/shared';
+import type { Evidence, TraceEvent, MethodologicalCritique } from '@mrsirquanzo/sonny-shared';
 import type { EvidenceStore } from './evidenceStore.js';
-import type { Tool } from '@sonny/mcp-gateway';
+import type { Tool } from '@mrsirquanzo/sonny-mcp-gateway';
 import { safeToolCall } from './safeToolCall.js';
 import { runSkepticAudit } from './critique/skepticAudit.js';
 

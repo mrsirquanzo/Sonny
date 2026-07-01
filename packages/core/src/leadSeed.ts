@@ -1,5 +1,5 @@
-import type { TraceEvent } from '@sonny/shared';
-import type { Tool } from '@sonny/mcp-gateway';
+import type { TraceEvent } from '@mrsirquanzo/sonny-shared';
+import type { Tool } from '@mrsirquanzo/sonny-mcp-gateway';
 import type { EvidenceStore } from './evidenceStore.js';
 
 // Target-level argument for each structured seed tool.

@@ -1,4 +1,4 @@
-import type { Evidence, EvidenceMetadata } from '@sonny/shared';
+import type { Evidence, EvidenceMetadata } from '@mrsirquanzo/sonny-shared';
 import type { Tool } from './tool.js';
 
 const ENDPOINT = 'https://www.ebi.ac.uk/europepmc/webservices/rest/search';

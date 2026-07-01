@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { Section } from '@sonny/shared';
+import type { Section } from '@mrsirquanzo/sonny-shared';
 import { EvidenceStore } from './evidenceStore.js';
 import { weighAcrossThreads } from './weighing.js';
 

@@ -1,5 +1,5 @@
-import type { Claim, Section, TraceEvent } from '@sonny/shared';
-import type { Tool } from '@sonny/mcp-gateway';
+import type { Claim, Section, TraceEvent } from '@mrsirquanzo/sonny-shared';
+import type { Tool } from '@mrsirquanzo/sonny-mcp-gateway';
 import type { EvidenceStore } from './evidenceStore.js';
 import type { StructuredModel } from './model.js';
 import { groundClaims } from './grounding.js';

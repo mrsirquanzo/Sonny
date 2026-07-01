@@ -1,5 +1,5 @@
-import type { Briefing, Reference, TraceEvent } from '@sonny/shared';
-import type { Tool } from '@sonny/mcp-gateway';
+import type { Briefing, Reference, TraceEvent } from '@mrsirquanzo/sonny-shared';
+import type { Tool } from '@mrsirquanzo/sonny-mcp-gateway';
 import type { StructuredModel } from './model.js';
 import type { ThreadBrief, ResearchBudget } from './researcher.js';
 import { runDeepResearch, type DeepResearchResult } from './runDeepResearch.js';

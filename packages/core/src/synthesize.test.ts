@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { Section, Claim, Evidence } from '@sonny/shared';
+import type { Section, Claim, Evidence } from '@mrsirquanzo/sonny-shared';
 import type { StructuredModel } from './model.js';
 import { synthesizeRecommendation } from './synthesize.js';
 

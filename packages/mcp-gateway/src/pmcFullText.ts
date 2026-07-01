@@ -1,5 +1,5 @@
 import { XMLParser } from 'fast-xml-parser';
-import type { Evidence } from '@sonny/shared';
+import type { Evidence } from '@mrsirquanzo/sonny-shared';
 import type { Tool } from './tool.js';
 
 const EFETCH = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi';

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { Claim, Verdict } from '@sonny/shared';
+import type { Claim, Verdict } from '@mrsirquanzo/sonny-shared';
 import { recallAtK, faithfulness } from './score.js';
 
 describe('eval metrics', () => {

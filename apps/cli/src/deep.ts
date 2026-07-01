@@ -1,5 +1,5 @@
-import { makeModel, currentBackend, produceBriefing, RESEARCH_ROSTER } from '@sonny/core';
-import { europePmcSearchTool, pmcFullTextTool, openTargetsTargetTool, clinicalTrialsTool, europePmcCitationsTool } from '@sonny/mcp-gateway';
+import { makeModel, currentBackend, produceBriefing, RESEARCH_ROSTER } from '@mrsirquanzo/sonny-core';
+import { europePmcSearchTool, pmcFullTextTool, openTargetsTargetTool, clinicalTrialsTool, europePmcCitationsTool } from '@mrsirquanzo/sonny-mcp-gateway';
 import { formatTrace } from './run.js';
 
 export async function runDeep(target: string): Promise<void> {

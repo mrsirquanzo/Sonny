@@ -4,5 +4,5 @@
   "type": "module",
   "bin": { "sonny": "dist/index.js" },
   "scripts": { "test": "vitest run", "build": "tsc -p tsconfig.json", "start": "tsx src/index.ts" },
-  "dependencies": { "@sonny/core": "workspace:*", "@sonny/mcp-gateway": "workspace:*", "@sonny/shared": "workspace:*" }
+  "dependencies": { "@mrsirquanzo/sonny-core": "workspace:*", "@mrsirquanzo/sonny-mcp-gateway": "workspace:*", "@mrsirquanzo/sonny-shared": "workspace:*" }
 }

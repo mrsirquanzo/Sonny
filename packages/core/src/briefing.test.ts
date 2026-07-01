@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { Evidence, Section } from '@sonny/shared';
+import type { Evidence, Section } from '@mrsirquanzo/sonny-shared';
 import { assembleReferences } from './briefing.js';
 import type { DeepResearchResult } from './runDeepResearch.js';
 

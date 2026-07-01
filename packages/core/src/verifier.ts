@@ -1,4 +1,4 @@
-import { VerdictSchema, type Claim, type Verdict } from '@sonny/shared';
+import { VerdictSchema, type Claim, type Verdict } from '@mrsirquanzo/sonny-shared';
 import type { EvidenceStore } from './evidenceStore.js';
 import type { StructuredModel } from './model.js';
 import { MODEL_ROUTER } from './model.js';

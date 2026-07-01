@@ -1,6 +1,6 @@
-import type { TraceEvent } from '@sonny/shared';
-import { runDossier, AnthropicModel } from '@sonny/core';
-import { openTargetsTargetTool, pubmedTool, clinicalTrialsTool } from '@sonny/mcp-gateway';
+import type { TraceEvent } from '@mrsirquanzo/sonny-shared';
+import { runDossier, AnthropicModel } from '@mrsirquanzo/sonny-core';
+import { openTargetsTargetTool, pubmedTool, clinicalTrialsTool } from '@mrsirquanzo/sonny-mcp-gateway';
 
 export function formatTrace(events: TraceEvent[]): string {
   return events.map((e) => {

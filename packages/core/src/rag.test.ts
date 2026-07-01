@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { Claim, Verdict } from '@sonny/shared';
+import type { Claim, Verdict } from '@mrsirquanzo/sonny-shared';
 import { computeRag } from './rag.js';
 
 const claim = (id: string, cites: string[]): Claim => ({ id, text: 'x', citations: cites, confidence: 0.9 });

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { Evidence } from '@sonny/shared';
+import type { Evidence } from '@mrsirquanzo/sonny-shared';
 import { EvidenceStore } from './evidenceStore.js';
 import { mapSpecialtyLabs } from './kolDetector.js';
 

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import type { Evidence, TraceEvent } from '@sonny/shared';
-import type { Tool } from '@sonny/mcp-gateway';
+import type { Evidence, TraceEvent } from '@mrsirquanzo/sonny-shared';
+import type { Tool } from '@mrsirquanzo/sonny-mcp-gateway';
 import type { StructuredModel } from './model.js';
 import { runOrchestration } from './orchestrator.js';
 

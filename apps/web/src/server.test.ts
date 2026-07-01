@@ -3,7 +3,7 @@ import type { AddressInfo } from 'node:net';
 import type { Server } from 'node:http';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import type { TraceEvent } from '@sonny/shared';
+import type { TraceEvent, Section } from '@mrsirquanzo/sonny-shared';
 import { createServer } from './server.js';
 import type { OrchestratorRunner } from './streamRun.js';
 
@@ -16,8 +16,8 @@ function listen(s: Server): Promise<string> {
 }
 
 const fakeRunner: OrchestratorRunner = async (emit) => {
-  emit({ type: 'evidence_registered', id: 'ENSG00000146648', title: 'EGFR' } as TraceEvent);
-  return { section: 'EGFR is a target. [ENSG00000146648]' };
+  emit({ type: 'recommendation', verdict: 'watch' });
+  return { verdict: 'watch', sections: [] as Section[] };
 };
 
 describe('createServer', () => {
@@ -36,7 +36,7 @@ describe('createServer', () => {
     const res = await fetch(`${base}/api/run?q=test&symbol=EGFR`);
     expect(res.headers.get('content-type')).toContain('text/event-stream');
     const body = await res.text();
-    expect(body).toContain('ENSG00000146648');
+    expect(body).toContain('recommendation');
     expect(body).toContain('event: done');
   });
 

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import type { Tool } from '@sonny/mcp-gateway';
-import type { Evidence } from '@sonny/shared';
+import type { Tool } from '@mrsirquanzo/sonny-mcp-gateway';
+import type { Evidence } from '@mrsirquanzo/sonny-shared';
 import { EvidenceStore } from './evidenceStore.js';
 import { snowballCitations } from './snowball.js';
 

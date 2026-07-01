@@ -1,4 +1,4 @@
-import type { Evidence } from '@sonny/shared';
+import type { Evidence } from '@mrsirquanzo/sonny-shared';
 import type { Tool } from './tool.js';
 
 const ENDPOINT = 'https://api.platform.opentargets.org/api/v4/graphql';

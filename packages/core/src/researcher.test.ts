@@ -3,9 +3,9 @@ import type { StructuredModel } from './model.js';
 import { planResearchQuestions, extractClaims, type ThreadBrief, type ResearchQuestion } from './researcher.js';
 import { EvidenceStore } from './evidenceStore.js';
 import { runResearcher } from './researcher.js';
-import type { Tool } from '@sonny/mcp-gateway';
-import type { TraceEvent } from '@sonny/shared';
-import type { MethodologicalCritique } from '@sonny/shared';
+import type { Tool } from '@mrsirquanzo/sonny-mcp-gateway';
+import type { TraceEvent } from '@mrsirquanzo/sonny-shared';
+import type { MethodologicalCritique } from '@mrsirquanzo/sonny-shared';
 import { safeToolCall } from './safeToolCall.js'; // ensure import graph is wired
 import { targetTerms } from './relevance.js'; // ensure import graph wired
 import { buildSearchQuery } from './searchQuery.js';

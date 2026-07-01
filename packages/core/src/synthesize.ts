@@ -1,4 +1,4 @@
-import { RecommendationSchema, type Recommendation, type Section, type Claim, type Evidence } from '@sonny/shared';
+import { RecommendationSchema, type Recommendation, type Section, type Claim, type Evidence } from '@mrsirquanzo/sonny-shared';
 import { z } from 'zod';
 import type { StructuredModel } from './model.js';
 import { MODEL_ROUTER } from './model.js';

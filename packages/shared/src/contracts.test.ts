@@ -153,6 +153,20 @@ describe('DevelopabilityRisk schema', () => {
 
 import { EvidenceMetadataSchema, KOLClusterSchema } from './contracts.js';
 
+describe('ClaimSchema confidence', () => {
+  it('clamps a confidence above 1 to 1', () => {
+    const c = ClaimSchema.parse({ id: 'c1', text: 't', citations: ['PMID:1'], confidence: 1.7 });
+    expect(c.confidence).toBe(1);
+  });
+  it('clamps a negative confidence to 0', () => {
+    const c = ClaimSchema.parse({ id: 'c1', text: 't', citations: ['PMID:1'], confidence: -0.5 });
+    expect(c.confidence).toBe(0);
+  });
+  it('still rejects a non-numeric confidence', () => {
+    expect(() => ClaimSchema.parse({ id: 'c1', text: 't', citations: ['PMID:1'], confidence: 'high' as unknown as number })).toThrow();
+  });
+});
+
 describe('Evidence metadata and KOLCluster schemas', () => {
   it('Evidence accepts optional metadata with authors and institutions', () => {
     const e = { id: 'PMID:1', kind: 'publication', source: 's', title: 't', snippet: '', url: 'u', raw: {}, retrievedAt: 'now',

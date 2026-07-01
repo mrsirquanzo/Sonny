@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { StudyDesignSchema, RedFlagSchema, type MethodologicalCritique, type Evidence } from '@sonny/shared';
+import { StudyDesignSchema, RedFlagSchema, type MethodologicalCritique, type Evidence } from '@mrsirquanzo/sonny-shared';
 import type { StructuredModel } from '../model.js';
 import { MODEL_ROUTER } from '../model.js';
 
