@@ -57,3 +57,100 @@ describe('label routing', () => {
     expect(anchorChainFor('Fc')).toBe(null);
   });
 });
+
+import { confirmRegions } from './anarci.js';
+import type { Exec } from './anarci.js';
+
+// Bridge output for a heavy domain: human germline, CDR-H1 = GFS, CDR-H3 = ARGYDSFDY (with inserts).
+const HEAVY_BRIDGE = JSON.stringify({
+  status: 'ok',
+  domains: [{
+    inputId: 'vh', chain: 'H', species: 'homo_sapiens',
+    germline: { v: 'IGHV3-23*01', j: 'IGHJ4*02' },
+    numbering: [
+      ['27', 'G'], ['28', 'F'], ['38', 'S'],
+      ['105', 'A'], ['106', 'R'], ['111', 'G'], ['111A', 'Y'], ['111B', 'D'],
+      ['112B', 'S'], ['112A', 'F'], ['112', 'D'], ['117', 'Y'],
+    ],
+  }],
+});
+const MOUSE_KAPPA_BRIDGE = JSON.stringify({
+  status: 'ok',
+  domains: [{
+    inputId: 'vl', chain: 'K', species: 'mus_musculus',
+    germline: { v: 'IGKV4-1*01', j: 'IGKJ1*01' },
+    numbering: [['27', 'Q'], ['28', 'S'], ['38', 'L']],
+  }],
+});
+const execReturning = (stdout: string): Exec => (async () => ({ stdout, stderr: '', code: 0 }));
+
+describe('confirmRegions', () => {
+  it('confirms a matching CDR-H1 and derives the insertion-coded CDR-H3', async () => {
+    const out = await confirmRegions(
+      { vh: 'EVQ', claimedRegions: [{ label: 'CDR-H1', sequence: 'GFS' }, { label: 'CDR-H3', sequence: 'ARGYDSFDY' }] },
+      { exec: execReturning(HEAVY_BRIDGE) },
+    );
+    expect(out.overallStatus).toBe('confirmed');
+    expect(out.regionChecks.find((c) => c.label === 'CDR-H1')?.status).toBe('confirmed');
+    expect(out.regionChecks.find((c) => c.label === 'CDR-H3')?.status).toBe('confirmed');
+    const vh = out.domains[0].numberedRegions.VH;
+    expect(vh?.residues.some((r) => r.pos === '111A')).toBe(true); // insertion code preserved end to end
+    expect(out.speciesSummary).toEqual([{ chain: 'H', species: 'homo_sapiens' }]);
+  });
+
+  it('reports a mismatch with both sequences', async () => {
+    const out = await confirmRegions(
+      { vh: 'EVQ', claimedRegions: [{ label: 'CDR-H1', sequence: 'GFT' }] },
+      { exec: execReturning(HEAVY_BRIDGE) },
+    );
+    expect(out.overallStatus).toBe('mismatch');
+    const check = out.regionChecks[0];
+    expect(check.status).toBe('mismatch');
+    expect(check.derivedSeq).toBe('GFS');
+    expect(check.claimedSeq).toBe('GFT');
+  });
+
+  it('reports the non-human species and kappa chain for a murine light domain', async () => {
+    const out = await confirmRegions(
+      { vl: 'QSV', claimedRegions: [] },
+      { exec: execReturning(MOUSE_KAPPA_BRIDGE) },
+    );
+    expect(out.domains[0].chain).toBe('K');
+    expect(out.speciesSummary).toEqual([{ chain: 'K', species: 'mus_musculus' }]);
+  });
+
+  it('flags an orphan CDR (no anchor domain) as orphan_unverifiable', async () => {
+    const out = await confirmRegions(
+      { claimedRegions: [{ label: 'CDR-H1', sequence: 'GFS' }] },
+      { exec: execReturning(JSON.stringify({ status: 'ok', domains: [] })) },
+    );
+    expect(out.regionChecks[0].status).toBe('orphan_unverifiable');
+  });
+
+  it('flags a constant-region claim as not_applicable_constant', async () => {
+    const out = await confirmRegions(
+      { vh: 'EVQ', claimedRegions: [{ label: 'Fc', sequence: 'DKTHT' }] },
+      { exec: execReturning(HEAVY_BRIDGE) },
+    );
+    expect(out.regionChecks[0].status).toBe('not_applicable_constant');
+  });
+
+  it('soft-degrades to anarci_unavailable without throwing', async () => {
+    const out = await confirmRegions(
+      { vh: 'EVQ', claimedRegions: [{ label: 'CDR-H1', sequence: 'GFS' }] },
+      { exec: execReturning(JSON.stringify({ status: 'anarci_unavailable', error: 'no module named anarci' })) },
+    );
+    expect(out.overallStatus).toBe('anarci_unavailable');
+    expect(out.regionChecks[0].status).toBe('anarci_unavailable');
+    expect(out.domains).toEqual([]);
+  });
+
+  it('throws on unparseable bridge stdout', async () => {
+    await expect(
+      confirmRegions(
+        { vh: 'EVQ', claimedRegions: [] },
+        { exec: execReturning('WARNING: rogue line\n{not json}') },
+      ),
+    ).rejects.toThrow(/unparseable/);
+  });
+});

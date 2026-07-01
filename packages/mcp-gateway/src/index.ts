@@ -6,3 +6,8 @@ export { clinicalTrialsTool } from './clinicalTrials.js';
 export { europePmcSearchTool } from './europePmc.js';
 export { pmcFullTextTool } from './pmcFullText.js';
 export { blastVerifyTool } from './blastVerify.js';
+export { confirmRegions } from './anarci.js';
+export type {
+  ConfirmInput, RegionConfirmation, RegionCheck, RegionStatus,
+  ConfirmedDomain, NumberedRegion, RegionLabel, Exec,
+} from './anarci.js';
