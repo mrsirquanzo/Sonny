@@ -60,7 +60,7 @@ Supported inputs: US, EP, WO and other 2-letter country prefixes followed by dig
 - Response `{ access_token, expires_in }`.
 - **Clock-skew mitigation:** store the local expiry as `now + (expires_in - 300) seconds` (a 5-minute safety buffer) so a token cannot expire mid-flight during the subsequent multi-endpoint fetches.
 - Cache the token in a module-level variable; reuse while unexpired.
-- On a `401` from a data endpoint, discard the cached token, re-authenticate once, and retry the request; a second `401` yields `EPO_AUTH_FAILED`.
+- The 5-minute buffer covers mid-flight expiry during the subsequent multi-endpoint fetches, so no per-request retry is needed. A `401` from the token endpoint or a data endpoint (despite a buffered-valid token) indicates revoked or invalid credentials, where a retry would not help, and maps directly to `EPO_AUTH_FAILED`.
 
 ## Endpoints (OPS 3.2)
 
