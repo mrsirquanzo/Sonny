@@ -199,4 +199,28 @@ describe('lookupPatent', () => {
     expect(rec.found).toBe(false);
     expect(rec.error).toMatch(/^EPO_NETWORK_ERROR:/);
   });
+
+  it('handles a numeric @date in the legal fixture without sinking the record (Fix 1a)', async () => {
+    // LEGAL_NUMERIC_DATE uses a number for @date on the EP member (no quotes around 20220101).
+    // isoDate() must coerce it to string so it parses correctly and the record stays found:true.
+    const LEGAL_NUMERIC_DATE = {
+      'ops:world-patent-data': { 'ops:legal': [
+        { '@country': 'US', '@doc-number': '10123456', 'ops:legal': { '@code': 'PG25' }, '@desc': 'GRANT', '@date': '20180101' },
+        { '@country': 'EP', '@doc-number': '1234567', 'ops:legal': { '@code': 'MM4A' }, '@desc': 'LAPSE', '@date': 20220101 },
+      ] },
+    };
+    resetTokenCache();
+    const fetchImpl = (async (url: string | URL | Request) => {
+      const u = String(url);
+      if (u.includes('/auth/accesstoken')) return new Response(JSON.stringify({ access_token: 'tok', expires_in: 1200 }), { status: 200 });
+      if (u.includes('/published-data/')) return new Response(JSON.stringify(BIBLIO), { status: 200 });
+      if (u.includes('/family/')) return new Response(JSON.stringify(FAMILY), { status: 200 });
+      if (u.includes('/legal/')) return new Response(JSON.stringify(LEGAL_NUMERIC_DATE), { status: 200 });
+      throw new Error(`unexpected url ${u}`);
+    }) as unknown as Fetch;
+    const rec = await lookupPatent('US 10,123,456 B2', { fetchImpl, ...creds });
+    expect(rec.found).toBe(true);
+    const ep = rec.family.find((m) => m.country === 'EP');
+    expect(ep?.status).toBe('inactive'); // MM4A date coerced from number, parsed correctly
+  });
 });

@@ -51,7 +51,7 @@ const LEGAL_CODE_MAP: Record<string, { category: string; effect: LegalEffect }> 
 };
 
 export function normalizePatentNumber(input: string): NormalizedNumber | null {
-  const cleaned = input.replace(/[\s,.\-]/g, '').toUpperCase();
+  const cleaned = String(input ?? '').replace(/[\s,.\-]/g, '').toUpperCase();
   const m = cleaned.match(/^([A-Z]{2})(\d+)([A-Z]\d?)?$/);
   if (!m) return null;
   const [, country, number, kind] = m;
@@ -66,7 +66,6 @@ export function mapLegalCode(code: string): { category?: string; effect: LegalEf
 export function deriveMemberStatus(events: LegalEvent[]): 'active' | 'inactive' | 'unknown' {
   const directional = events
     .filter((e) => e.effect !== 'neutral')
-    .slice()
     .sort((a, b) => (a.date ?? '').localeCompare(b.date ?? ''));
   const latest = directional[directional.length - 1];
   if (!latest) return 'unknown';
@@ -96,9 +95,14 @@ function text(node: unknown): string | undefined {
 }
 
 // Convert EPO's YYYYMMDD to YYYY-MM-DD.
-function isoDate(raw?: string): string | undefined {
-  if (!raw || !/^\d{8}$/.test(raw)) return undefined;
-  return `${raw.slice(0, 4)}-${raw.slice(4, 6)}-${raw.slice(6, 8)}`;
+function isoDate(raw?: unknown): string | undefined {
+  const s = String(raw ?? '');
+  if (!/^\d{8}$/.test(s)) return undefined;
+  return `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}`;
+}
+
+function safeParse<T>(fn: () => T, fallback: T): T {
+  try { return fn(); } catch { return fallback; }
 }
 
 class EpoError extends Error {
@@ -201,8 +205,8 @@ export async function lookupPatent(
       getJson(`${base}/rest-services/legal/publication/epodoc/${norm.epodoc}`, token, fetchImpl).catch(() => null),
     ]);
     const biblio = parseBiblio(biblioJson);
-    const rawFamily = familyJson ? parseFamily(familyJson) : [];
-    const legalByMember = legalJson ? parseLegal(legalJson) : {};
+    const rawFamily = familyJson ? safeParse(() => parseFamily(familyJson), []) : [];
+    const legalByMember = legalJson ? safeParse(() => parseLegal(legalJson), {} as Record<string, LegalEvent[]>) : {};
     const family: FamilyMember[] = rawFamily.map((m) => {
       const events = legalByMember[`${m.country}${m.number}`] ?? [];
       return { ...m, status: deriveMemberStatus(events), events };
