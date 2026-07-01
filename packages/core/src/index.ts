@@ -21,3 +21,4 @@ export { synthesizeRecommendation } from './synthesize.js';
 export { assembleReferences, produceBriefing } from './briefing.js';
 export { safeToolCall, isTransient } from './safeToolCall.js';
 export { targetTerms, relevanceGate } from './relevance.js';
+export { extractPatentData, extractAssociations, type ExtractedPatent, type RegionAssociation } from './patentData.js';
