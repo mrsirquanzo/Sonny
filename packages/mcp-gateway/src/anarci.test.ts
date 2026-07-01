@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
-  normalizeSeq, deriveRegions, matchRegion, isConstantLabel, anchorChainFor,
+  normalizeSeq, deriveRegions, matchRegion, isConstantLabel, anchorChainFor, confirmRegions,
 } from './anarci.js';
 import type { Numbering } from './anarci.js';
+import type { Exec } from './anarci.js';
 
 // A minimal heavy-domain numbering with a CDR-H3 that carries IMGT insertion codes.
 // FR-H1 covers 1-26, CDR-H1 27-38, and CDR-H3 105-117 (with 111A/111B/112B/112A inserts).
@@ -57,9 +58,6 @@ describe('label routing', () => {
     expect(anchorChainFor('Fc')).toBe(null);
   });
 });
-
-import { confirmRegions } from './anarci.js';
-import type { Exec } from './anarci.js';
 
 // Bridge output for a heavy domain: human germline, CDR-H1 = GFS, CDR-H3 = ARGYDSFDY (with inserts).
 const HEAVY_BRIDGE = JSON.stringify({
@@ -152,5 +150,24 @@ describe('confirmRegions', () => {
         { exec: execReturning('WARNING: rogue line\n{not json}') },
       ),
     ).rejects.toThrow(/unparseable/);
+  });
+
+  it('handles an all-gap VH domain without Infinity bounds', async () => {
+    const allGapBridge = JSON.stringify({
+      status: 'ok',
+      domains: [{
+        inputId: 'vh', chain: 'H', species: 'homo_sapiens',
+        germline: { v: 'IGHV3-23*01', j: 'IGHJ4*02' },
+        numbering: [['1', '-'], ['2', '-']],
+      }],
+    });
+    const out = await confirmRegions(
+      { vh: 'XX', claimedRegions: [] },
+      { exec: execReturning(allGapBridge) },
+    );
+    const vh = out.domains[0].numberedRegions.VH;
+    expect(vh?.seq).toBe('');
+    expect(vh?.imgtStart).toBe(0);
+    expect(vh?.imgtEnd).toBe(0);
   });
 });

@@ -138,7 +138,7 @@ const defaultExec: Exec = (scriptPath, stdin) =>
 function fullDomainRegion(numbering: Numbering): NumberedRegion {
   const residues = numbering.filter(([, aa]) => aa !== '-' && aa !== '').map(([pos, aa]) => ({ pos, aa }));
   const nums = residues.map((r) => parseInt(r.pos, 10));
-  return { seq: residues.map((r) => r.aa).join(''), imgtStart: Math.min(...nums), imgtEnd: Math.max(...nums), residues };
+  return { seq: residues.map((r) => r.aa).join(''), imgtStart: nums.length ? Math.min(...nums) : 0, imgtEnd: nums.length ? Math.max(...nums) : 0, residues };
 }
 
 function labelRegions(numbering: Numbering, chain: 'H' | 'K' | 'L'): Partial<Record<RegionLabel, NumberedRegion>> {
@@ -161,6 +161,9 @@ function checkRegion(
     return { label: claim.label, claimedSeq: claim.sequence, status: 'not_applicable_constant' };
   }
   const anchor = anchorChainFor(claim.label);
+  if (anchor === null) {
+    return { label: claim.label, claimedSeq: claim.sequence, status: 'orphan_unverifiable' as const, note: 'no anchor chain for label' };
+  }
   const domain = domains.find((d) => (anchor === 'H' ? d.chain === 'H' : d.chain === 'K' || d.chain === 'L'));
   if (!domain) {
     return { label: claim.label, claimedSeq: claim.sequence, status: 'orphan_unverifiable', note: 'no variable-domain anchor to number' };
