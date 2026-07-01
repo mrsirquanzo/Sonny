@@ -143,9 +143,16 @@ That final classification is a slice-5 synthesis, not this module.
 ## Match semantics
 
 Normalize each sequence (uppercase, strip whitespace) before comparing.
-Then require exact equality between the claimed region and the derived region.
+
+For CDR and framework labels, require exact equality between the claimed region and the derived region (their boundaries are fixed IMGT coordinates).
+
+For the full-domain labels VH and VL, use a substring match instead: `confirmed` when the normalized derived (ANARCI-numbered) domain is a substring of the normalized claimed sequence.
+ANARCI numbers from the first alignable residue and trims N-/C-terminal residues that fall outside the variable-domain HMM, while a patent's declared full VH/VL routinely includes those flanking residues.
+A byte-exact compare would therefore report a false `mismatch` on a biologically identical VH/VL, and because any mismatch drives `overallStatus` to `mismatch`, that would poison the headline status slice 5 consumes.
+The substring rule tolerates the trimming while still catching a genuinely wrong VH/VL (whose numbered core would not be contained in the claimed sequence).
+
 On mismatch, report both `derivedSeq` and `claimedSeq` so the discrepancy is visible.
-No fuzzy or partial matching (YAGNI); boundary-shift analysis is out of scope.
+No fuzzy or approximate matching beyond this VH/VL substring rule (YAGNI); boundary-shift analysis is out of scope.
 
 ## Region routing (which status a claimed label gets)
 
