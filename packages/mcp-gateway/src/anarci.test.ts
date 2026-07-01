@@ -49,12 +49,14 @@ describe('matchRegion', () => {
 describe('label routing', () => {
   it('flags constant labels', () => {
     expect(isConstantLabel('Fc')).toBe(true);
+    expect(isConstantLabel('CH1')).toBe(true);
     expect(isConstantLabel('CDR-H1')).toBe(false);
   });
   it('resolves the anchor chain a label needs', () => {
     expect(anchorChainFor('CDR-H1')).toBe('H');
     expect(anchorChainFor('VH')).toBe('H');
     expect(anchorChainFor('CDR-L2')).toBe('light');
+    expect(anchorChainFor('VL')).toBe('light');
     expect(anchorChainFor('Fc')).toBe(null);
   });
 });
