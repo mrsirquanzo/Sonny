@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   normalizePatentNumber, mapLegalCode, deriveMemberStatus, estimateExpiry,
-  getAccessToken, resetTokenCache,
+  getAccessToken, resetTokenCache, lookupPatent,
 } from './epoPatent.js';
 import type { LegalEvent, Fetch } from './epoPatent.js';
 
@@ -98,5 +98,105 @@ describe('getAccessToken', () => {
     }) as unknown as Fetch;
     await getAccessToken({ fetchImpl, key: 'k', secret: 's', base: 'https://ops.epo.org/3.2', nowMs: 0 });
     expect(seenAuth).toBe(`Basic ${Buffer.from('k:s').toString('base64')}`);
+  });
+});
+
+// Minimal OPS-shaped JSON fixtures. Applicants deliberately use the single-object
+// shape in biblio to exercise the defensive object-or-array coercion.
+const BIBLIO = {
+  'ops:world-patent-data': { 'exchange-documents': { 'exchange-document': {
+    'bibliographic-data': {
+      'parties': {
+        'applicants': { applicant: { 'applicant-name': { name: { $: 'ACME BIO INC' } } } },
+        'inventors': { inventor: [{ 'inventor-name': { name: { $: 'DOE, JANE' } } }] },
+      },
+      'invention-title': { $: 'Anti-CDCP1 antibodies' },
+      'publication-reference': { 'document-id': [{ date: { $: '20200101' } }] },
+      'application-reference': { 'document-id': [{ date: { $: '20050615' } }] },
+      'patent-classifications': { 'patent-classification': [{ 'section': { $: 'C' }, 'class': { $: '07' } }] },
+    },
+  } } },
+};
+const FAMILY = {
+  'ops:world-patent-data': { 'ops:patent-family': { 'ops:family-member': [
+    { 'publication-reference': { 'document-id': [{ 'country': { $: 'US' }, 'doc-number': { $: '10123456' }, 'kind': { $: 'B2' } }] } },
+    { 'publication-reference': { 'document-id': [{ 'country': { $: 'EP' }, 'doc-number': { $: '1234567' }, 'kind': { $: 'B1' } }] } },
+  ] } },
+};
+const LEGAL = {
+  'ops:world-patent-data': { 'ops:legal': [
+    { '@country': 'US', '@doc-number': '10123456', 'ops:legal': { '@code': 'PG25', 'ops:L018EP': { $: '' } }, '@desc': 'GRANT', '@date': '20180101' },
+    { '@country': 'EP', '@doc-number': '1234567', 'ops:legal': { '@code': 'MM4A' }, '@desc': 'LAPSE', '@date': '20220101' },
+  ] },
+};
+
+function opsFetch(): Fetch {
+  return (async (url: string | URL | Request) => {
+    const u = String(url);
+    if (u.includes('/auth/accesstoken')) return new Response(JSON.stringify({ access_token: 'tok', expires_in: 1200 }), { status: 200 });
+    if (u.includes('/published-data/')) return new Response(JSON.stringify(BIBLIO), { status: 200 });
+    if (u.includes('/family/')) return new Response(JSON.stringify(FAMILY), { status: 200 });
+    if (u.includes('/legal/')) return new Response(JSON.stringify(LEGAL), { status: 200 });
+    throw new Error(`unexpected url ${u}`);
+  }) as unknown as Fetch;
+}
+
+describe('lookupPatent', () => {
+  const creds = { key: 'k', secret: 's', base: 'https://ops.epo.org/3.2', nowMs: 0 };
+
+  it('assembles a PatentRecord with applicant, family, and derived legal status', async () => {
+    resetTokenCache();
+    const rec = await lookupPatent('US 10,123,456 B2', { fetchImpl: opsFetch(), ...creds });
+    expect(rec.found).toBe(true);
+    expect(rec.normalized).toBe('US10123456');
+    expect(rec.applicants).toEqual(['ACME BIO INC']);       // single-object shape coerced
+    expect(rec.title).toBe('Anti-CDCP1 antibodies');
+    expect(rec.family.map((m) => `${m.country}${m.number}`)).toEqual(['US10123456', 'EP1234567']);
+    expect(rec.family.find((m) => m.country === 'EP')?.status).toBe('inactive'); // MM4A lapse
+    expect(rec.expiryEstimated).toBe(true);
+    expect(rec.estimatedExpiry).toBe('2025-06-15');         // application date 2005-06-15 + 20
+  });
+
+  it('returns EPO_NORMALIZE_FAILED for an unparseable number without throwing', async () => {
+    resetTokenCache();
+    const rec = await lookupPatent('garbage', { fetchImpl: opsFetch(), ...creds });
+    expect(rec.found).toBe(false);
+    expect(rec.error).toMatch(/^EPO_NORMALIZE_FAILED:/);
+  });
+
+  it('returns EPO_CONFIG_MISSING when credentials are absent', async () => {
+    resetTokenCache();
+    const rec = await lookupPatent('US10123456', { fetchImpl: opsFetch(), key: '', secret: '', base: creds.base, nowMs: 0 });
+    expect(rec.found).toBe(false);
+    expect(rec.error).toMatch(/^EPO_CONFIG_MISSING:/);
+  });
+
+  it('returns EPO_NOT_FOUND on a 404 from biblio', async () => {
+    resetTokenCache();
+    const fetchImpl = (async (url: string | URL | Request) => {
+      const u = String(url);
+      if (u.includes('/auth/accesstoken')) return new Response(JSON.stringify({ access_token: 'tok', expires_in: 1200 }), { status: 200 });
+      if (u.includes('/published-data/')) return new Response('', { status: 404 });
+      return new Response('{}', { status: 200 });
+    }) as unknown as Fetch;
+    const rec = await lookupPatent('US10123456', { fetchImpl, ...creds });
+    expect(rec.found).toBe(false);
+    expect(rec.error).toMatch(/^EPO_NOT_FOUND:/);
+  });
+
+  it('returns EPO_AUTH_FAILED on a 401 from the token endpoint', async () => {
+    resetTokenCache();
+    const fetchImpl = (async () => new Response('', { status: 401 })) as unknown as Fetch;
+    const rec = await lookupPatent('US10123456', { fetchImpl, ...creds });
+    expect(rec.found).toBe(false);
+    expect(rec.error).toMatch(/^EPO_AUTH_FAILED:/);
+  });
+
+  it('returns EPO_NETWORK_ERROR when a fetch rejects', async () => {
+    resetTokenCache();
+    const fetchImpl = (async () => { throw new Error('socket hang up'); }) as unknown as Fetch;
+    const rec = await lookupPatent('US10123456', { fetchImpl, ...creds });
+    expect(rec.found).toBe(false);
+    expect(rec.error).toMatch(/^EPO_NETWORK_ERROR:/);
   });
 });

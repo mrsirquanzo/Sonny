@@ -11,3 +11,5 @@ export type {
   ConfirmInput, RegionConfirmation, RegionCheck, RegionStatus,
   ConfirmedDomain, NumberedRegion, RegionLabel, Exec,
 } from './anarci.js';
+export { lookupPatent } from './epoPatent.js';
+export type { PatentRecord, FamilyMember, LegalEvent, LegalEffect, NormalizedNumber } from './epoPatent.js';
