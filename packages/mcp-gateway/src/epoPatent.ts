@@ -80,3 +80,31 @@ export function estimateExpiry(filingDates: string[]): string | undefined {
   const [y, mo, d] = earliest.split('-');
   return `${Number(y) + 20}-${mo}-${d}`;
 }
+
+export type Fetch = typeof fetch;
+
+const TOKEN_BUFFER_S = 300; // clock-skew safety buffer
+
+let tokenCache: { token: string; expiryMs: number } | null = null;
+
+export function resetTokenCache(): void {
+  tokenCache = null;
+}
+
+export async function getAccessToken(deps: {
+  fetchImpl: Fetch; key: string; secret: string; base: string; nowMs: number;
+}): Promise<string> {
+  if (tokenCache && deps.nowMs < tokenCache.expiryMs) return tokenCache.token;
+  const res = await deps.fetchImpl(`${deps.base}/auth/accesstoken`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Basic ${Buffer.from(`${deps.key}:${deps.secret}`).toString('base64')}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: 'grant_type=client_credentials',
+  });
+  if (!res.ok) throw new Error(`token HTTP ${res.status}`);
+  const body = (await res.json()) as { access_token: string; expires_in: number };
+  tokenCache = { token: body.access_token, expiryMs: deps.nowMs + (body.expires_in - TOKEN_BUFFER_S) * 1000 };
+  return tokenCache.token;
+}

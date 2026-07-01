@@ -56,3 +56,49 @@ describe('estimateExpiry', () => {
     expect(estimateExpiry([])).toBeUndefined();
   });
 });
+
+import { getAccessToken, resetTokenCache } from './epoPatent.js';
+import type { Fetch } from './epoPatent.js';
+
+function tokenFetch(token: string, expiresIn: number, calls: { n: number }): Fetch {
+  return (async (url: string | URL | Request) => {
+    if (String(url).includes('/auth/accesstoken')) {
+      calls.n += 1;
+      return new Response(JSON.stringify({ access_token: token, expires_in: expiresIn }), { status: 200 });
+    }
+    throw new Error(`unexpected url ${String(url)}`);
+  }) as unknown as Fetch;
+}
+
+describe('getAccessToken', () => {
+  it('fetches, caches, and reuses a token within the buffer window', async () => {
+    resetTokenCache();
+    const calls = { n: 0 };
+    const deps = { fetchImpl: tokenFetch('tok-1', 1200, calls), key: 'k', secret: 's', base: 'https://ops.epo.org/3.2' };
+    const t1 = await getAccessToken({ ...deps, nowMs: 0 });
+    const t2 = await getAccessToken({ ...deps, nowMs: 60_000 }); // 1 min later, within (1200-300)s
+    expect(t1).toBe('tok-1');
+    expect(t2).toBe('tok-1');
+    expect(calls.n).toBe(1); // reused, not refetched
+  });
+
+  it('refetches once the buffered expiry has passed', async () => {
+    resetTokenCache();
+    const calls = { n: 0 };
+    const deps = { fetchImpl: tokenFetch('tok-2', 1200, calls), key: 'k', secret: 's', base: 'https://ops.epo.org/3.2' };
+    await getAccessToken({ ...deps, nowMs: 0 });
+    await getAccessToken({ ...deps, nowMs: 1_000_000 }); // past (1200-300)s = 900s = 900000ms
+    expect(calls.n).toBe(2);
+  });
+
+  it('sends HTTP Basic auth built from key and secret', async () => {
+    resetTokenCache();
+    let seenAuth = '';
+    const fetchImpl = (async (url: string | URL | Request, init?: RequestInit) => {
+      seenAuth = String((init?.headers as Record<string, string>)?.Authorization ?? '');
+      return new Response(JSON.stringify({ access_token: 'x', expires_in: 1200 }), { status: 200 });
+    }) as unknown as Fetch;
+    await getAccessToken({ fetchImpl, key: 'k', secret: 's', base: 'https://ops.epo.org/3.2', nowMs: 0 });
+    expect(seenAuth).toBe(`Basic ${Buffer.from('k:s').toString('base64')}`);
+  });
+});
