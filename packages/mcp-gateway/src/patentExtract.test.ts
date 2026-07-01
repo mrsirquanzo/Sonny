@@ -11,7 +11,7 @@ describe('extractPatentNumber', () => {
 });
 
 describe('extractSequenceListing', () => {
-  it('parses SEQ ID NO blocks into normalized residues, de-dupes ids, skips empty', () => {
+  it('parses SEQ ID NO blocks into normalized residues, de-dupes ids, and skips inline references without a residue block', () => {
     const md = [
       'SEQ ID NO: 1',
       'EVQLVESGGG',
@@ -29,5 +29,12 @@ describe('extractSequenceListing', () => {
       { seqId: 1, residues: 'EVQLVESGGG' },
       { seqId: 2, residues: 'DIQMTQSPSS' },
     ]);
+  });
+
+  it('skips residue blocks with fewer than 4 characters after normalization', () => {
+    const md = 'SEQ ID NO: 5\nMET\n';
+    const out = extractSequenceListing(md);
+    const ids = out.map((s) => s.seqId);
+    expect(ids).not.toContain(5);
   });
 });

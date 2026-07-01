@@ -23,7 +23,7 @@ const REGION_LABELS = [
 ] as const;
 
 const AssocSchema = z.object({
-  associations: z.array(z.object({ regionLabel: z.enum(REGION_LABELS), seqId: z.number() })),
+  associations: z.array(z.object({ regionLabel: z.enum(REGION_LABELS), seqId: z.number().int().positive() })),
 });
 
 const SYSTEM =
@@ -33,7 +33,7 @@ const INPUT_CAP = 50000;
 
 // Patents can exceed the model context; bound the input and prefer the claims window where associations live.
 function boundForClaims(markdown: string): string {
-  const idx = markdown.search(/claims/i);
+  const idx = markdown.search(/^\s*#*\s*claims\s*$/im);
   const start = idx >= 0 ? idx : 0;
   return markdown.slice(start, start + INPUT_CAP);
 }

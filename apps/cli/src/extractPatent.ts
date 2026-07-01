@@ -12,7 +12,7 @@ export async function runExtractPatent(
   filePath: string,
   deps: ExtractPatentDeps = {},
 ): Promise<{ ok: true; data: ExtractedPatent } | { ok: false; error: string }> {
-  const ingest = deps.ingest ?? ((f: string) => ingestToMarkdown(f));
+  const ingest = deps.ingest ?? ingestToMarkdown;
   const res = await ingest(filePath);
   if (res.status !== 'ok') return { ok: false, error: res.error ?? 'markitdown unavailable' };
   const model = deps.model ?? makeModel();

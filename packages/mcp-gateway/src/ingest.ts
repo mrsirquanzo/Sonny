@@ -17,7 +17,7 @@ const defaultExec: MarkitdownExec = (filePath) =>
     child.stdout.on('data', (d: Buffer) => { stdout += d.toString(); });
     child.stderr.on('data', (d: Buffer) => { stderr += d.toString(); });
     child.on('error', (e: Error) => resolve({ stdout: '', stderr: String(e), code: -1 }));
-    child.on('close', (code) => resolve({ stdout, stderr, code: code ?? 0 }));
+    child.on('close', (code) => resolve({ stdout, stderr, code: code ?? -1 }));
   });
 
 export async function ingestToMarkdown(
@@ -27,7 +27,7 @@ export async function ingestToMarkdown(
   const exec = deps.exec ?? defaultExec;
   const { stdout, stderr, code } = await exec(filePath);
   if (code !== 0) {
-    return { markdown: '', status: 'markitdown_unavailable', error: `markitdown exit ${code}: ${stderr.trim()}`.trim() };
+    return { markdown: '', status: 'markitdown_unavailable', error: `markitdown exit ${code}: ${stderr.trim()}` };
   }
   return { markdown: stdout, status: 'ok' };
 }
