@@ -1,6 +1,7 @@
 import type { TraceEvent } from '@sonny/shared';
 import { runDossier, AnthropicModel } from '@sonny/core';
 import { openTargetsTargetTool, pubmedTool, clinicalTrialsTool } from '@sonny/mcp-gateway';
+import { runExtractPatent } from './extractPatent.js';
 
 export function formatTrace(events: TraceEvent[]): string {
   return events.map((e) => {
@@ -37,6 +38,14 @@ export function formatTrace(events: TraceEvent[]): string {
 }
 
 export async function main(argv: string[]): Promise<void> {
+  if (argv[2] === 'extract-patent') {
+    const file = argv[3];
+    if (!file) { console.error('usage: extract-patent <file>'); process.exit(1); return; }
+    const out = await runExtractPatent(file);
+    if (!out.ok) { console.error(out.error); process.exit(1); return; }
+    console.log(JSON.stringify(out.data, null, 2));
+    return;
+  }
   if (argv[2] === 'deep') {
     const { runDeep } = await import('./deep.js');
     await runDeep(argv.slice(3).join(' '));
