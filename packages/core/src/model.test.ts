@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { z } from 'zod';
-import { MODEL_ROUTER, AnthropicModel, routerFor, currentBackend, makeModel, type StructuredModel } from './model.js';
+import { MODEL_ROUTER, AnthropicModel, OllamaModel as OllamaModelFromModel, routerFor, currentBackend, makeModel, type StructuredModel } from './model.js';
 import { OllamaModel } from './ollamaModel.js';
 
 process.env.ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY ?? 'test-key-not-used';
@@ -84,5 +84,12 @@ describe('backend routing', () => {
     expect(makeModel()).toBeInstanceOf(OllamaModel);
     process.env.SONNY_BACKEND = 'anthropic';
     expect(makeModel()).toBeInstanceOf(AnthropicModel);
+  });
+});
+
+describe('OllamaModel re-export from model.ts', () => {
+  it('is defined and is a constructor function', () => {
+    expect(OllamaModelFromModel).toBeDefined();
+    expect(typeof OllamaModelFromModel).toBe('function');
   });
 });
