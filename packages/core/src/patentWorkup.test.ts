@@ -2,6 +2,9 @@ import { describe, it, expect } from 'vitest';
 import { groupConstructs } from './patentWorkup.js';
 import type { StructuredModel } from './model.js';
 import type { RegionAssociation } from './patentData.js';
+import { buildWorkup } from './patentWorkup.js';
+import type { PatentReconciliation, VerifiedSequence } from './patentReconcile.js';
+import type { ExtractedPatent } from './patentData.js';
 
 function model(constructs: unknown): StructuredModel {
   return { async generateStructured() { return { constructs } as never; } };
@@ -31,5 +34,56 @@ describe('groupConstructs', () => {
   it('returns [] when the model throws', async () => {
     const throwing: StructuredModel = { async generateStructured() { throw new Error('boom'); } };
     expect(await groupConstructs('c', associations, throwing)).toEqual([]);
+  });
+});
+
+function vseq(over: Partial<VerifiedSequence> & { seqId: number; residues: string }): VerifiedSequence {
+  return { regionLabels: [], length: over.residues.length, blasted: false, patentHits: [], ...over };
+}
+
+const extractedP: ExtractedPatent = { patentNumber: 'US10123456', sequences: [], associations: [] };
+
+function recon(sequences: VerifiedSequence[]): PatentReconciliation {
+  return { patent: { input: 'US10123456', found: true, applicants: ['ACME'], inventors: [], ipc: [], family: [] }, sequences };
+}
+
+describe('buildWorkup', () => {
+  it('confirms a CDR that matches the VH derived region and flags a mismatch', () => {
+    const vh = vseq({
+      seqId: 1, residues: 'EVQLVES', regionLabels: ['VH'],
+      domain: { chain: 'H', species: 'homo_sapiens', numberedRegions: { 'CDR-H1': { seq: 'GFS', imgtStart: 27, imgtEnd: 38, residues: [] } } },
+    });
+    const cdrOk = vseq({ seqId: 3, residues: 'GFS', regionLabels: ['CDR-H1'] });
+    const cdrBad = vseq({ seqId: 4, residues: 'GFT', regionLabels: ['CDR-H1'] });
+    const wk = buildWorkup(extractedP, recon([vh, cdrOk, cdrBad]), [
+      { name: 'Ab1', members: [{ regionLabel: 'VH', seqId: 1 }, { regionLabel: 'CDR-H1', seqId: 3 }] },
+      { name: 'Ab2', members: [{ regionLabel: 'VH', seqId: 1 }, { regionLabel: 'CDR-H1', seqId: 4 }] },
+    ]);
+    expect(wk.constructs[0].regions.find((r) => r.seqId === 3)?.cdrConfirmation).toBe('confirmed');
+    expect(wk.constructs[1].regions.find((r) => r.seqId === 4)?.cdrConfirmation).toBe('mismatch');
+  });
+
+  it('reports no_anchor for a CDR whose construct has no VH domain', () => {
+    const cdr = vseq({ seqId: 5, residues: 'GFS', regionLabels: ['CDR-H1'] });
+    const wk = buildWorkup(extractedP, recon([cdr]), [{ name: 'Ab', members: [{ regionLabel: 'CDR-H1', seqId: 5 }] }]);
+    expect(wk.constructs[0].regions[0].cdrConfirmation).toBe('no_anchor');
+  });
+
+  it('classifies species: human variable + human constant -> human-like; murine variable + human constant -> chimeric', () => {
+    const humanVh = vseq({ seqId: 1, residues: 'E'.repeat(60), regionLabels: ['VH'], domain: { chain: 'H', species: 'homo_sapiens', numberedRegions: {} } });
+    const humanFc = vseq({ seqId: 2, residues: 'F'.repeat(60), regionLabels: ['Fc'], nrTopHit: { database: 'nr', accession: 'x', title: 't', percentIdentity: 100, queryCoverage: 100, mismatchCount: 0, exactMatch: true, organism: 'Homo sapiens' } });
+    const wkHuman = buildWorkup(extractedP, recon([humanVh, humanFc]), [{ name: 'H', members: [{ regionLabel: 'VH', seqId: 1 }, { regionLabel: 'Fc', seqId: 2 }] }]);
+    expect(wkHuman.constructs[0].species.classification).toBe('human-like');
+
+    const mouseVh = vseq({ seqId: 3, residues: 'E'.repeat(60), regionLabels: ['VH'], domain: { chain: 'H', species: 'mus_musculus', numberedRegions: {} } });
+    const wkChimeric = buildWorkup(extractedP, recon([mouseVh, humanFc]), [{ name: 'C', members: [{ regionLabel: 'VH', seqId: 3 }, { regionLabel: 'Fc', seqId: 2 }] }]);
+    expect(wkChimeric.constructs[0].species.classification).toBe('chimeric');
+  });
+
+  it('puts sequences assigned to no construct into ungrouped', () => {
+    const a = vseq({ seqId: 1, residues: 'AAAA', regionLabels: ['VH'] });
+    const orphan = vseq({ seqId: 9, residues: 'BBBB' });
+    const wk = buildWorkup(extractedP, recon([a, orphan]), [{ name: 'Ab', members: [{ regionLabel: 'VH', seqId: 1 }] }]);
+    expect(wk.ungrouped.map((s) => s.seqId)).toEqual([9]);
   });
 });

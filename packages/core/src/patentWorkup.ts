@@ -59,6 +59,76 @@ const ConstructsSchema = z.object({
 const GROUP_SYSTEM =
   'You group a patent\'s disclosed antibody regions into distinct antibody constructs. Read the claims and the region-to-SEQ-ID associations. For each antibody the patent defines, output its name (or a label like "Antibody 1") and the members (regionLabel + seqId) that belong to it. Only use SEQ-IDs present in the associations. Never invent sequences or SEQ-IDs.';
 
+function normalizeResidues(s: string): string {
+  return s.replace(/[^A-Za-z]/g, '').toUpperCase();
+}
+
+function isCdr(label: RegionLabel): boolean {
+  return /^CDR-[HL][1-3]$/.test(label);
+}
+
+const CONSTANT_LABELS: RegionLabel[] = ['Fc', 'CH1', 'CL', 'hinge', 'heavy-chain', 'light-chain', 'Fab'];
+
+function classifySpecies(variableSpecies?: string, constantSpecies?: string): SpeciesClass {
+  const human = (s?: string) => !!s && /homo|human/i.test(s);
+  const nonHuman = (s?: string) => !!s && /mus|mouse|rat|rabbit|rhesus|macaca/i.test(s);
+  if (human(variableSpecies) && (human(constantSpecies) || !constantSpecies)) return 'human-like';
+  if (nonHuman(variableSpecies) && human(constantSpecies)) return 'chimeric';
+  if (nonHuman(variableSpecies) && (nonHuman(constantSpecies) || !constantSpecies)) return 'murine';
+  return 'unknown';
+}
+
+export function buildWorkup(
+  extracted: ExtractedPatent,
+  reconciliation: PatentReconciliation,
+  constructs: AntibodyConstruct[],
+): PatentWorkup {
+  const bySeq = new Map<number, VerifiedSequence>(reconciliation.sequences.map((s) => [s.seqId, s]));
+  const assigned = new Set<number>();
+
+  const workedConstructs: WorkedConstruct[] = constructs.map((c) => {
+    const vhSeq = c.members.filter((m) => m.regionLabel === 'VH').map((m) => bySeq.get(m.seqId)).find(Boolean);
+    const vlSeq = c.members.filter((m) => m.regionLabel === 'VL').map((m) => bySeq.get(m.seqId)).find(Boolean);
+    const derived = vhSeq?.domain?.numberedRegions;
+
+    const regions: WorkedRegion[] = c.members.map((m) => {
+      assigned.add(m.seqId);
+      const vs = bySeq.get(m.seqId);
+      const residues = vs?.residues ?? '';
+      const region: WorkedRegion = { regionLabel: m.regionLabel, seqId: m.seqId, residues, blast: vs?.nrTopHit };
+      if (isCdr(m.regionLabel)) {
+        const d = derived?.[m.regionLabel];
+        region.cdrConfirmation = !d ? 'no_anchor' : normalizeResidues(residues) === normalizeResidues(d.seq) ? 'confirmed' : 'mismatch';
+      }
+      return region;
+    });
+
+    const variableSpecies = (vhSeq ?? vlSeq)?.domain?.species;
+    const constantMember = c.members.find((m) => CONSTANT_LABELS.includes(m.regionLabel));
+    const constantSpecies = constantMember ? bySeq.get(constantMember.seqId)?.nrTopHit?.organism || undefined : undefined;
+    const classification = classifySpecies(variableSpecies, constantSpecies);
+    const species: SpeciesCall = {
+      classification,
+      variableSpecies,
+      constantSpecies,
+      evidence: `variable domain species ${variableSpecies ?? 'unknown'}; constant region species ${constantSpecies ?? 'unknown'}`,
+    };
+
+    return { name: c.name, regions, species };
+  });
+
+  const ungrouped = reconciliation.sequences.filter((s) => !assigned.has(s.seqId));
+
+  return {
+    patentNumber: extracted.patentNumber,
+    patent: reconciliation.patent,
+    constructs: workedConstructs,
+    ungrouped,
+    narrative: { summary: '', points: [] },
+    graph: [],
+  };
+}
+
 export async function groupConstructs(
   markdown: string,
   associations: RegionAssociation[],
