@@ -5,11 +5,15 @@
   "scripts": {
     "test": "vitest run",
     "build": "tsc -p tsconfig.json",
-    "eval": "tsx src/index.ts"
+    "eval": "tsx src/runner.ts"
   },
   "dependencies": {
     "@mrsirquanzo/sonny-shared": "workspace:*",
     "@mrsirquanzo/sonny-core": "workspace:*",
-    "@mrsirquanzo/sonny-mcp-gateway": "workspace:*"
+    "@mrsirquanzo/sonny-mcp-gateway": "workspace:*",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0"
   }
 }

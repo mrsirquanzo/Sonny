@@ -1,5 +1,0 @@
-{
-  "query": "Is EGFR oncogenic in NSCLC?",
-  "symbol": "EGFR",
-  "expectedEvidenceIds": ["ENSG00000146648"]
-}
