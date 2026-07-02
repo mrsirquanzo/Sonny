@@ -58,8 +58,9 @@ function computeCompleteness(
   const missingSeqIds: number[] = [];
   for (let i = 1; i <= referencedMax; i++) if (!foundIds.has(i)) missingSeqIds.push(i);
   const alphabetWarnings: Array<{ seqId: number; invalidChars: string }> = [];
+  // Precondition: residues are expected to be uppercase alpha-only from extractSequenceListing; uppercase defensively here.
   for (const s of sequences) {
-    const invalid = [...new Set(s.residues.split(''))].filter((ch) => !VALID_RESIDUES.has(ch));
+    const invalid = [...new Set(s.residues.toUpperCase().split(''))].filter((ch) => !VALID_RESIDUES.has(ch));
     if (invalid.length > 0) alphabetWarnings.push({ seqId: s.seqId, invalidChars: invalid.join('') });
   }
   return { foundCount: sequences.length, referencedMax, missingSeqIds, alphabetWarnings };

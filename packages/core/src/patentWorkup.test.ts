@@ -169,4 +169,28 @@ describe('pairing gate and non-antibody classification', () => {
     const wk = buildWorkup(extractedP, recon([noDomain]), [{ name: 'X', members: [{ regionLabel: 'Fc', seqId: 1 }] }]);
     expect(wk.disclosureShape).toBe('not-standard-antibody');
   });
+
+  it('classifies empty constructs list as not-standard-antibody', () => {
+    expect(buildWorkup(extractedP, recon([]), []).disclosureShape).toBe('not-standard-antibody');
+  });
+
+  it('does not double-count chains when CDR members share the parent VH/VL seqId', () => {
+    // CDR-H1 and CDR-H2 point at seqId 1 (same as VH); CDR-L1 points at seqId 2 (same as VL).
+    // Without dedup this yields heavy=3, light=2 and falsely flags the construct.
+    const wk = buildWorkup(
+      extractedP,
+      recon([vh(1, 'H'), vh(2, 'K')]),
+      [{
+        name: 'Ab',
+        members: [
+          { regionLabel: 'VH', seqId: 1 },
+          { regionLabel: 'CDR-H1', seqId: 1 },
+          { regionLabel: 'CDR-H2', seqId: 1 },
+          { regionLabel: 'VL', seqId: 2 },
+          { regionLabel: 'CDR-L1', seqId: 2 },
+        ],
+      }],
+    );
+    expect(wk.constructs[0].pairingWarning).toBeUndefined();
+  });
 });

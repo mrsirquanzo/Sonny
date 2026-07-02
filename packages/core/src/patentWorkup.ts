@@ -128,10 +128,12 @@ export function buildWorkup(
       evidence: `variable domain species ${variableSpecies ?? 'unknown'}; constant region species ${constantSpecies ?? 'unknown'}`,
     };
 
-    const chains = c.members
-      .map((m) => bySeq.get(m.seqId)?.domain?.chain)
-      .filter((ch): ch is 'H' | 'K' | 'L' => ch !== undefined);
-    const pairingWarning = pairingWarningFor(chains);
+    const chainBySeq = new Map<number, 'H' | 'K' | 'L'>();
+    for (const m of c.members) {
+      const ch = bySeq.get(m.seqId)?.domain?.chain;
+      if (ch) chainBySeq.set(m.seqId, ch);
+    }
+    const pairingWarning = pairingWarningFor([...chainBySeq.values()]);
 
     return { name: c.name, regions, species, pairingWarning };
   });
