@@ -234,3 +234,27 @@ describe('blastVerifyTool', () => {
     expect(raw.organism).toBe('');
   });
 });
+
+describe('blastVerifyTool short-query params', () => {
+  function captureBodyFetch(bodyOut: { value: string }) {
+    return (async (url: string | URL | Request, init?: RequestInit) => {
+      if (init?.method === 'POST') { bodyOut.value = String(init.body); return new Response(SUBMIT, { status: 200 }); }
+      if (String(url).includes('FORMAT_OBJECT=SearchInfo')) return new Response(statusBody('READY'), { status: 200 });
+      return new Response(RESULT_XML, { status: 200 });
+    }) as unknown as typeof fetch;
+  }
+
+  it('adds WORD_SIZE and MATRIX to the submit body when provided', async () => {
+    const body = { value: '' };
+    await blastVerifyTool.call({ sequence: 'EVQLVESGGG', wordSize: 2, matrix: 'PAM30', pollIntervalMs: 0 }, captureBodyFetch(body));
+    expect(body.value).toContain('WORD_SIZE=2');
+    expect(body.value).toContain('MATRIX=PAM30');
+  });
+
+  it('omits WORD_SIZE and MATRIX when not provided', async () => {
+    const body = { value: '' };
+    await blastVerifyTool.call({ sequence: 'EVQLVESGGG', pollIntervalMs: 0 }, captureBodyFetch(body));
+    expect(body.value).not.toContain('WORD_SIZE');
+    expect(body.value).not.toContain('MATRIX');
+  });
+});

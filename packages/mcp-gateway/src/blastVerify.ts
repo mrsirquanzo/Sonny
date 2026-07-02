@@ -56,6 +56,8 @@ export const blastVerifyTool: Tool = {
       CMD: 'Put', PROGRAM: program, DATABASE: database, QUERY: sequence,
       EXPECT: String(expect), HITLIST_SIZE: String(maxHits), tool: 'sonny', email: EMAIL,
     });
+    if (args.wordSize !== undefined) body.set('WORD_SIZE', String(Number(args.wordSize)));
+    if (args.matrix !== undefined) body.set('MATRIX', String(args.matrix));
     const submit = await fetchImpl(ENDPOINT, { method: 'POST', body });
     if (!submit.ok) throw new Error(`NCBI BLAST submit HTTP ${submit.status}`);
     const submitText = await submit.text();
