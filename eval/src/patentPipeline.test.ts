@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { runPatentPipeline, gotConstructs, gotCompetitorOverlaps } from './patentPipeline.js';
 import { extractionRecall, residueFidelity, setRecall, speciesAccuracy, pairingAccuracy, competitorRecall } from './goldenPatent.js';
 import type { GoldenPatent } from './goldenPatent.js';
-import type { StructuredModel, ReconcileDeps } from '@sonny/core';
+import type { StructuredModel, ReconcileDeps, PatentWorkup } from '@sonny/core';
 import type { Evidence } from '@sonny/shared';
 
 const golden = JSON.parse(readFileSync(fileURLToPath(new URL('../golden/synthetic-antibody.json', import.meta.url)), 'utf8')) as GoldenPatent;
@@ -43,8 +43,7 @@ const reconcileDeps: ReconcileDeps = {
   epo: async () => ({ input: 'US10123456', normalized: 'US10123456', found: true, applicants: ['ACME BIO INC'], inventors: [], ipc: [], family: [{ country: 'EP', number: '1234567', status: 'active', events: [] }] }),
 };
 
-import { gotCompetitorOverlaps } from './patentPipeline.js';
-import type { PatentWorkup } from '@sonny/core';
+
 
 describe('gotCompetitorOverlaps level', () => {
   it('derives cdr vs whole from edge provenance', () => {

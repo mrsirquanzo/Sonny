@@ -1,9 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { groupConstructs, buildWorkup, synthesizeCompetitiveIP, graphRelationships } from './patentWorkup.js';
+import { groupConstructs, buildWorkup, synthesizeCompetitiveIP, graphRelationships, matchCdrCompetitors } from './patentWorkup.js';
 import type { StructuredModel } from './model.js';
 import type { RegionAssociation, ExtractedPatent } from './patentData.js';
 import type { PatentReconciliation, VerifiedSequence } from './patentReconcile.js';
 import type { PatentWorkup } from './patentWorkup.js';
+import type { Evidence } from '@sonny/shared';
 
 function model(constructs: unknown): StructuredModel {
   return { async generateStructured() { return { constructs } as never; } };
@@ -195,9 +196,7 @@ describe('pairing gate and non-antibody classification', () => {
   });
 });
 
-import { matchCdrCompetitors } from './patentWorkup.js';
-import type { PatentReconciliation, VerifiedSequence } from './patentReconcile.js';
-import type { Evidence } from '@sonny/shared';
+
 
 function evH(raw: Record<string, unknown>): Evidence {
   return { id: `BLAST:${raw.accession}`, kind: 'patent', source: 'blast', title: 'hit', snippet: '', url: '', raw, retrievedAt: '' };
@@ -212,7 +211,7 @@ function reconWithVh(cdrh3: string): PatentReconciliation {
 }
 
 describe('matchCdrCompetitors', () => {
-  const workupWith = () => ({
+  const workupWith = (): PatentWorkup => ({
     patentNumber: 'US1', patent: { input: 'US1', found: true, applicants: ['ACME'], inventors: [], ipc: [], family: [] },
     constructs: [{ name: 'Ab1', regions: [{ regionLabel: 'VH' as const, seqId: 1, residues: 'E'.repeat(60) }], species: { classification: 'human-like' as const, evidence: '' } }],
     ungrouped: [], narrative: { summary: '', points: [] }, graph: [],
