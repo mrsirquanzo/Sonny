@@ -29,8 +29,9 @@ export interface SpeciesCall {
 
 export interface WorkedConstruct { name: string; regions: WorkedRegion[]; species: SpeciesCall; pairingWarning?: string }
 
-export interface IpPoint { point: string; citations: string[] }
-export interface CompetitiveIP { summary: string; points: IpPoint[] }
+export type ClaimVerdict = 'supported' | 'unsupported' | 'overreach' | 'unverified';
+export interface IpPoint { point: string; citations: string[]; verdict?: ClaimVerdict }
+export interface CompetitiveIP { summary: string; points: IpPoint[]; decorrelated?: boolean; verified?: boolean }
 
 export type EdgePredicate = 'OWNED_BY' | 'DISCLOSES' | 'HAS_REGION' | 'MATCHES';
 export interface Relationship {

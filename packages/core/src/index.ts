@@ -28,4 +28,6 @@ export {
   type AntibodyConstruct, type ConstructMember, type WorkedConstruct, type WorkedRegion,
   type SpeciesCall, type SpeciesClass, type CdrConfirmation, type CompetitiveIP, type IpPoint,
   type Relationship, type EdgePredicate, type PatentWorkup,
+  type ClaimVerdict,
 } from './patentWorkup.js';
+export { makeDecorrelatedVerifier, verifyNarrative, type Verifier } from './narrativeVerify.js';
