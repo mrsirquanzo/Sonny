@@ -245,4 +245,10 @@ describe('matchCdrCompetitors', () => {
     const g = graphRelationships(wk as never);
     expect(g).toContainEqual({ subject: 'SEQ:1', predicate: 'MATCHES', object: 'PAT_CDR', provenance: 'blast-cdr-h3', confidence: 'claimed' });
   });
+
+  it('never throws and leaves cdrCompetitors empty when the blast call itself fails', async () => {
+    const wk = workupWith();
+    await expect(matchCdrCompetitors(wk, reconWithVh('ARDYYGSSYFDY'), async () => { throw new Error('blast down'); })).resolves.toBeUndefined();
+    expect(wk.constructs[0].cdrCompetitors ?? []).toEqual([]);
+  });
 });
