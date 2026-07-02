@@ -122,7 +122,7 @@ export const blastVerifyTool: Tool = {
         snippet,
         passage: `Aligned ${alignLen} residues, query coverage ${queryCoverage}%.`,
         url: `https://www.ncbi.nlm.nih.gov/${accPath}/${accession}`,
-        raw: { accession, percentIdentity, eValue, bitScore, queryCoverage, organism, database, program },
+        raw: { accession, percentIdentity, eValue, bitScore, queryCoverage, organism, database, program, identity, alignLen },
         retrievedAt: now,
       };
     });

@@ -90,12 +90,14 @@ describe('blastVerifyTool', () => {
     expect(e.id).toBe('BLAST:ABC12345');
     expect(e.kind).toBe('dataset');
     expect(e.title).toBe('anti-CDCP1 antibody heavy chain [Homo sapiens]');
-    const raw = e.raw as { percentIdentity: number; eValue: string; organism: string; queryCoverage: number; database: string; program: string };
+    const raw = e.raw as { percentIdentity: number; eValue: string; organism: string; queryCoverage: number; database: string; program: string; identity: number; alignLen: number };
     expect(raw.percentIdentity).toBe(100);
     expect(raw.queryCoverage).toBe(100);
     expect(raw.eValue).toBe('1e-80');
     expect(raw.organism).toBe('Homo sapiens');
     expect(raw.program).toBe('blastp');
+    expect(raw.identity).toBe(120);
+    expect(raw.alignLen).toBe(120);
     expect(e.snippet).toBe('100% id, E=1e-80, Homo sapiens');
   });
 
