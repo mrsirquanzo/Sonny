@@ -4,6 +4,13 @@ import { MODEL_ROUTER } from './model.js';
 import { extractPatentNumber, extractSequenceListing } from '@sonny/mcp-gateway';
 import type { ExtractedSequence, RegionLabel } from '@sonny/mcp-gateway';
 
+export interface ExtractionCompleteness {
+  foundCount: number;
+  referencedMax: number;
+  missingSeqIds: number[];
+  alphabetWarnings: Array<{ seqId: number; invalidChars: string }>;
+}
+
 export interface RegionAssociation {
   regionLabel: RegionLabel;
   seqId: number;
@@ -14,6 +21,7 @@ export interface ExtractedPatent {
   patentNumber: string | null;
   sequences: ExtractedSequence[];
   associations: RegionAssociation[];
+  completeness?: ExtractionCompleteness;
 }
 
 export const REGION_LABELS = [
@@ -38,6 +46,25 @@ export function boundForClaims(markdown: string): string {
   return markdown.slice(start, start + INPUT_CAP);
 }
 
+// Standard 20 amino acids plus U (selenocysteine / RNA) and N (nucleotide ambiguity). ACGT are already AA letters.
+const VALID_RESIDUES = new Set('ACDEFGHIKLMNPQRSTVWYUN'.split(''));
+
+function computeCompleteness(
+  sequences: Array<{ seqId: number; residues: string }>,
+  associations: Array<{ seqId: number }>,
+): ExtractionCompleteness {
+  const foundIds = new Set(sequences.map((s) => s.seqId));
+  const referencedMax = Math.max(0, ...sequences.map((s) => s.seqId), ...associations.map((a) => a.seqId));
+  const missingSeqIds: number[] = [];
+  for (let i = 1; i <= referencedMax; i++) if (!foundIds.has(i)) missingSeqIds.push(i);
+  const alphabetWarnings: Array<{ seqId: number; invalidChars: string }> = [];
+  for (const s of sequences) {
+    const invalid = [...new Set(s.residues.split(''))].filter((ch) => !VALID_RESIDUES.has(ch));
+    if (invalid.length > 0) alphabetWarnings.push({ seqId: s.seqId, invalidChars: invalid.join('') });
+  }
+  return { foundCount: sequences.length, referencedMax, missingSeqIds, alphabetWarnings };
+}
+
 export async function extractAssociations(
   markdown: string,
   model: StructuredModel,
@@ -60,9 +87,11 @@ export async function extractPatentData(markdown: string, model: StructuredModel
   const sequences = extractSequenceListing(markdown);
   const associations = await extractAssociations(markdown, model);
   const byId = new Map(sequences.map((s) => [s.seqId, s.residues]));
+  const completeness = computeCompleteness(sequences, associations);
   return {
     patentNumber,
     sequences,
     associations: associations.map((a) => ({ ...a, residues: byId.get(a.seqId) })),
+    completeness,
   };
 }

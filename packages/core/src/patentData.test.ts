@@ -39,3 +39,23 @@ describe('extractAssociations', () => {
     expect(await extractAssociations(MD, throwing)).toEqual([]);
   });
 });
+
+describe('extraction completeness', () => {
+  it('flags referenced-but-unextracted SEQ-IDs and residue-alphabet garbage', async () => {
+    const md = [
+      'Patent US 10,123,456 B2', 'Claims',
+      '1. antibody comprising CDR-H1 of SEQ ID NO: 5.',   // references seq 5, never listed
+      '', 'SEQ ID NO: 1', 'EVQLVES', '', 'SEQ ID NO: 2', 'DIQBZOX', '',   // seq 2 has non-residue letters
+    ].join('\n');
+    // model returns an association referencing SEQ-ID 5 (which has no listed sequence)
+    const model = { async generateStructured() { return { associations: [{ regionLabel: 'CDR-H1', seqId: 5 }] } as never; } };
+    const data = await extractPatentData(md, model);
+    const c = data.completeness!;   // extractPatentData always populates it
+    expect(c.foundCount).toBe(2);
+    expect(c.referencedMax).toBe(5);
+    expect(c.missingSeqIds).toEqual([3, 4, 5]);
+    const warn = c.alphabetWarnings.find((w) => w.seqId === 2);
+    expect(warn?.invalidChars).toContain('B');
+    expect(c.alphabetWarnings.find((w) => w.seqId === 1)).toBeUndefined(); // clean
+  });
+});
