@@ -2,6 +2,7 @@ import type { TraceEvent } from '@sonny/shared';
 import { runDossier, AnthropicModel } from '@sonny/core';
 import { openTargetsTargetTool, pubmedTool, clinicalTrialsTool } from '@sonny/mcp-gateway';
 import { runExtractPatent } from './extractPatent.js';
+import { runPatentWorkup } from './patentWorkup.js';
 
 export function formatTrace(events: TraceEvent[]): string {
   return events.map((e) => {
@@ -44,6 +45,14 @@ export async function main(argv: string[]): Promise<void> {
     const out = await runExtractPatent(file);
     if (!out.ok) { console.error(out.error); process.exit(1); return; }
     console.log(JSON.stringify(out.data, null, 2));
+    return;
+  }
+  if (argv[2] === 'patent-workup') {
+    const file = argv[3];
+    if (!file) { console.error('usage: patent-workup <file>'); process.exit(1); return; }
+    const out = await runPatentWorkup(file);
+    if (!out.ok) { console.error(out.error); process.exit(1); return; }
+    console.log(JSON.stringify(out.workup, null, 2));
     return;
   }
   if (argv[2] === 'deep') {
