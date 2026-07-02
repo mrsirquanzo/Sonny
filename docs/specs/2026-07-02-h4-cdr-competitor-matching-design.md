@@ -40,7 +40,7 @@ For each construct:
 
 ## 3. Graph + level distinction
 
-`graphRelationships` emits a `MATCHES` edge for each CDR competitor with provenance `blast-cdr-h3` (vs `blast-pataa` for whole-sequence), so the two levels are distinguishable downstream. Confidence: `claimed` (a CDR match is a lineage signal, not proof the whole molecule is identical). Object = the competitor accession; subject = the construct name (the CDR match is a construct-level property, not a single SEQ-ID).
+`graphRelationships` emits a `MATCHES` edge for each CDR competitor with provenance `blast-cdr-h3` (vs `blast-pataa` for whole-sequence), so the two levels are distinguishable downstream. Confidence: `claimed` (a CDR match is a lineage signal, not proof the whole molecule is identical). Object = the competitor accession; subject = `SEQ:<vhSeqId>` (the VH sequence id, keyed the same way as whole-sequence MATCHES edges - not the construct name).
 
 ## 4. Eval level derivation (closes the H1a-deferred minor)
 
