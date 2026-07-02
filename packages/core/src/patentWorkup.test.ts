@@ -142,3 +142,31 @@ describe('graphRelationships', () => {
     expect(g).toContainEqual({ subject: 'SEQ:1', predicate: 'MATCHES', object: 'PAT_A', provenance: 'blast-pataa', confidence: 'verified' });
   });
 });
+
+describe('pairing gate and non-antibody classification', () => {
+  function vh(seqId: number, chain: 'H' | 'K' | 'L') {
+    return vseq({ seqId, residues: 'E'.repeat(60), regionLabels: [chain === 'H' ? 'VH' : 'VL'], domain: { chain, species: 'homo_sapiens', numberedRegions: {} } });
+  }
+
+  it('sets no pairingWarning for a complementary heavy+light construct and disclosureShape antibody', () => {
+    const wk = buildWorkup(extractedP, recon([vh(1, 'H'), vh(2, 'K')]),
+      [{ name: 'Ab', members: [{ regionLabel: 'VH', seqId: 1 }, { regionLabel: 'VL', seqId: 2 }] }]);
+    expect(wk.constructs[0].pairingWarning).toBeUndefined();
+    expect(wk.disclosureShape).toBe('antibody');
+  });
+
+  it('flags two heavy chains and a lone heavy chain', () => {
+    const twoH = buildWorkup(extractedP, recon([vh(1, 'H'), vh(2, 'H')]),
+      [{ name: 'AbHH', members: [{ regionLabel: 'VH', seqId: 1 }, { regionLabel: 'VH', seqId: 2 }] }]);
+    expect(twoH.constructs[0].pairingWarning).toBeTruthy();
+
+    const lone = buildWorkup(extractedP, recon([vh(1, 'H')]), [{ name: 'AbH', members: [{ regionLabel: 'VH', seqId: 1 }] }]);
+    expect(lone.constructs[0].pairingWarning).toBeTruthy();
+  });
+
+  it('classifies a disclosure with no numbered variable domain as not-standard-antibody', () => {
+    const noDomain = vseq({ seqId: 1, residues: 'AAAA', regionLabels: ['Fc'] });
+    const wk = buildWorkup(extractedP, recon([noDomain]), [{ name: 'X', members: [{ regionLabel: 'Fc', seqId: 1 }] }]);
+    expect(wk.disclosureShape).toBe('not-standard-antibody');
+  });
+});

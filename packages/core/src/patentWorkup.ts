@@ -27,7 +27,7 @@ export interface SpeciesCall {
   evidence: string;
 }
 
-export interface WorkedConstruct { name: string; regions: WorkedRegion[]; species: SpeciesCall }
+export interface WorkedConstruct { name: string; regions: WorkedRegion[]; species: SpeciesCall; pairingWarning?: string }
 
 export interface IpPoint { point: string; citations: string[] }
 export interface CompetitiveIP { summary: string; points: IpPoint[] }
@@ -48,6 +48,7 @@ export interface PatentWorkup {
   ungrouped: VerifiedSequence[];
   narrative: CompetitiveIP;
   graph: Relationship[];
+  disclosureShape?: 'antibody' | 'not-standard-antibody';
 }
 
 const ConstructsSchema = z.object({
@@ -59,6 +60,18 @@ const ConstructsSchema = z.object({
 
 const GROUP_SYSTEM =
   'You group a patent\'s disclosed antibody regions into distinct antibody constructs. Read the claims and the region-to-SEQ-ID associations. For each antibody the patent defines, output its name (or a label like "Antibody 1") and the members (regionLabel + seqId) that belong to it. Only use SEQ-IDs present in the associations. Never invent sequences or SEQ-IDs.';
+
+function pairingWarningFor(chains: Array<'H' | 'K' | 'L'>): string | undefined {
+  if (chains.length === 0) return undefined; // no numbered domain -> handled by disclosureShape
+  const heavy = chains.filter((c) => c === 'H').length;
+  const light = chains.filter((c) => c === 'K' || c === 'L').length;
+  if (heavy === 1 && light === 1) return undefined;
+  if (heavy > 1) return 'two or more heavy chains grouped into one construct';
+  if (light > 1) return 'two or more light chains grouped into one construct';
+  if (heavy === 1 && light === 0) return 'heavy chain with no paired light chain';
+  if (light === 1 && heavy === 0) return 'light chain with no paired heavy chain';
+  return undefined;
+}
 
 function normalizeResidues(s: string): string {
   return s.replace(/[^A-Za-z]/g, '').toUpperCase();
@@ -115,10 +128,18 @@ export function buildWorkup(
       evidence: `variable domain species ${variableSpecies ?? 'unknown'}; constant region species ${constantSpecies ?? 'unknown'}`,
     };
 
-    return { name: c.name, regions, species };
+    const chains = c.members
+      .map((m) => bySeq.get(m.seqId)?.domain?.chain)
+      .filter((ch): ch is 'H' | 'K' | 'L' => ch !== undefined);
+    const pairingWarning = pairingWarningFor(chains);
+
+    return { name: c.name, regions, species, pairingWarning };
   });
 
   const ungrouped = reconciliation.sequences.filter((s) => !assigned.has(s.seqId));
+
+  const anyDomain = constructs.some((c) => c.members.some((m) => bySeq.get(m.seqId)?.domain !== undefined));
+  const disclosureShape: PatentWorkup['disclosureShape'] = anyDomain ? 'antibody' : 'not-standard-antibody';
 
   return {
     patentNumber: extracted.patentNumber,
@@ -127,6 +148,7 @@ export function buildWorkup(
     ungrouped,
     narrative: { summary: '', points: [] },
     graph: [],
+    disclosureShape,
   };
 }
 
