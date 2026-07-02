@@ -23,3 +23,9 @@ export { safeToolCall, isTransient } from './safeToolCall.js';
 export { targetTerms, relevanceGate } from './relevance.js';
 export { extractPatentData, extractAssociations, type ExtractedPatent, type RegionAssociation } from './patentData.js';
 export { reconcilePatent, type PatentReconciliation, type VerifiedSequence, type BlastHit, type ReconcileDeps } from './patentReconcile.js';
+export {
+  groupConstructs,
+  type AntibodyConstruct, type ConstructMember, type WorkedConstruct, type WorkedRegion,
+  type SpeciesCall, type SpeciesClass, type CdrConfirmation, type CompetitiveIP, type IpPoint,
+  type Relationship, type EdgePredicate, type PatentWorkup,
+} from './patentWorkup.js';

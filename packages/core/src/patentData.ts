@@ -16,7 +16,7 @@ export interface ExtractedPatent {
   associations: RegionAssociation[];
 }
 
-const REGION_LABELS = [
+export const REGION_LABELS = [
   'VH', 'VL', 'CDR-H1', 'CDR-H2', 'CDR-H3', 'CDR-L1', 'CDR-L2', 'CDR-L3',
   'FR-H1', 'FR-H2', 'FR-H3', 'FR-H4', 'FR-L1', 'FR-L2', 'FR-L3', 'FR-L4',
   'Fc', 'CH1', 'CL', 'hinge', 'heavy-chain', 'light-chain', 'Fab',
@@ -32,7 +32,7 @@ const SYSTEM =
 const INPUT_CAP = 50000;
 
 // Patents can exceed the model context; bound the input and prefer the claims window where associations live.
-function boundForClaims(markdown: string): string {
+export function boundForClaims(markdown: string): string {
   const idx = markdown.search(/^\s*#*\s*claims\s*$/im);
   const start = idx >= 0 ? idx : 0;
   return markdown.slice(start, start + INPUT_CAP);
