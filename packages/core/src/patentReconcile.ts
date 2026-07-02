@@ -39,7 +39,7 @@ export interface ReconcileDeps {
   epo?: (input: string) => Promise<PatentRecord>;
 }
 
-function toBlastHit(e: Evidence | undefined, database: string): BlastHit | undefined {
+export function toBlastHit(e: Evidence | undefined, database: string): BlastHit | undefined {
   if (!e) return undefined;
   const raw = e.raw as {
     accession?: string; percentIdentity?: number; queryCoverage?: number; organism?: string; identity?: number; alignLen?: number;

@@ -4,6 +4,8 @@ import { MODEL_ROUTER } from './model.js';
 import { REGION_LABELS, boundForClaims } from './patentData.js';
 import type { RegionAssociation, ExtractedPatent } from './patentData.js';
 import type { RegionLabel, PatentRecord } from '@sonny/mcp-gateway';
+import type { Evidence } from '@sonny/shared';
+import { toBlastHit } from './patentReconcile.js';
 import type { BlastHit, VerifiedSequence, PatentReconciliation } from './patentReconcile.js';
 
 export interface ConstructMember { regionLabel: RegionLabel; seqId: number }
@@ -27,7 +29,7 @@ export interface SpeciesCall {
   evidence: string;
 }
 
-export interface WorkedConstruct { name: string; regions: WorkedRegion[]; species: SpeciesCall; pairingWarning?: string }
+export interface WorkedConstruct { name: string; regions: WorkedRegion[]; species: SpeciesCall; pairingWarning?: string; cdrCompetitors?: BlastHit[] }
 
 export type ClaimVerdict = 'supported' | 'unsupported' | 'overreach' | 'unverified';
 export interface IpPoint { point: string; citations: string[]; verdict?: ClaimVerdict; verdictRationale?: string }
@@ -192,6 +194,35 @@ export async function synthesizeCompetitiveIP(workup: PatentWorkup, model: Struc
   }
 }
 
+const CDRH3_MIN_IDENTITY = 90;
+
+export type CdrBlast = (
+  sequence: string,
+  database: string,
+  opts?: { wordSize?: number; matrix?: string; expect?: number },
+) => Promise<Evidence[]>;
+
+export async function matchCdrCompetitors(
+  workup: PatentWorkup,
+  reconciliation: PatentReconciliation,
+  blast: CdrBlast,
+): Promise<void> {
+  const bySeq = new Map<number, VerifiedSequence>(reconciliation.sequences.map((s) => [s.seqId, s]));
+  for (const c of workup.constructs) {
+    const vhSeqId = c.regions.find((r) => r.regionLabel === 'VH')?.seqId;
+    const cdrh3 = vhSeqId !== undefined ? bySeq.get(vhSeqId)?.domain?.numberedRegions?.['CDR-H3']?.seq : undefined;
+    if (!cdrh3) continue;
+    try {
+      const hits = await blast(cdrh3, 'pataa', { wordSize: 2, matrix: 'PAM30', expect: 200000 });
+      c.cdrCompetitors = hits
+        .map((h) => toBlastHit(h, 'pataa'))
+        .filter((h): h is BlastHit => h !== undefined && h.percentIdentity >= CDRH3_MIN_IDENTITY);
+    } catch {
+      c.cdrCompetitors = [];
+    }
+  }
+}
+
 export function graphRelationships(workup: PatentWorkup): Relationship[] {
   const edges: Relationship[] = [];
   const subject = workup.patentNumber ?? workup.patent.input ?? 'unknown-patent';
@@ -215,6 +246,12 @@ export function graphRelationships(workup: PatentWorkup): Relationship[] {
       edges.push({ subject: c.name, predicate: 'HAS_REGION', object: `SEQ:${r.seqId}`, provenance: 'claims-grouping', confidence: 'claimed' });
       for (const hit of r.patentMatches ?? []) {
         edges.push({ subject: `SEQ:${r.seqId}`, predicate: 'MATCHES', object: hit.accession, provenance: 'blast-pataa', confidence: hit.exactMatch ? 'verified' : 'claimed' });
+      }
+    }
+    const vhSeqId = c.regions.find((r) => r.regionLabel === 'VH')?.seqId;
+    if (vhSeqId !== undefined) {
+      for (const hit of c.cdrCompetitors ?? []) {
+        edges.push({ subject: `SEQ:${vhSeqId}`, predicate: 'MATCHES', object: hit.accession, provenance: 'blast-cdr-h3', confidence: 'claimed' });
       }
     }
   }

@@ -25,9 +25,10 @@ export { extractPatentData, extractAssociations, type ExtractedPatent, type Regi
 export { reconcilePatent, type PatentReconciliation, type VerifiedSequence, type BlastHit, type ReconcileDeps } from './patentReconcile.js';
 export {
   groupConstructs, buildWorkup, synthesizeCompetitiveIP, graphRelationships,
+  matchCdrCompetitors,
   type AntibodyConstruct, type ConstructMember, type WorkedConstruct, type WorkedRegion,
   type SpeciesCall, type SpeciesClass, type CdrConfirmation, type CompetitiveIP, type IpPoint,
   type Relationship, type EdgePredicate, type PatentWorkup,
-  type ClaimVerdict,
+  type ClaimVerdict, type CdrBlast,
 } from './patentWorkup.js';
 export { makeDecorrelatedVerifier, verifyNarrative, type Verifier } from './narrativeVerify.js';

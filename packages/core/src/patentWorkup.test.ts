@@ -194,3 +194,55 @@ describe('pairing gate and non-antibody classification', () => {
     expect(wk.constructs[0].pairingWarning).toBeUndefined();
   });
 });
+
+import { matchCdrCompetitors } from './patentWorkup.js';
+import type { PatentReconciliation, VerifiedSequence } from './patentReconcile.js';
+import type { Evidence } from '@sonny/shared';
+
+function evH(raw: Record<string, unknown>): Evidence {
+  return { id: `BLAST:${raw.accession}`, kind: 'patent', source: 'blast', title: 'hit', snippet: '', url: '', raw, retrievedAt: '' };
+}
+
+function reconWithVh(cdrh3: string): PatentReconciliation {
+  const vh: VerifiedSequence = {
+    seqId: 1, residues: 'E'.repeat(60), regionLabels: ['VH'], length: 60, blasted: true, patentHits: [],
+    domain: { chain: 'H', species: 'homo_sapiens', numberedRegions: { 'CDR-H3': { seq: cdrh3, imgtStart: 105, imgtEnd: 117, residues: [] } } },
+  };
+  return { patent: { input: 'US1', found: true, applicants: ['ACME'], inventors: [], ipc: [], family: [] }, sequences: [vh] };
+}
+
+describe('matchCdrCompetitors', () => {
+  const workupWith = () => ({
+    patentNumber: 'US1', patent: { input: 'US1', found: true, applicants: ['ACME'], inventors: [], ipc: [], family: [] },
+    constructs: [{ name: 'Ab1', regions: [{ regionLabel: 'VH' as const, seqId: 1, residues: 'E'.repeat(60) }], species: { classification: 'human-like' as const, evidence: '' } }],
+    ungrouped: [], narrative: { summary: '', points: [] }, graph: [],
+  });
+
+  it('BLASTs the derived CDR-H3 against pataa with short-query opts and keeps >=90% hits', async () => {
+    const calls: Array<{ seq: string; db: string; opts: unknown }> = [];
+    const blast = async (seq: string, db: string, opts?: unknown) => {
+      calls.push({ seq, db, opts });
+      return [evH({ accession: 'PAT_CDR', percentIdentity: 100, queryCoverage: 100, identity: 12, alignLen: 12, organism: '' }),
+        evH({ accession: 'PAT_LOW', percentIdentity: 85, queryCoverage: 100, identity: 10, alignLen: 12, organism: '' })];
+    };
+    const wk = workupWith();
+    await matchCdrCompetitors(wk, reconWithVh('ARDYYGSSYFDY'), blast);
+    expect(calls[0].seq).toBe('ARDYYGSSYFDY');
+    expect(calls[0].db).toBe('pataa');
+    expect(calls[0].opts).toMatchObject({ wordSize: 2, matrix: 'PAM30' });
+    expect(wk.constructs[0].cdrCompetitors?.map((h) => h.accession)).toEqual(['PAT_CDR']); // PAT_LOW 85% dropped
+  });
+
+  it('does not BLAST when the VH has no derived CDR-H3, and never throws on a blast failure', async () => {
+    const wk = workupWith();
+    await matchCdrCompetitors(wk, { patent: reconWithVh('X').patent, sequences: [{ seqId: 1, residues: 'E'.repeat(60), regionLabels: ['VH'], length: 60, blasted: true, patentHits: [] }] }, async () => { throw new Error('x'); });
+    expect(wk.constructs[0].cdrCompetitors ?? []).toEqual([]);
+  });
+
+  it('graphRelationships emits a cdr-level MATCHES edge keyed on the VH SEQ with provenance blast-cdr-h3', () => {
+    const wk = workupWith();
+    wk.constructs[0].cdrCompetitors = [{ database: 'pataa', accession: 'PAT_CDR', title: 't', percentIdentity: 100, queryCoverage: 100, mismatchCount: 0, exactMatch: true, organism: '' }];
+    const g = graphRelationships(wk as never);
+    expect(g).toContainEqual({ subject: 'SEQ:1', predicate: 'MATCHES', object: 'PAT_CDR', provenance: 'blast-cdr-h3', confidence: 'claimed' });
+  });
+});
