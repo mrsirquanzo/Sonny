@@ -1,14 +1,15 @@
 import { ingestToMarkdown } from '@sonny/mcp-gateway';
 import type { IngestResult } from '@sonny/mcp-gateway';
 import {
-  extractPatentData, reconcilePatent, groupConstructs, buildWorkup, synthesizeCompetitiveIP, graphRelationships, makeModel,
+  extractPatentData, reconcilePatent, groupConstructs, buildWorkup, synthesizeCompetitiveIP, graphRelationships, makeModel, makeDecorrelatedVerifier, verifyNarrative,
 } from '@sonny/core';
-import type { StructuredModel, ReconcileDeps, PatentWorkup } from '@sonny/core';
+import type { StructuredModel, ReconcileDeps, PatentWorkup, Verifier } from '@sonny/core';
 
 export interface WorkupDeps {
   ingest?: (filePath: string) => Promise<IngestResult>;
   model?: StructuredModel;
   reconcileDeps?: ReconcileDeps;
+  verifier?: Verifier;
 }
 
 export async function runPatentWorkup(
@@ -26,6 +27,8 @@ export async function runPatentWorkup(
     const constructs = await groupConstructs(res.markdown, extracted.associations, model);
     const workup = buildWorkup(extracted, reconciliation, constructs);
     workup.narrative = await synthesizeCompetitiveIP(workup, model);
+    const verifier = deps.verifier ?? makeDecorrelatedVerifier();
+    workup.narrative = await verifyNarrative(workup.narrative, workup, verifier);
     workup.graph = graphRelationships(workup);
     return { ok: true, workup };
   } catch (e) {
