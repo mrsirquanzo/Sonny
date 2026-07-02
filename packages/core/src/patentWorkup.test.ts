@@ -1,10 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { groupConstructs } from './patentWorkup.js';
+import { groupConstructs, buildWorkup, synthesizeCompetitiveIP } from './patentWorkup.js';
 import type { StructuredModel } from './model.js';
-import type { RegionAssociation } from './patentData.js';
-import { buildWorkup } from './patentWorkup.js';
+import type { RegionAssociation, ExtractedPatent } from './patentData.js';
 import type { PatentReconciliation, VerifiedSequence } from './patentReconcile.js';
-import type { ExtractedPatent } from './patentData.js';
+import type { PatentWorkup } from './patentWorkup.js';
 
 function model(constructs: unknown): StructuredModel {
   return { async generateStructured() { return { constructs } as never; } };
@@ -85,5 +84,36 @@ describe('buildWorkup', () => {
     const orphan = vseq({ seqId: 9, residues: 'BBBB' });
     const wk = buildWorkup(extractedP, recon([a, orphan]), [{ name: 'Ab', members: [{ regionLabel: 'VH', seqId: 1 }] }]);
     expect(wk.ungrouped.map((s) => s.seqId)).toEqual([9]);
+  });
+});
+
+const baseWorkup: PatentWorkup = {
+  patentNumber: 'US10123456',
+  patent: { input: 'US10123456', found: true, applicants: ['ACME'], inventors: [], ipc: [], family: [] },
+  constructs: [{ name: 'Ab1', regions: [{ regionLabel: 'VH', seqId: 1, residues: 'E' }], species: { classification: 'human-like', evidence: '' } }],
+  ungrouped: [],
+  narrative: { summary: '', points: [] },
+  graph: [],
+};
+
+describe('synthesizeCompetitiveIP', () => {
+  it('keeps only citations that reference known SEQ-IDs or accessions', async () => {
+    const model: StructuredModel = {
+      async generateStructured() {
+        return { summary: 'ACME owns one human-like antibody.', points: [
+          { point: 'VH is disclosed', citations: ['SEQ:1', 'SEQ:999'] },
+        ] } as never;
+      },
+    };
+    const ip = await synthesizeCompetitiveIP(baseWorkup, model);
+    expect(ip.summary).toContain('ACME');
+    expect(ip.points[0].citations).toEqual(['SEQ:1']); // SEQ:999 unknown -> dropped
+  });
+
+  it('returns an empty narrative when the model throws', async () => {
+    const throwing: StructuredModel = { async generateStructured() { throw new Error('boom'); } };
+    const ip = await synthesizeCompetitiveIP(baseWorkup, throwing);
+    expect(ip.points).toEqual([]);
+    expect(ip.summary).toMatch(/unavailable/i);
   });
 });

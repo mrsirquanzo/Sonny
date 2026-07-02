@@ -129,6 +129,42 @@ export function buildWorkup(
   };
 }
 
+const IpSchema = z.object({
+  summary: z.string(),
+  points: z.array(z.object({ point: z.string(), citations: z.array(z.string()) })),
+});
+
+const IP_SYSTEM =
+  'You are a competitive-IP analyst writing a grounded summary of an antibody patent. Base every statement ONLY on the provided facts. Cover ownership and legal status, what the disclosed molecules are, their humanness, and any competitor patents that disclose the same or near-identical sequences. Explicitly flag any near-match (a mismatch count greater than zero) as a potential deliberate mutation or transcription error - never assert it is identical. Every point must cite the SEQ-ID (as "SEQ:<n>") or competitor accession it rests on, copied verbatim.';
+
+export async function synthesizeCompetitiveIP(workup: PatentWorkup, model: StructuredModel): Promise<CompetitiveIP> {
+  const knownCitations = new Set<string>();
+  for (const c of workup.constructs) {
+    for (const r of c.regions) {
+      knownCitations.add(`SEQ:${r.seqId}`);
+      if (r.blast) knownCitations.add(r.blast.accession);
+    }
+  }
+  for (const s of workup.ungrouped) knownCitations.add(`SEQ:${s.seqId}`);
+
+  const facts = [
+    `Patent: ${workup.patentNumber ?? 'unknown'} (found: ${workup.patent.found}); applicants: ${workup.patent.applicants.join(', ') || 'unknown'}.`,
+    ...workup.constructs.map((c) =>
+      `Construct ${c.name} [${c.species.classification}]: ` +
+      c.regions.map((r) => `${r.regionLabel}=SEQ:${r.seqId}${r.cdrConfirmation ? `(${r.cdrConfirmation})` : ''}${r.blast ? `, top hit ${r.blast.accession} ${r.blast.percentIdentity}% mismatches=${r.blast.mismatchCount}` : ''}`).join('; ')),
+  ].join('\n');
+
+  try {
+    const draft = await model.generateStructured({ system: IP_SYSTEM, prompt: `FACTS:\n${facts}\n\nWrite the summary and cited points.`, schema: IpSchema, model: MODEL_ROUTER.writer });
+    return {
+      summary: draft.summary,
+      points: draft.points.map((p) => ({ point: p.point, citations: p.citations.filter((c) => knownCitations.has(c)) })),
+    };
+  } catch {
+    return { summary: 'Competitive-IP narrative unavailable (synthesis failed).', points: [] };
+  }
+}
+
 export async function groupConstructs(
   markdown: string,
   associations: RegionAssociation[],
