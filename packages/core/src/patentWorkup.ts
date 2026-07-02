@@ -16,6 +16,7 @@ export interface WorkedRegion {
   residues: string;
   cdrConfirmation?: CdrConfirmation;
   blast?: BlastHit;
+  patentMatches?: BlastHit[];
 }
 
 export type SpeciesClass = 'human-like' | 'chimeric' | 'murine' | 'unknown';
@@ -91,11 +92,11 @@ export function buildWorkup(
     const vlSeq = c.members.filter((m) => m.regionLabel === 'VL').map((m) => bySeq.get(m.seqId)).find(Boolean);
     const derived = vhSeq?.domain?.numberedRegions;
 
-    const regions: WorkedRegion[] = c.members.map((m) => {
+    const regions: WorkedRegion[] = c.members.filter((m) => bySeq.has(m.seqId)).map((m) => {
       assigned.add(m.seqId);
       const vs = bySeq.get(m.seqId);
       const residues = vs?.residues ?? '';
-      const region: WorkedRegion = { regionLabel: m.regionLabel, seqId: m.seqId, residues, blast: vs?.nrTopHit };
+      const region: WorkedRegion = { regionLabel: m.regionLabel, seqId: m.seqId, residues, blast: vs?.nrTopHit, patentMatches: vs?.patentHits };
       if (isCdr(m.regionLabel)) {
         const d = derived?.[m.regionLabel];
         region.cdrConfirmation = !d ? 'no_anchor' : normalizeResidues(residues) === normalizeResidues(d.seq) ? 'confirmed' : 'mismatch';
@@ -143,6 +144,7 @@ export async function synthesizeCompetitiveIP(workup: PatentWorkup, model: Struc
     for (const r of c.regions) {
       knownCitations.add(`SEQ:${r.seqId}`);
       if (r.blast) knownCitations.add(r.blast.accession);
+      for (const h of r.patentMatches ?? []) knownCitations.add(h.accession);
     }
   }
   for (const s of workup.ungrouped) knownCitations.add(`SEQ:${s.seqId}`);
@@ -151,7 +153,7 @@ export async function synthesizeCompetitiveIP(workup: PatentWorkup, model: Struc
     `Patent: ${workup.patentNumber ?? 'unknown'} (found: ${workup.patent.found}); applicants: ${workup.patent.applicants.join(', ') || 'unknown'}.`,
     ...workup.constructs.map((c) =>
       `Construct ${c.name} [${c.species.classification}]: ` +
-      c.regions.map((r) => `${r.regionLabel}=SEQ:${r.seqId}${r.cdrConfirmation ? `(${r.cdrConfirmation})` : ''}${r.blast ? `, top hit ${r.blast.accession} ${r.blast.percentIdentity}% mismatches=${r.blast.mismatchCount}` : ''}`).join('; ')),
+      c.regions.map((r) => `${r.regionLabel}=SEQ:${r.seqId}${r.cdrConfirmation ? `(${r.cdrConfirmation})` : ''}${r.blast ? `, top hit ${r.blast.accession} ${r.blast.percentIdentity}% mismatches=${r.blast.mismatchCount}` : ''}${r.patentMatches && r.patentMatches.length > 0 ? `; competitor hits: ${r.patentMatches.map((h) => `${h.accession} ${h.percentIdentity}% mismatches=${h.mismatchCount}`).join(', ')}` : ''}`).join('; ')),
   ].join('\n');
 
   try {
@@ -186,8 +188,8 @@ export function graphRelationships(workup: PatentWorkup): Relationship[] {
     for (const r of c.regions) {
       addDisclose(r.seqId);
       edges.push({ subject: c.name, predicate: 'HAS_REGION', object: `SEQ:${r.seqId}`, provenance: 'claims-grouping', confidence: 'claimed' });
-      if (r.blast && r.blast.database === 'pataa') {
-        edges.push({ subject: `SEQ:${r.seqId}`, predicate: 'MATCHES', object: r.blast.accession, provenance: 'blast-pataa', confidence: r.blast.exactMatch ? 'verified' : 'claimed' });
+      for (const hit of r.patentMatches ?? []) {
+        edges.push({ subject: `SEQ:${r.seqId}`, predicate: 'MATCHES', object: hit.accession, provenance: 'blast-pataa', confidence: hit.exactMatch ? 'verified' : 'claimed' });
       }
     }
   }

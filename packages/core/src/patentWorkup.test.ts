@@ -127,7 +127,7 @@ describe('graphRelationships', () => {
         name: 'Ab1',
         regions: [{
           regionLabel: 'VH', seqId: 1, residues: 'E',
-          blast: { database: 'pataa', accession: 'PAT_A', title: 't', percentIdentity: 100, queryCoverage: 100, mismatchCount: 0, exactMatch: true, organism: '' },
+          patentMatches: [{ database: 'pataa', accession: 'PAT_A', title: 't', percentIdentity: 100, queryCoverage: 100, mismatchCount: 0, exactMatch: true, organism: '' }],
         }],
         species: { classification: 'human-like', evidence: '' },
       }],

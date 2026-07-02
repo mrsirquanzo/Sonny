@@ -19,12 +19,16 @@ export async function runPatentWorkup(
   const res = await ingest(filePath);
   if (res.status !== 'ok') return { ok: false, error: res.error ?? 'markitdown unavailable' };
 
-  const model = deps.model ?? makeModel();
-  const extracted = await extractPatentData(res.markdown, model);
-  const reconciliation = await reconcilePatent(extracted, deps.reconcileDeps);
-  const constructs = await groupConstructs(res.markdown, extracted.associations, model);
-  const workup = buildWorkup(extracted, reconciliation, constructs);
-  workup.narrative = await synthesizeCompetitiveIP(workup, model);
-  workup.graph = graphRelationships(workup);
-  return { ok: true, workup };
+  try {
+    const model = deps.model ?? makeModel();
+    const extracted = await extractPatentData(res.markdown, model);
+    const reconciliation = await reconcilePatent(extracted, deps.reconcileDeps);
+    const constructs = await groupConstructs(res.markdown, extracted.associations, model);
+    const workup = buildWorkup(extracted, reconciliation, constructs);
+    workup.narrative = await synthesizeCompetitiveIP(workup, model);
+    workup.graph = graphRelationships(workup);
+    return { ok: true, workup };
+  } catch (e) {
+    return { ok: false, error: `patent workup failed: ${(e as Error).message}` };
+  }
 }
