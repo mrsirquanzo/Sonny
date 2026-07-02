@@ -35,8 +35,8 @@ export function residueFidelity(
 
 export function setRecall(got: string[], expected: string[]): number {
   if (expected.length === 0) return 1;
-  const g = new Set(got.map((x) => x.trim().toUpperCase()));
-  return expected.filter((e) => g.has(e.trim().toUpperCase())).length / expected.length;
+  const g = new Set(got.map((x) => x.trim().replace(/\s+/g, ' ').toUpperCase()));
+  return expected.filter((e) => g.has(e.trim().replace(/\s+/g, ' ').toUpperCase())).length / expected.length;
 }
 
 type GotConstruct = { vhSeqId?: number; vlSeqId?: number; species: SpeciesClass };
@@ -51,7 +51,12 @@ export function speciesAccuracy(got: GotConstruct[], expected: GoldenConstruct[]
 export function pairingAccuracy(got: GotConstruct[], expected: GoldenConstruct[]): number {
   if (expected.length === 0) return 1;
   const byVh = new Map(got.filter((c) => c.vhSeqId !== undefined).map((c) => [c.vhSeqId, c]));
-  const ok = expected.filter((e) => e.vhSeqId !== undefined && byVh.get(e.vhSeqId)?.vlSeqId === e.vlSeqId).length;
+  const ok = expected.filter((e) => {
+    if (e.vhSeqId === undefined) return false;
+    const match = byVh.get(e.vhSeqId);
+    if (match === undefined) return false;   // no matching construct = miss
+    return match.vlSeqId === e.vlSeqId;
+  }).length;
   return ok / expected.length;
 }
 
