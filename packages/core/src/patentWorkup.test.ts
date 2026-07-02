@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { groupConstructs, buildWorkup, synthesizeCompetitiveIP } from './patentWorkup.js';
+import { groupConstructs, buildWorkup, synthesizeCompetitiveIP, graphRelationships } from './patentWorkup.js';
 import type { StructuredModel } from './model.js';
 import type { RegionAssociation, ExtractedPatent } from './patentData.js';
 import type { PatentReconciliation, VerifiedSequence } from './patentReconcile.js';
@@ -115,5 +115,30 @@ describe('synthesizeCompetitiveIP', () => {
     const ip = await synthesizeCompetitiveIP(baseWorkup, throwing);
     expect(ip.points).toEqual([]);
     expect(ip.summary).toMatch(/unavailable/i);
+  });
+});
+
+describe('graphRelationships', () => {
+  it('emits OWNED_BY, DISCLOSES, HAS_REGION, and MATCHES edges with provenance and confidence', () => {
+    const wk: PatentWorkup = {
+      patentNumber: 'US10123456',
+      patent: { input: 'US10123456', found: true, applicants: ['ACME'], inventors: [], ipc: [], family: [] },
+      constructs: [{
+        name: 'Ab1',
+        regions: [{
+          regionLabel: 'VH', seqId: 1, residues: 'E',
+          blast: { database: 'pataa', accession: 'PAT_A', title: 't', percentIdentity: 100, queryCoverage: 100, mismatchCount: 0, exactMatch: true, organism: '' },
+        }],
+        species: { classification: 'human-like', evidence: '' },
+      }],
+      ungrouped: [],
+      narrative: { summary: '', points: [] },
+      graph: [],
+    };
+    const g = graphRelationships(wk);
+    expect(g).toContainEqual({ subject: 'US10123456', predicate: 'OWNED_BY', object: 'ACME', provenance: 'epo-assignee', confidence: 'verified' });
+    expect(g).toContainEqual({ subject: 'US10123456', predicate: 'DISCLOSES', object: 'SEQ:1', provenance: 'patent-listing', confidence: 'claimed' });
+    expect(g).toContainEqual({ subject: 'Ab1', predicate: 'HAS_REGION', object: 'SEQ:1', provenance: 'claims-grouping', confidence: 'claimed' });
+    expect(g).toContainEqual({ subject: 'SEQ:1', predicate: 'MATCHES', object: 'PAT_A', provenance: 'blast-pataa', confidence: 'verified' });
   });
 });

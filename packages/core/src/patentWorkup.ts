@@ -165,6 +165,37 @@ export async function synthesizeCompetitiveIP(workup: PatentWorkup, model: Struc
   }
 }
 
+export function graphRelationships(workup: PatentWorkup): Relationship[] {
+  const edges: Relationship[] = [];
+  const subject = workup.patentNumber ?? workup.patent.input ?? 'unknown-patent';
+
+  if (workup.patent.found) {
+    for (const company of workup.patent.applicants) {
+      edges.push({ subject, predicate: 'OWNED_BY', object: company, provenance: 'epo-assignee', confidence: 'verified' });
+    }
+  }
+
+  const seen = new Set<number>();
+  const addDisclose = (seqId: number) => {
+    if (seen.has(seqId)) return;
+    seen.add(seqId);
+    edges.push({ subject, predicate: 'DISCLOSES', object: `SEQ:${seqId}`, provenance: 'patent-listing', confidence: 'claimed' });
+  };
+
+  for (const c of workup.constructs) {
+    for (const r of c.regions) {
+      addDisclose(r.seqId);
+      edges.push({ subject: c.name, predicate: 'HAS_REGION', object: `SEQ:${r.seqId}`, provenance: 'claims-grouping', confidence: 'claimed' });
+      if (r.blast && r.blast.database === 'pataa') {
+        edges.push({ subject: `SEQ:${r.seqId}`, predicate: 'MATCHES', object: r.blast.accession, provenance: 'blast-pataa', confidence: r.blast.exactMatch ? 'verified' : 'claimed' });
+      }
+    }
+  }
+  for (const s of workup.ungrouped) addDisclose(s.seqId);
+
+  return edges;
+}
+
 export async function groupConstructs(
   markdown: string,
   associations: RegionAssociation[],
