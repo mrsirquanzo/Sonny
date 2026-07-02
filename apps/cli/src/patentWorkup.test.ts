@@ -64,6 +64,36 @@ describe('runPatentWorkup', () => {
   });
 });
 
+import type { CdrBlast } from '@sonny/core';
+
+describe('runPatentWorkup CDR competitor matching', () => {
+  it('attaches a cdr-level competitor and emits its graph edge', async () => {
+    const cdrBlast: CdrBlast = async () => [
+      { id: 'x', kind: 'patent', source: 'b', title: 't', snippet: '', url: '', retrievedAt: '', raw: { accession: 'PAT_CDR', percentIdentity: 100, queryCoverage: 100, identity: 12, alignLen: 12, organism: '' } } as never,
+    ];
+    const out = await runPatentWorkup('/x.pdf', {
+      ingest: async () => ({ markdown: 'Patent US 10,123,456 B2\nClaims\nSEQ ID NO: 1\nEVQLVESGGGLVQPGGSLRLSCAASGFTFSSYAMSWVRQAPGKGLEWVS\n', status: 'ok' as const }),
+      model: { async generateStructured(opts: { system: string }) {
+        if (opts.system.includes('extract')) return { associations: [{ regionLabel: 'VH', seqId: 1 }] } as never;
+        if (opts.system.includes('group')) return { constructs: [{ name: 'Ab1', members: [{ regionLabel: 'VH', seqId: 1 }] }] } as never;
+        return { summary: 'ACME.', points: [] } as never;
+      } },
+      reconcileDeps: {
+        blast: async () => [],
+        anarci: async () => ({ overallStatus: 'confirmed', domains: [{ chain: 'H', species: 'homo_sapiens', germline: { v: '', j: '' }, numberedRegions: { 'CDR-H3': { seq: 'ARDYYGSSYFDY', imgtStart: 105, imgtEnd: 117, residues: [] } } }], regionChecks: [], speciesSummary: [] }),
+        epo: async () => ({ input: 'US10123456', found: true, applicants: ['ACME'], inventors: [], ipc: [], family: [] }),
+      },
+      verifier: { model: { async generateStructured() { return { status: 'supported', rationale: '' } as never; } }, modelId: 'x', decorrelated: false },
+      cdrBlast,
+    });
+    expect(out.ok).toBe(true);
+    if (out.ok) {
+      expect(out.workup.constructs[0].cdrCompetitors?.[0]?.accession).toBe('PAT_CDR');
+      expect(out.workup.graph.some((e) => e.provenance === 'blast-cdr-h3' && e.object === 'PAT_CDR')).toBe(true);
+    }
+  });
+});
+
 describe('runPatentWorkup narrative verification', () => {
   it('verifies the narrative and carries verdicts + the decorrelated flag', async () => {
     const verifier: Verifier = {

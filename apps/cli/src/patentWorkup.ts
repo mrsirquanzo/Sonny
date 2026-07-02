@@ -1,15 +1,16 @@
-import { ingestToMarkdown } from '@sonny/mcp-gateway';
+import { ingestToMarkdown, blastVerifyTool } from '@sonny/mcp-gateway';
 import type { IngestResult } from '@sonny/mcp-gateway';
 import {
-  extractPatentData, reconcilePatent, groupConstructs, buildWorkup, synthesizeCompetitiveIP, graphRelationships, makeModel, makeDecorrelatedVerifier, verifyNarrative,
+  extractPatentData, reconcilePatent, groupConstructs, buildWorkup, synthesizeCompetitiveIP, graphRelationships, makeModel, makeDecorrelatedVerifier, verifyNarrative, matchCdrCompetitors,
 } from '@sonny/core';
-import type { StructuredModel, ReconcileDeps, PatentWorkup, Verifier } from '@sonny/core';
+import type { StructuredModel, ReconcileDeps, PatentWorkup, Verifier, CdrBlast } from '@sonny/core';
 
 export interface WorkupDeps {
   ingest?: (filePath: string) => Promise<IngestResult>;
   model?: StructuredModel;
   reconcileDeps?: ReconcileDeps;
   verifier?: Verifier;
+  cdrBlast?: CdrBlast;
 }
 
 export async function runPatentWorkup(
@@ -29,6 +30,8 @@ export async function runPatentWorkup(
     workup.narrative = await synthesizeCompetitiveIP(workup, model);
     const verifier = deps.verifier ?? makeDecorrelatedVerifier();
     workup.narrative = await verifyNarrative(workup.narrative, workup, verifier);
+    const cdrBlast = deps.cdrBlast ?? ((seq: string, db: string, opts?: { wordSize?: number; matrix?: string; expect?: number }) => blastVerifyTool.call({ sequence: seq, database: db, ...opts }));
+    await matchCdrCompetitors(workup, reconciliation, cdrBlast);
     workup.graph = graphRelationships(workup);
     return { ok: true, workup };
   } catch (e) {

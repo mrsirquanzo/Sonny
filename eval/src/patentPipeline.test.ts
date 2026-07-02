@@ -43,6 +43,21 @@ const reconcileDeps: ReconcileDeps = {
   epo: async () => ({ input: 'US10123456', normalized: 'US10123456', found: true, applicants: ['ACME BIO INC'], inventors: [], ipc: [], family: [{ country: 'EP', number: '1234567', status: 'active', events: [] }] }),
 };
 
+import { gotCompetitorOverlaps } from './patentPipeline.js';
+import type { PatentWorkup } from '@sonny/core';
+
+describe('gotCompetitorOverlaps level', () => {
+  it('derives cdr vs whole from edge provenance', () => {
+    const wk = { graph: [
+      { subject: 'SEQ:1', predicate: 'MATCHES', object: 'PAT_W', provenance: 'blast-pataa', confidence: 'verified' },
+      { subject: 'SEQ:1', predicate: 'MATCHES', object: 'PAT_C', provenance: 'blast-cdr-h3', confidence: 'claimed' },
+    ] } as unknown as PatentWorkup;
+    const got = gotCompetitorOverlaps(wk);
+    expect(got).toContainEqual({ seqId: 1, competitorAccession: 'PAT_W', level: 'whole' });
+    expect(got).toContainEqual({ seqId: 1, competitorAccession: 'PAT_C', level: 'cdr' });
+  });
+});
+
 describe('offline patent pipeline eval', () => {
   it('scores a synthetic golden patent above threshold, including the competitor MATCHES edge (5b regression insurance)', async () => {
     const workup = await runPatentPipeline(markdown, { model, reconcileDeps });

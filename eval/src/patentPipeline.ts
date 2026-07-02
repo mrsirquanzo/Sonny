@@ -26,9 +26,12 @@ export function gotConstructs(workup: PatentWorkup): Array<{ vhSeqId?: number; v
   }));
 }
 
-// MATCHES edges are whole-sequence competitor overlaps (CDR-level arrives with H4).
 export function gotCompetitorOverlaps(workup: PatentWorkup): GoldenCompetitor[] {
   return workup.graph
     .filter((e) => e.predicate === 'MATCHES')
-    .map((e) => ({ seqId: Number(e.subject.replace('SEQ:', '')), competitorAccession: e.object, level: 'whole' as const }));
+    .map((e) => ({
+      seqId: Number(e.subject.replace('SEQ:', '')),
+      competitorAccession: e.object,
+      level: e.provenance === 'blast-cdr-h3' ? ('cdr' as const) : ('whole' as const),
+    }));
 }
