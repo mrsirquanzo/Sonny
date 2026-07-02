@@ -48,14 +48,15 @@ function toBlastHit(e: Evidence | undefined, database: string): BlastHit | undef
   const queryCoverage = Number(raw.queryCoverage ?? 0);
   const alignLen = Number(raw.alignLen ?? 0);
   const identity = Number(raw.identity ?? 0);
+  const mismatchCount = Math.max(0, alignLen - identity);
   return {
     database,
     accession: String(raw.accession ?? ''),
     title: e.title,
     percentIdentity,
     queryCoverage,
-    mismatchCount: Math.max(0, alignLen - identity),
-    exactMatch: percentIdentity === 100 && queryCoverage === 100,
+    mismatchCount,
+    exactMatch: mismatchCount === 0 && queryCoverage === 100,
     organism: String(raw.organism ?? ''),
   };
 }
@@ -105,7 +106,7 @@ export async function reconcilePatent(
       if (isHeavy || isLight) {
         const conf = await anarci(isHeavy ? { vh: s.residues, claimedRegions: [] } : { vl: s.residues, claimedRegions: [] });
         const d = conf.domains[0];
-        if (d) domain = { chain: d.chain, species: d.species, numberedRegions: d.numberedRegions };
+        if (d) domain = { chain: d.chain, species: d.species, numberedRegions: d.numberedRegions ?? {} };
       }
 
       return { seqId: s.seqId, residues: s.residues, regionLabels, length, blasted, nrTopHit, patentHits, domain };

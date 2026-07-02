@@ -85,6 +85,27 @@ describe('reconcilePatent', () => {
     expect(rec.patent.error).toMatch(/EPO_NO_NUMBER/);
   });
 
+  it('does not mark exactMatch when percentIdentity rounds to 100 but mismatchCount is 1', async () => {
+    // A 2000-aa alignment with 1999 matches: percentIdentity = 99.95, which blast_verify rounds to 100.0
+    // exactMatch must be derived from the exact counts, not the rounded percentage.
+    const mismatchDeps: ReconcileDeps = {
+      blast: async (_seq, db) => {
+        if (db === 'nr') return [ev({ accession: 'NP_ROUND', percentIdentity: 100, queryCoverage: 100, identity: 1999, alignLen: 2000, organism: 'Homo sapiens' })];
+        return [];
+      },
+      anarci: deps().anarci,
+      epo: deps().epo,
+    };
+    const longSeq = 'A'.repeat(200); // >=50 so it gets BLASTed
+    const rec = await reconcilePatent(
+      extracted({ sequences: [{ seqId: 1, residues: longSeq }], associations: [{ regionLabel: 'VH', seqId: 1 }] }),
+      mismatchDeps,
+    );
+    const hit = rec.sequences[0].nrTopHit;
+    expect(hit?.mismatchCount).toBe(1);   // 2000 - 1999
+    expect(hit?.exactMatch).toBe(false);  // delta surfaced, not collapsed
+  });
+
   it('assembles soft tool failures without throwing', async () => {
     const rec = await reconcilePatent(extracted(), {
       blast: async () => [],
