@@ -58,4 +58,25 @@ describe('verifyNarrative', () => {
     expect(out.verified).toBe(false);
     expect(out.points.every((p) => p.verdict === 'unverified')).toBe(true);
   });
+
+  it('carries the verifier rationale onto a flagged point', async () => {
+    const model: StructuredModel = {
+      async generateStructured(opts: { prompt: string }) {
+        const status = opts.prompt.includes('market-leading') ? 'overreach' : 'supported';
+        const rationale = opts.prompt.includes('market-leading') ? 'no market data in evidence' : 'evidence matches';
+        return { status, rationale } as never;
+      },
+    };
+    const out = await verifyNarrative(ip, workup, { model, modelId: 'x', decorrelated: true });
+    expect(out.points[1].verdict).toBe('overreach');
+    expect(out.points[1].verdictRationale).toBe('no market data in evidence');
+    expect(out.points[0].verdictRationale).toBe('evidence matches');
+  });
+
+  it('returns verified:true when ip.points is empty (nothing to check)', async () => {
+    const model: StructuredModel = { async generateStructured() { return {} as never; } };
+    const emptyIp: CompetitiveIP = { summary: '', points: [] };
+    const out = await verifyNarrative(emptyIp, workup, { model, modelId: 'x', decorrelated: false });
+    expect(out.verified).toBe(true);
+  });
 });

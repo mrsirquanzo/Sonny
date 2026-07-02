@@ -43,6 +43,7 @@ function factIndex(workup: PatentWorkup): Map<string, string> {
       if (r.cdrConfirmation) bits.push(`CDR ${r.cdrConfirmation}`);
       if (r.blast) bits.push(`nr top hit ${r.blast.accession} ${r.blast.percentIdentity}% mismatches=${r.blast.mismatchCount}`);
       idx.set(`SEQ:${r.seqId}`, bits.join('; '));
+      if (r.blast) idx.set(r.blast.accession, `nr top hit ${r.blast.accession} ${r.blast.percentIdentity}% mismatches=${r.blast.mismatchCount}`);
       for (const h of r.patentMatches ?? []) {
         idx.set(h.accession, `competitor patent ${h.accession} ${h.percentIdentity}% mismatches=${h.mismatchCount}`);
       }
@@ -63,6 +64,7 @@ export async function verifyNarrative(
   for (const p of ip.points) {
     const evidence = p.citations.map((c) => idx.get(c) ?? c).join('\n') || '(no cited evidence)';
     let verdict: ClaimVerdict = 'unverified';
+    let verdictRationale: string | undefined;
     try {
       const r = await verifier.model.generateStructured({
         system: SYSTEM,
@@ -71,11 +73,12 @@ export async function verifyNarrative(
         model: verifier.modelId,
       });
       verdict = r.status;
+      verdictRationale = r.rationale;
       anyVerified = true;
     } catch {
       verdict = 'unverified';
     }
-    points.push({ ...p, verdict });
+    points.push({ ...p, verdict, ...(verdictRationale !== undefined && { verdictRationale }) });
   }
-  return { ...ip, points, decorrelated: verifier.decorrelated, verified: anyVerified };
+  return { ...ip, points, decorrelated: verifier.decorrelated, verified: points.length === 0 ? true : anyVerified };
 }
