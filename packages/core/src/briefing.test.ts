@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { Evidence, Section } from '@sonny/shared';
+import type { Evidence, Section } from '@mrsirquanzo/sonny-shared';
 import { assembleReferences } from './briefing.js';
 import type { DeepResearchResult } from './runDeepResearch.js';
 
@@ -16,7 +16,7 @@ describe('assembleReferences', () => {
       { id: 'PMID:9', kind: 'publication', source: 'Europe PMC', title: 'Uncited', snippet: '', url: 'u9', raw: {}, retrievedAt: 'now' },
     ];
     const result: DeepResearchResult = {
-      target: 'X', sections, weighing: { takeaway: '', claims: [] }, evidence,
+      target: 'X', sections, weighing: { takeaway: '', claims: [] }, evidence, kolCluster: { target: 'X', labs: [] },
     };
     const refs = assembleReferences(result);
     expect(refs.map((r) => r.id)).toEqual(['ENSG1', 'PMID:2']); // sorted, PMID:9 excluded (uncited)

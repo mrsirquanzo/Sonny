@@ -1,4 +1,4 @@
-import type { Section, TraceEvent } from '@sonny/shared';
+import type { Section, TraceEvent } from '@mrsirquanzo/sonny-shared';
 import { encodeEvent, encodeNamed } from './sse.js';
 
 export type OrchestratorRunner = (emit: (e: TraceEvent) => void) => Promise<{ verdict: string; sections: Section[] }>;

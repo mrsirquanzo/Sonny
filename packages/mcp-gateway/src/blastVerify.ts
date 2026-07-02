@@ -1,4 +1,4 @@
-import type { Evidence } from '@sonny/shared';
+import type { Evidence } from '@mrsirquanzo/sonny-shared';
 import { XMLParser } from 'fast-xml-parser';
 import type { Tool } from './tool.js';
 

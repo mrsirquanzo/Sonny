@@ -4,6 +4,7 @@ export { openTargetsTargetTool } from './openTargetsTarget.js';
 export { pubmedTool } from './pubmed.js';
 export { clinicalTrialsTool } from './clinicalTrials.js';
 export { europePmcSearchTool } from './europePmc.js';
+export { europePmcCitationsTool } from './europePmcCitations.js';
 export { pmcFullTextTool } from './pmcFullText.js';
 export { blastVerifyTool } from './blastVerify.js';
 export { confirmRegions } from './anarci.js';

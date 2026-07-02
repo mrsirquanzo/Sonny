@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { TraceEvent } from '@sonny/shared';
+import type { TraceEvent } from '@mrsirquanzo/sonny-shared';
 import { streamRun, type OrchestratorRunner } from './streamRun.js';
 
 describe('streamRun', () => {

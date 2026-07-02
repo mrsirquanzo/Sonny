@@ -1,4 +1,4 @@
-import type { Evidence } from '@sonny/shared';
+import type { Evidence, EvidenceMetadata } from '@mrsirquanzo/sonny-shared';
 import type { Tool } from './tool.js';
 
 const ENDPOINT = 'https://www.ebi.ac.uk/europepmc/webservices/rest/search';
@@ -8,6 +8,23 @@ interface Hit {
   title?: string; abstractText?: string; citedByCount?: string;
   isOpenAccess?: string; firstPublicationDate?: string;
   pubTypeList?: { pubType?: string[] };
+  authorList?: { author?: Array<{
+    fullName?: string;
+    authorId?: { type?: string; value?: string };
+    authorAffiliationDetailsList?: { authorAffiliation?: Array<{ affiliation?: string }> };
+  }> };
+}
+
+function parseMetadata(h: Hit): EvidenceMetadata | undefined {
+  const list = h.authorList?.author ?? [];
+  if (!list.length) return undefined;
+  const authors = list.map((a) => {
+    const affiliation = a.authorAffiliationDetailsList?.authorAffiliation?.[0]?.affiliation;
+    const orcid = a.authorId?.type === 'ORCID' ? a.authorId.value : undefined;
+    return { name: a.fullName ?? '(unknown)', ...(affiliation ? { affiliation } : {}), ...(orcid ? { orcid } : {}) };
+  });
+  const institutions = [...new Set(authors.map((a) => a.affiliation).filter((x): x is string => !!x))];
+  return { authors, ...(institutions.length ? { institutions } : {}) };
 }
 
 export const europePmcSearchTool: Tool = {
@@ -26,6 +43,7 @@ export const europePmcSearchTool: Tool = {
       .map<Evidence>((h) => {
         const types = h.pubTypeList?.pubType ?? [];
         const isReview = types.some((t) => /review/i.test(t));
+        const metadata = parseMetadata(h);
         return {
           id: `PMID:${h.pmid}`, kind: 'publication', source: 'Europe PMC',
           title: h.title ?? '(no title)',
@@ -34,6 +52,7 @@ export const europePmcSearchTool: Tool = {
           url: `https://europepmc.org/article/${h.source}/${h.pmid}`,
           raw: { pmcid: h.pmcid ?? '', citedByCount: Number(h.citedByCount ?? 0), isReview, isOpenAccess: h.isOpenAccess === 'Y' },
           retrievedAt: now,
+          ...(metadata ? { metadata } : {}),
         };
       });
   },

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import type { Tool } from '@sonny/mcp-gateway';
-import type { TraceEvent } from '@sonny/shared';
+import type { Tool } from '@mrsirquanzo/sonny-mcp-gateway';
+import type { TraceEvent } from '@mrsirquanzo/sonny-shared';
 import { EvidenceStore } from './evidenceStore.js';
 import { produceResearchSection } from './produceResearchSection.js';
 
@@ -41,5 +41,6 @@ describe('produceResearchSection', () => {
     expect(section.sources).toContain('PMCID:PMC1#sec-1');
     expect(section.rag).toBe('amber'); // one supported claim, single source -> amber
     expect(events.some((e) => e.type === 'section_complete')).toBe(true);
+    expect(Array.isArray(section.critiques)).toBe(true);
   });
 });

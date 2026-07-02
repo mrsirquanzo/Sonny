@@ -7,7 +7,7 @@ const Schema = z.object({ verdict: z.string(), score: z.number() });
 describe('OllamaModel', () => {
   it('calls Ollama /api/chat with the schema as format and parses the structured content', async () => {
     let captured: { url: string; body: Record<string, unknown> } | null = null;
-    const fakeFetch = (async (url, init) => {
+    const fakeFetch = (async (url: RequestInfo | URL, init?: RequestInit) => {
       captured = { url: String(url), body: JSON.parse(String((init as RequestInit).body)) };
       return new Response(JSON.stringify({ message: { content: '{"verdict":"go","score":0.9}' } }), { status: 200 });
     }) as unknown as typeof fetch;

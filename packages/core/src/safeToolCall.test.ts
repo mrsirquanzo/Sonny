@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import type { Tool } from '@sonny/mcp-gateway';
-import type { TraceEvent, Evidence } from '@sonny/shared';
+import type { Tool } from '@mrsirquanzo/sonny-mcp-gateway';
+import type { TraceEvent, Evidence } from '@mrsirquanzo/sonny-shared';
 import { safeToolCall, isTransient } from './safeToolCall.js';
 
 const ev: Evidence = { id: 'PMID:1', kind: 'publication', source: 's', title: 't', snippet: '', url: 'u', raw: {}, retrievedAt: 'now' };

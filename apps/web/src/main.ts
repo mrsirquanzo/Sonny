@@ -1,7 +1,7 @@
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { runDossier, AnthropicModel } from '@sonny/core';
-import { openTargetsTargetTool, pubmedTool, clinicalTrialsTool } from '@sonny/mcp-gateway';
+import { runDossier, AnthropicModel } from '@mrsirquanzo/sonny-core';
+import { openTargetsTargetTool, pubmedTool, clinicalTrialsTool } from '@mrsirquanzo/sonny-mcp-gateway';
 import { createServer, type ServerDeps } from './server.js';
 
 export function buildDeps(publicDir: string): ServerDeps {

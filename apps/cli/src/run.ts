@@ -1,6 +1,6 @@
-import type { TraceEvent } from '@sonny/shared';
-import { runDossier, AnthropicModel } from '@sonny/core';
-import { openTargetsTargetTool, pubmedTool, clinicalTrialsTool } from '@sonny/mcp-gateway';
+import type { TraceEvent } from '@mrsirquanzo/sonny-shared';
+import { runDossier, AnthropicModel } from '@mrsirquanzo/sonny-core';
+import { openTargetsTargetTool, pubmedTool, clinicalTrialsTool } from '@mrsirquanzo/sonny-mcp-gateway';
 import { runExtractPatent } from './extractPatent.js';
 import { runPatentWorkup } from './patentWorkup.js';
 
@@ -33,6 +33,17 @@ export function formatTrace(events: TraceEvent[]): string {
         return `      reading ${e.sourceId} (${e.locator})`;
       case 'research_reflect':
         return `      reflect: ${e.note}` + (e.followups.length ? `\n      follow-ups: ${e.followups.join('; ')}` : '');
+      case 'methodological_critique': {
+        const f = e.critique.redFlags;
+        return `      ⚖ skeptic [${e.critique.evidenceId}]: ${e.critique.studyDesign}` +
+          (f.length ? ` - ${f.map((r) => `${r.biasRisk}:${r.category}`).join('; ')}` : ' - no flags');
+      }
+      case 'developability_assessment': {
+        const r = e.risks.filter((x) => x.severity !== 'manageable');
+        return `LEAD  developability: ` + (r.length ? r.map((x) => `${x.severity} ${x.category}`).join('; ') : 'no material risks');
+      }
+      case 'kol_cluster':
+        return `\nLEAD  KOL terrain: ` + (e.cluster.labs.length ? e.cluster.labs.map((l) => l.investigator).join(', ') : 'no dominant labs');
       default: return `  [${e.type}]`;
     }
   }).join('\n');

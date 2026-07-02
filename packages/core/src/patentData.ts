@@ -1,8 +1,8 @@
 import { z } from 'zod';
 import type { StructuredModel } from './model.js';
 import { MODEL_ROUTER } from './model.js';
-import { extractPatentNumber, extractSequenceListing } from '@sonny/mcp-gateway';
-import type { ExtractedSequence, RegionLabel } from '@sonny/mcp-gateway';
+import { extractPatentNumber, extractSequenceListing } from '@mrsirquanzo/sonny-mcp-gateway';
+import type { ExtractedSequence, RegionLabel } from '@mrsirquanzo/sonny-mcp-gateway';
 
 export interface ExtractionCompleteness {
   foundCount: number;

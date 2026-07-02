@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { runExtractPatent } from './extractPatent.js';
-import type { StructuredModel } from '@sonny/core';
+import type { StructuredModel } from '@mrsirquanzo/sonny-core';
 
 const model: StructuredModel = {
   async generateStructured() { return { associations: [{ regionLabel: 'CDR-H1', seqId: 1 }] } as never; },

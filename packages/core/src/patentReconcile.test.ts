@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { reconcilePatent } from './patentReconcile.js';
 import type { ReconcileDeps } from './patentReconcile.js';
 import type { ExtractedPatent } from './patentData.js';
-import type { Evidence } from '@sonny/shared';
-import type { PatentRecord, ConfirmInput, RegionConfirmation } from '@sonny/mcp-gateway';
+import type { Evidence } from '@mrsirquanzo/sonny-shared';
+import type { PatentRecord, ConfirmInput, RegionConfirmation } from '@mrsirquanzo/sonny-mcp-gateway';
 
 const VH = 'EVQLVESGGGLVQPGGSLRLSCAASGFTFSSYAMSWVRQAPGKGLEWVSAISGSGGSTYYADSVKGRFTISRDNS'; // 74 aa, >= 50
 

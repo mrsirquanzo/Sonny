@@ -8,8 +8,8 @@
     "eval": "tsx src/index.ts"
   },
   "dependencies": {
-    "@sonny/shared": "workspace:*",
-    "@sonny/core": "workspace:*",
-    "@sonny/mcp-gateway": "workspace:*"
+    "@mrsirquanzo/sonny-shared": "workspace:*",
+    "@mrsirquanzo/sonny-core": "workspace:*",
+    "@mrsirquanzo/sonny-mcp-gateway": "workspace:*"
   }
 }

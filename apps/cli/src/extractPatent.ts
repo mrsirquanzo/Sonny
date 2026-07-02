@@ -1,7 +1,7 @@
-import { ingestToMarkdown } from '@sonny/mcp-gateway';
-import type { IngestResult } from '@sonny/mcp-gateway';
-import { extractPatentData, makeModel } from '@sonny/core';
-import type { StructuredModel, ExtractedPatent } from '@sonny/core';
+import { ingestToMarkdown } from '@mrsirquanzo/sonny-mcp-gateway';
+import type { IngestResult } from '@mrsirquanzo/sonny-mcp-gateway';
+import { extractPatentData, makeModel } from '@mrsirquanzo/sonny-core';
+import type { StructuredModel, ExtractedPatent } from '@mrsirquanzo/sonny-core';
 
 export interface ExtractPatentDeps {
   ingest?: (filePath: string) => Promise<IngestResult>;

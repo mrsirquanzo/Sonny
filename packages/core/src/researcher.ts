@@ -1,8 +1,9 @@
 import { z } from 'zod';
-import { ClaimsSchema, type Claim } from '@sonny/shared';
+import { ClaimsSchema, type Claim } from '@mrsirquanzo/sonny-shared';
 import type { StructuredModel } from './model.js';
 import { MODEL_ROUTER } from './model.js';
 import { targetTerms, relevanceGate, titleMentionsTarget } from './relevance.js';
+import { snowballCitations } from './snowball.js';
 import { buildSearchQuery } from './searchQuery.js';
 
 export interface ThreadBrief { id: string; title: string; objective: string; promptHint: string }
@@ -40,13 +41,14 @@ export async function extractClaims(
   return claims;
 }
 
-import type { Evidence, TraceEvent } from '@sonny/shared';
+import type { Evidence, TraceEvent, MethodologicalCritique } from '@mrsirquanzo/sonny-shared';
 import type { EvidenceStore } from './evidenceStore.js';
-import type { Tool } from '@sonny/mcp-gateway';
+import type { Tool } from '@mrsirquanzo/sonny-mcp-gateway';
 import { safeToolCall } from './safeToolCall.js';
+import { runSkepticAudit } from './critique/skepticAudit.js';
 
 export interface ResearchBudget { maxRounds: number }
-export interface ThreadFindings { takeaway: string; claims: Claim[]; openQuestions: string[] }
+export interface ThreadFindings { takeaway: string; claims: Claim[]; openQuestions: string[]; critiques: MethodologicalCritique[] }
 
 const ReflectSchema = z.object({
   done: z.boolean(),
@@ -74,9 +76,9 @@ function evidenceLine(e: Evidence): string {
 
 export async function runResearcher(opts: {
   brief: ThreadBrief; target: string; tools: Tool[]; store: EvidenceStore;
-  model: StructuredModel; emit: (e: TraceEvent) => void; budget: ResearchBudget;
+  model: StructuredModel; verifierModel: StructuredModel; emit: (e: TraceEvent) => void; budget: ResearchBudget;
 }): Promise<ThreadFindings> {
-  const { brief, target, tools, store, model, emit, budget } = opts;
+  const { brief, target, tools, store, model, verifierModel, emit, budget } = opts;
   const search = tools.find((t) => t.name === 'europepmc_search');
   const fulltext = tools.find((t) => t.name === 'pmc_fulltext');
   if (!search || !fulltext) throw new Error('runResearcher requires europepmc_search and pmc_fulltext tools');
@@ -88,6 +90,9 @@ export async function runResearcher(opts: {
 
   const claims: Claim[] = [];
   let takeaway = '';
+  let snowballed = false;
+  const critiques: MethodologicalCritique[] = [];
+  const audited: { ids: Set<string>; redFlags: MethodologicalCritique['redFlags'] }[] = [];
 
   for (let round = 0; round < budget.maxRounds && openQuestions.length > 0; round++) {
     const item = openQuestions[0];
@@ -115,11 +120,30 @@ export async function runResearcher(opts: {
         emit({ type: 'evidence_registered', id: p.id, title: p.title });
         emit({ type: 'research_read', specialist: brief.id, sourceId: p.id, locator: p.locator ?? p.title });
       }
+      try {
+        const critique = await runSkepticAudit(top, verifierModel);
+        critiques.push(critique);
+        emit({ type: 'methodological_critique', specialist: brief.id, critique });
+        if (critique.redFlags.length) {
+          audited.push({ ids: new Set<string>([top.id, ...passages.map((p) => p.id)]), redFlags: critique.redFlags });
+        }
+      } catch (err) {
+        emit({ type: 'error', message: `skeptic audit failed: ${String(err)}` });
+      }
+      if (!snowballed) {
+        snowballed = true;
+        await snowballCitations({ seed: top, terms, tools, store, emit });
+      }
     }
 
     const evidenceList = store.all().map(evidenceLine).join('\n');
     const drafted = await extractClaims(item.question, evidenceList, model);
-    for (const c of drafted) { claims.push(c); emit({ type: 'claim_drafted', claim: c }); }
+    for (const c of drafted) {
+      const flags = audited.filter((a) => c.citations.some((id) => a.ids.has(id))).flatMap((a) => a.redFlags);
+      if (flags.length) c.redFlags = flags;
+      claims.push(c);
+      emit({ type: 'claim_drafted', claim: c });
+    }
 
     const reflection = await reflectOnGaps(brief, claims, model);
     takeaway = reflection.takeaway;
@@ -127,5 +151,5 @@ export async function runResearcher(opts: {
     openQuestions = reflection.done ? [] : reflection.followups;
   }
 
-  return { takeaway, claims, openQuestions: openQuestions.map((q) => q.question) };
+  return { takeaway, claims, openQuestions: openQuestions.map((q) => q.question), critiques };
 }

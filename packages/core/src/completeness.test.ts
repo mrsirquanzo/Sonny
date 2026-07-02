@@ -1,11 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import type { Section } from '@sonny/shared';
+import type { Section } from '@mrsirquanzo/sonny-shared';
 import type { StructuredModel } from './model.js';
 import { assessCompleteness } from './completeness.js';
 import { EvidenceStore } from './evidenceStore.js';
 import { fillGap, mergeGapClaims } from './completeness.js';
-import type { Tool } from '@sonny/mcp-gateway';
-import type { Claim } from '@sonny/shared';
+import type { Tool } from '@mrsirquanzo/sonny-mcp-gateway';
+import type { Claim } from '@mrsirquanzo/sonny-shared';
 import { buildSearchQuery } from './searchQuery.js';
 
 const sections: Section[] = [

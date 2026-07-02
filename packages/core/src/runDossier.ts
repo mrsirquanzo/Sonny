@@ -1,5 +1,5 @@
-import type { Section, TraceEvent } from '@sonny/shared';
-import type { Tool } from '@sonny/mcp-gateway';
+import type { Section, TraceEvent } from '@mrsirquanzo/sonny-shared';
+import type { Tool } from '@mrsirquanzo/sonny-mcp-gateway';
 import { EvidenceStore } from './evidenceStore.js';
 import { SPECIALISTS } from './specialists.js';
 import { selectSpecialists } from './planner.js';

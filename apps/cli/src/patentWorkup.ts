@@ -1,9 +1,9 @@
-import { ingestToMarkdown, blastVerifyTool } from '@sonny/mcp-gateway';
-import type { IngestResult } from '@sonny/mcp-gateway';
+import { ingestToMarkdown, blastVerifyTool } from '@mrsirquanzo/sonny-mcp-gateway';
+import type { IngestResult } from '@mrsirquanzo/sonny-mcp-gateway';
 import {
   extractPatentData, reconcilePatent, groupConstructs, buildWorkup, synthesizeCompetitiveIP, graphRelationships, makeModel, makeDecorrelatedVerifier, verifyNarrative, matchCdrCompetitors,
-} from '@sonny/core';
-import type { StructuredModel, ReconcileDeps, PatentWorkup, Verifier, CdrBlast } from '@sonny/core';
+} from '@mrsirquanzo/sonny-core';
+import type { StructuredModel, ReconcileDeps, PatentWorkup, Verifier, CdrBlast } from '@mrsirquanzo/sonny-core';
 
 export interface WorkupDeps {
   ingest?: (filePath: string) => Promise<IngestResult>;

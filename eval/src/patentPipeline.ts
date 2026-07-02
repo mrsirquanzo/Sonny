@@ -1,7 +1,7 @@
 import {
   extractPatentData, reconcilePatent, groupConstructs, buildWorkup, synthesizeCompetitiveIP, graphRelationships,
-} from '@sonny/core';
-import type { StructuredModel, ReconcileDeps, PatentWorkup } from '@sonny/core';
+} from '@mrsirquanzo/sonny-core';
+import type { StructuredModel, ReconcileDeps, PatentWorkup } from '@mrsirquanzo/sonny-core';
 import type { GoldenCompetitor, SpeciesClass } from './goldenPatent.js';
 
 // Compose the core pipeline offline (no ingest/CLI); all tool + model calls are injected.

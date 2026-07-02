@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { TraceEvent } from '@sonny/shared';
+import type { TraceEvent } from '@mrsirquanzo/sonny-shared';
 import { encodeEvent, encodeNamed } from './sse.js';
 
 describe('sse encoding', () => {

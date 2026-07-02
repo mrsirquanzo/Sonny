@@ -1,6 +1,6 @@
-import type { Evidence } from '@sonny/shared';
-import { blastVerifyTool, confirmRegions, lookupPatent } from '@sonny/mcp-gateway';
-import type { PatentRecord, RegionLabel, NumberedRegion, ConfirmInput, RegionConfirmation } from '@sonny/mcp-gateway';
+import type { Evidence } from '@mrsirquanzo/sonny-shared';
+import { blastVerifyTool, confirmRegions, lookupPatent } from '@mrsirquanzo/sonny-mcp-gateway';
+import type { PatentRecord, RegionLabel, NumberedRegion, ConfirmInput, RegionConfirmation } from '@mrsirquanzo/sonny-mcp-gateway';
 import type { ExtractedPatent } from './patentData.js';
 
 const MIN_BLAST_LEN = 50;

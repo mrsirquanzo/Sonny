@@ -1,4 +1,4 @@
-import type { Evidence } from '@sonny/shared';
+import type { Evidence } from '@mrsirquanzo/sonny-shared';
 
 export class EvidenceStore {
   private readonly byId = new Map<string, Evidence>();

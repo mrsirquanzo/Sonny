@@ -1,4 +1,4 @@
-import type { Evidence } from '@sonny/shared';
+import type { Evidence } from '@mrsirquanzo/sonny-shared';
 import type { EvidenceStore } from './evidenceStore.js';
 
 export function targetTerms(store: EvidenceStore, fallbackSymbol?: string): string[] {

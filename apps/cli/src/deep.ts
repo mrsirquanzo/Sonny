@@ -1,5 +1,5 @@
-import { makeModel, currentBackend, produceBriefing, RESEARCH_ROSTER } from '@sonny/core';
-import { europePmcSearchTool, pmcFullTextTool, openTargetsTargetTool, clinicalTrialsTool } from '@sonny/mcp-gateway';
+import { makeModel, currentBackend, produceBriefing, RESEARCH_ROSTER } from '@mrsirquanzo/sonny-core';
+import { europePmcSearchTool, pmcFullTextTool, openTargetsTargetTool, clinicalTrialsTool, europePmcCitationsTool } from '@mrsirquanzo/sonny-mcp-gateway';
 import { formatTrace } from './run.js';
 
 export async function runDeep(target: string): Promise<void> {
@@ -7,7 +7,7 @@ export async function runDeep(target: string): Promise<void> {
   process.stdout.write(`backend: ${currentBackend()}\n`);
   const briefing = await produceBriefing({
     target: t, roster: RESEARCH_ROSTER,
-    literatureTools: [europePmcSearchTool, pmcFullTextTool],
+    literatureTools: [europePmcSearchTool, pmcFullTextTool, europePmcCitationsTool],
     structuredTools: [openTargetsTargetTool, clinicalTrialsTool],
     specialistModel: makeModel(), verifierModel: makeModel(), leadModel: makeModel(),
     emit: (e) => process.stdout.write(formatTrace([e]) + '\n'),
@@ -44,5 +44,12 @@ export async function runDeep(target: string): Promise<void> {
   process.stdout.write(`\nREFERENCES (${briefing.references.length})\n`);
   for (const ref of briefing.references) {
     process.stdout.write(`  ${ref.id}  ${ref.title}  ${ref.url}\n`);
+  }
+
+  if (briefing.kolCluster && briefing.kolCluster.labs.length) {
+    process.stdout.write(`\nKOL & INSTITUTIONAL TERRAIN\n`);
+    for (const lab of briefing.kolCluster.labs) {
+      process.stdout.write(`  ${lab.investigator}${lab.institution ? ` - ${lab.institution}` : ''}  (${lab.paperCount} papers)\n`);
+    }
   }
 }

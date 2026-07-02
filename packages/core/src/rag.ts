@@ -1,4 +1,4 @@
-import type { Claim, Verdict, RagRating } from '@sonny/shared';
+import type { Claim, Verdict, RagRating } from '@mrsirquanzo/sonny-shared';
 
 export function computeRag(shipped: Claim[], verdicts: Verdict[]): RagRating {
   if (shipped.length === 0) return 'red';

@@ -3,8 +3,8 @@ import type { StructuredModel } from './model.js';
 import { MODEL_ROUTER } from './model.js';
 import { REGION_LABELS, boundForClaims } from './patentData.js';
 import type { RegionAssociation, ExtractedPatent } from './patentData.js';
-import type { RegionLabel, PatentRecord } from '@sonny/mcp-gateway';
-import type { Evidence } from '@sonny/shared';
+import type { RegionLabel, PatentRecord } from '@mrsirquanzo/sonny-mcp-gateway';
+import type { Evidence } from '@mrsirquanzo/sonny-shared';
 import { toBlastHit } from './patentReconcile.js';
 import type { BlastHit, VerifiedSequence, PatentReconciliation } from './patentReconcile.js';
 

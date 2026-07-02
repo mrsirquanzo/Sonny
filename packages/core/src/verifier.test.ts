@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
-import type { Claim, Evidence } from '@sonny/shared';
+import type { Claim, Evidence } from '@mrsirquanzo/sonny-shared';
 import { EvidenceStore } from './evidenceStore.js';
 import { verifyClaims } from './verifier.js';
 import type { StructuredModel } from './model.js';

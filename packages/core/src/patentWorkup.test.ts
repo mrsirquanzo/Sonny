@@ -4,7 +4,7 @@ import type { StructuredModel } from './model.js';
 import type { RegionAssociation, ExtractedPatent } from './patentData.js';
 import type { PatentReconciliation, VerifiedSequence } from './patentReconcile.js';
 import type { PatentWorkup } from './patentWorkup.js';
-import type { Evidence } from '@sonny/shared';
+import type { Evidence } from '@mrsirquanzo/sonny-shared';
 
 function model(constructs: unknown): StructuredModel {
   return { async generateStructured() { return { constructs } as never; } };

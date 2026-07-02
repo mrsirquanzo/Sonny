@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { Section, Claim, Evidence } from '@sonny/shared';
+import type { Section, Claim, Evidence } from '@mrsirquanzo/sonny-shared';
 import type { StructuredModel } from './model.js';
 import { synthesizeRecommendation } from './synthesize.js';
 
@@ -37,5 +37,69 @@ describe('synthesizeRecommendation', () => {
     // synthesizer saw the verified claims, not raw evidence text
     expect(prompt).toContain('Drives EMT.');
     expect(prompt).toContain('Mechanism outweighs weak genetics.');
+  });
+
+  it('passes moderate/high audit caveats to the writer and instructs surfacing them', async () => {
+    let prompt = '';
+    let system = '';
+    const model: StructuredModel = {
+      async generateStructured(opts) {
+        prompt = opts.prompt; system = opts.system;
+        return { verdict: 'watch', thesis: 't', bull: [], bear: [], conditions: [], executiveRead: 'er' } as never;
+      },
+    };
+    const sections = [{
+      id: 'a', title: 'A', takeaway: 'tk', rag: 'amber', sources: ['PMID:1'],
+      claims: [
+        { id: 'c1', text: 'eGFR improved.', citations: ['PMID:1'], confidence: 0.9,
+          redFlags: [{ category: 'surrogate_endpoint', biasRisk: 'high', explanation: 'unpowered post-hoc subgroup' }] },
+        { id: 'c2', text: 'Minor effect.', citations: ['PMID:1'], confidence: 0.5,
+          redFlags: [{ category: 'unblinded', biasRisk: 'low', explanation: 'open label' }] },
+      ],
+    }];
+    await synthesizeRecommendation({
+      sections: sections as never, weighing: { takeaway: '', claims: [] },
+      evidence: [{ id: 'PMID:1', kind: 'publication', source: 's', title: 't', snippet: '', url: 'u', raw: {}, retrievedAt: 'now' }] as never,
+      model,
+    });
+    expect(prompt).toContain('unpowered post-hoc subgroup'); // high flag surfaced to the writer
+    expect(prompt).not.toContain('open label');              // low flag not surfaced
+    expect(system.toLowerCase()).toContain('audit');         // writer instructed to weave the caveat
+  });
+
+  it('forces NO-GO when any section carries a severe developability risk, even on a go draft', async () => {
+    let prompt = '';
+    const model: StructuredModel = {
+      async generateStructured(opts) { prompt = opts.prompt;
+        return { verdict: 'go', thesis: 'strong biology', bull: [], bear: [], conditions: [], executiveRead: 'er' } as never; },
+    };
+    const sections = [
+      { id: 'target_biology', title: 'Target Biology', takeaway: 'great', rag: 'green', sources: [], claims: [] },
+      { id: 'modality_developability', title: 'Modality & Developability', takeaway: 'tough', rag: 'red', sources: ['PMID:9'], claims: [],
+        developabilityRisks: [{ evidenceId: 'PMID:9', category: 'immunogenicity', severity: 'severe', explanation: 'High ADA incidence.' }] },
+    ];
+    const { recommendation } = await synthesizeRecommendation({
+      sections: sections as never, weighing: { takeaway: '', claims: [] },
+      evidence: [{ id: 'PMID:9', kind: 'publication', source: 's', title: 't', snippet: '', url: 'u', raw: {}, retrievedAt: 'now' }] as never,
+      model,
+    });
+    expect(recommendation.verdict).toBe('no-go');          // severe developability overrides the go draft
+    expect(prompt).toContain('High ADA incidence.');       // risk surfaced to the writer
+  });
+
+  it('does not override the verdict for a significant-only developability risk', async () => {
+    const model: StructuredModel = {
+      async generateStructured() { return { verdict: 'go', thesis: 't', bull: [], bear: [], conditions: [], executiveRead: 'er' } as never; },
+    };
+    const sections = [
+      { id: 'modality_developability', title: 'M', takeaway: 't', rag: 'amber', sources: ['PMID:9'], claims: [],
+        developabilityRisks: [{ evidenceId: 'PMID:9', category: 'half_life', severity: 'significant', explanation: 'Short half-life.' }] },
+    ];
+    const { recommendation } = await synthesizeRecommendation({
+      sections: sections as never, weighing: { takeaway: '', claims: [] },
+      evidence: [{ id: 'PMID:9', kind: 'publication', source: 's', title: 't', snippet: '', url: 'u', raw: {}, retrievedAt: 'now' }] as never,
+      model,
+    });
+    expect(recommendation.verdict).toBe('go');             // significant informs but does not override
   });
 });

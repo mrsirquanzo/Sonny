@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { ClaimsSchema, type Claim, type Section, type TraceEvent } from '@sonny/shared';
-import type { Tool } from '@sonny/mcp-gateway';
+import { ClaimsSchema, type Claim, type Section, type TraceEvent } from '@mrsirquanzo/sonny-shared';
+import type { Tool } from '@mrsirquanzo/sonny-mcp-gateway';
 import type { EvidenceStore } from './evidenceStore.js';
 import { groundClaims } from './grounding.js';
 import { verifyClaims } from './verifier.js';

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { VerdictStatusSchema } from '@sonny/shared';
+import { VerdictStatusSchema } from '@mrsirquanzo/sonny-shared';
 import type { StructuredModel, Backend } from './model.js';
 import { currentBackend, routerFor, AnthropicModel, OllamaModel } from './model.js';
 import type { CompetitiveIP, IpPoint, PatentWorkup, ClaimVerdict } from './patentWorkup.js';

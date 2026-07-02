@@ -1,4 +1,4 @@
-import type { Claim } from '@sonny/shared';
+import type { Claim } from '@mrsirquanzo/sonny-shared';
 import type { EvidenceStore } from './evidenceStore.js';
 
 export function groundClaims(

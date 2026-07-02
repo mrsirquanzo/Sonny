@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ClaimsSchema, type Claim, type Section, type TraceEvent } from '@sonny/shared';
+import { ClaimsSchema, type Claim, type Section, type TraceEvent } from '@mrsirquanzo/sonny-shared';
 import type { EvidenceStore } from './evidenceStore.js';
 import type { StructuredModel } from './model.js';
 import { MODEL_ROUTER } from './model.js';
