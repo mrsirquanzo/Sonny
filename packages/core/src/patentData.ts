@@ -9,6 +9,10 @@ export interface ExtractionCompleteness {
   referencedMax: number;
   missingSeqIds: number[];
   alphabetWarnings: Array<{ seqId: number; invalidChars: string }>;
+  // Number of region-to-SEQ-ID associations mapped. foundCount > 0 with associationCount === 0
+  // means sequences were extracted but none could be mapped to a region (a construct-less workup) -
+  // the silent-degradation case worth surfacing (common for ST.26 listings lacking region features).
+  associationCount: number;
 }
 
 export interface RegionAssociation {
@@ -63,7 +67,7 @@ function computeCompleteness(
     const invalid = [...new Set(s.residues.toUpperCase().split(''))].filter((ch) => !VALID_RESIDUES.has(ch));
     if (invalid.length > 0) alphabetWarnings.push({ seqId: s.seqId, invalidChars: invalid.join('') });
   }
-  return { foundCount: sequences.length, referencedMax, missingSeqIds, alphabetWarnings };
+  return { foundCount: sequences.length, referencedMax, missingSeqIds, alphabetWarnings, associationCount: associations.length };
 }
 
 export async function extractAssociations(
