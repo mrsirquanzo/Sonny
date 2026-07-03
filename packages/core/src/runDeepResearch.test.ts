@@ -33,7 +33,10 @@ describe('runDeepResearch', () => {
       if (o.system.includes('rigorous biomedical')) return { claims: [{ id: 'c1', text: 'A claim citing ENSG1.', citations: ['ENSG1'], confidence: 0.8 }] } as never;
       return { done: true, followups: [], takeaway: 'takeaway' } as never; // reflect
     } };
-    const verifierModel = { async generateStructured() { return { claimId: 'x', status: 'supported', rationale: 'ok' } as never; } };
+    const verifierModel = { async generateStructured(o: { system: string }) {
+      if (o.system.includes('consistency auditor')) return { contradictions: [] } as never;
+      return { claimId: 'x', status: 'supported', rationale: 'ok' } as never;
+    } };
     const leadModel = { async generateStructured(o: { prompt: string }) {
       if (o.prompt.includes('THREAD FINDINGS')) return { takeaway: '', claims: [] } as never;
       return { complete: true, gaps: [] } as never;
