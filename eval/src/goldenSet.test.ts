@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { GoldenTarget } from './goldenSet.js';
 
-const load = (f: string) => JSON.parse(readFileSync(new URL(`../golden/${f}`, import.meta.url), 'utf8'));
+const load = (f: string) => JSON.parse(readFileSync(new URL(`../golden/verdict/${f}`, import.meta.url), 'utf8'));
 
 describe('GoldenTarget schema', () => {
   it('validates the CDCP1 golden target', () => {
