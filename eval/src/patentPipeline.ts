@@ -1,19 +1,20 @@
 import {
-  extractPatentData, reconcilePatent, groupConstructs, buildWorkup, synthesizeCompetitiveIP, graphRelationships,
+  extractPatentData, reconcilePatent, groupConstructs, buildWorkup, synthesizeCompetitiveIP, graphRelationships, matchCdrCompetitors,
 } from '@mrsirquanzo/sonny-core';
-import type { StructuredModel, ReconcileDeps, PatentWorkup } from '@mrsirquanzo/sonny-core';
+import type { StructuredModel, ReconcileDeps, PatentWorkup, CdrBlast } from '@mrsirquanzo/sonny-core';
 import type { GoldenCompetitor, SpeciesClass } from './goldenPatent.js';
 
 // Compose the core pipeline offline (no ingest/CLI); all tool + model calls are injected.
 export async function runPatentPipeline(
   markdown: string,
-  deps: { model: StructuredModel; reconcileDeps?: ReconcileDeps },
+  deps: { model: StructuredModel; reconcileDeps?: ReconcileDeps; cdrBlast?: CdrBlast },
 ): Promise<PatentWorkup> {
   const extracted = await extractPatentData(markdown, deps.model);
   const reconciliation = await reconcilePatent(extracted, deps.reconcileDeps);
   const constructs = await groupConstructs(markdown, extracted.associations, deps.model);
   const workup = buildWorkup(extracted, reconciliation, constructs);
   workup.narrative = await synthesizeCompetitiveIP(workup, deps.model);
+  if (deps.cdrBlast) await matchCdrCompetitors(workup, reconciliation, deps.cdrBlast);
   workup.graph = graphRelationships(workup);
   return workup;
 }
