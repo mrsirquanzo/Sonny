@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { StructuredModel } from './model.js';
 import { MODEL_ROUTER } from './model.js';
-import { extractPatentNumber, extractSequences } from '@mrsirquanzo/sonny-mcp-gateway';
+import { extractPatentNumber, extractSequences, isST26, extractST26Associations } from '@mrsirquanzo/sonny-mcp-gateway';
 import type { ExtractedSequence, RegionLabel } from '@mrsirquanzo/sonny-mcp-gateway';
 
 export interface ExtractionCompleteness {
@@ -86,7 +86,9 @@ export async function extractAssociations(
 export async function extractPatentData(markdown: string, model: StructuredModel): Promise<ExtractedPatent> {
   const patentNumber = extractPatentNumber(markdown);
   const sequences = extractSequences(markdown);
-  const associations = await extractAssociations(markdown, model);
+  const associations = isST26(markdown)
+    ? extractST26Associations(markdown)
+    : await extractAssociations(markdown, model);
   const byId = new Map(sequences.map((s) => [s.seqId, s.residues]));
   const completeness = computeCompleteness(sequences, associations);
   return {
