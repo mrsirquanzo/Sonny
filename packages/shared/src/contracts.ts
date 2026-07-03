@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const EvidenceKindSchema = z.enum(['target', 'publication', 'trial', 'patent', 'dataset', 'disease', 'drug']);
+export const EvidenceKindSchema = z.enum(['target', 'publication', 'trial', 'patent', 'dataset', 'disease', 'drug', 'figure']);
 export type EvidenceKind = z.infer<typeof EvidenceKindSchema>;
 
 export const AuthorSchema = z.object({
@@ -13,6 +13,8 @@ export type Author = z.infer<typeof AuthorSchema>;
 export const EvidenceMetadataSchema = z.object({
   authors: z.array(AuthorSchema).optional(),
   institutions: z.array(z.string()).optional(),
+  figureType: z.string().optional(),
+  imageRef: z.string().optional(),
 });
 export type EvidenceMetadata = z.infer<typeof EvidenceMetadataSchema>;
 
@@ -111,6 +113,52 @@ export const KOLClusterSchema = z.object({
 });
 export type KOLCluster = z.infer<typeof KOLClusterSchema>;
 
+// --- Figure evidence (Slice 4) ---
+
+// The sidecar WIRE response. Carries NO inCaption and NO readRisk; those are
+// derived in TypeScript by readFigures (see mcp-gateway/figureRead.ts).
+export const ExtractedValueWireSchema = z.object({
+  label: z.string(),
+  value: z.string(),
+  unit: z.string().optional(),
+});
+export const FigureReadingWireSchema = z.object({
+  figureId: z.string().min(1),
+  relevanceScore: z.number(),
+  figureType: z.string().optional(),
+  reading: z.string(),
+  extractedValues: z.array(ExtractedValueWireSchema),
+  confidence: z.number().min(0).max(1),
+});
+export const FiguresAnalyzeResponseSchema = z.object({
+  readings: z.array(FigureReadingWireSchema),
+});
+export type FiguresAnalyzeResponse = z.infer<typeof FiguresAnalyzeResponseSchema>;
+
+export const FigureTypeSchema = z.enum([
+  'forest_plot', 'kaplan_meier', 'dose_response', 'bar', 'flow', 'other',
+]);
+export type FigureType = z.infer<typeof FigureTypeSchema>;
+
+// The Tool's OUTPUT. inCaption is a deterministic TS fact; readRisk is binary.
+export const ExtractedValueSchema = z.object({
+  label: z.string(),
+  value: z.string(),
+  unit: z.string().optional(),
+  inCaption: z.boolean(),
+  readRisk: z.enum(['low', 'high']),
+});
+export type ExtractedValue = z.infer<typeof ExtractedValueSchema>;
+
+export const FigureReadingSchema = z.object({
+  evidenceId: z.string().min(1),
+  figureType: FigureTypeSchema.optional(),
+  reading: z.string(),
+  extractedValues: z.array(ExtractedValueSchema),
+  confidence: z.number().min(0).max(1),
+});
+export type FigureReading = z.infer<typeof FigureReadingSchema>;
+
 export type TraceEvent =
   | { type: 'plan'; specialists: string[]; tools: string[] }
   | { type: 'tool_call'; tool: string; args: Record<string, unknown> }
@@ -130,6 +178,7 @@ export type TraceEvent =
   | { type: 'completeness_verdict'; complete: boolean; gaps: string[] }
   | { type: 'gap_filler'; specialist: string; question: string }
   | { type: 'methodological_critique'; specialist: string; critique: MethodologicalCritique }
+  | { type: 'figure_read'; specialist: string; readings: FigureReading[] }
   | { type: 'developability_assessment'; risks: DevelopabilityRisk[] }
   | { type: 'kol_cluster'; cluster: KOLCluster }
   | { type: 'recommendation'; verdict: string };
