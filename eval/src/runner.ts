@@ -41,9 +41,11 @@ type EngineDeps = {
 };
 
 const REPEATS = Number(process.env.SONNY_EVAL_REPEATS ?? 3);
-const GOLDEN_DIR = process.env.SONNY_GOLDEN_DIR ?? "golden";
+// Verdict-eval goldens live in golden/verdict/, namespaced apart from the
+// patent-eval goldens (golden/synthetic-antibody.json) that share this package.
+const GOLDEN_DIR = process.env.SONNY_GOLDEN_DIR ?? "golden/verdict";
 const OUT_DIR = process.env.SONNY_EVAL_OUT ?? ".eval-out";
-const BASELINE = process.env.SONNY_EVAL_BASELINE ?? "golden/_baseline.json";
+const BASELINE = process.env.SONNY_EVAL_BASELINE ?? "golden/verdict/_baseline.json";
 
 export async function loadGolden(subset: EvalSubset): Promise<GoldenTarget[]> {
   const files = (await fs.readdir(GOLDEN_DIR)).filter(
