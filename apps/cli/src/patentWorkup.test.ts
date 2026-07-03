@@ -64,6 +64,7 @@ describe('runPatentWorkup', () => {
   });
 });
 
+import type { BlastCache } from '@mrsirquanzo/sonny-mcp-gateway';
 import type { CdrBlast } from '@mrsirquanzo/sonny-core';
 
 describe('runPatentWorkup CDR competitor matching', () => {
@@ -120,5 +121,46 @@ describe('runPatentWorkup narrative verification', () => {
       expect(out.workup.narrative.decorrelated).toBe(false);
       expect(out.workup.narrative.points[0]?.verdict).toBe('overreach');
     }
+  });
+});
+
+describe('runPatentWorkup BLAST cache wiring', () => {
+  it('routes cdrBlast through an injected cache (hermetic: cache always hits, inner never reached)', async () => {
+    // Approach: inject blastCache whose get() always returns a fresh hit so the real blastVerifyTool
+    // (network) is never invoked. Inject reconcileDeps with a fake anarci that emits a CDR-H3 region
+    // so matchCdrCompetitors actually calls cdrBlast (which goes through the cache wrapper).
+    // We track gets to prove cache.get was consulted on the cdrBlast call.
+    let gets = 0;
+    let sets = 0;
+    const cache: BlastCache = {
+      get: (_k) => { gets++; return { evidence: [], cachedAt: new Date().toISOString() }; },
+      set: (_k, _v) => { sets++; },
+    };
+    const out = await runPatentWorkup('/x.pdf', {
+      ingest: async () => ({ markdown: 'Patent US 10,123,456 B2\nClaims\nSEQ ID NO: 1\n' + 'E'.repeat(60) + '\n', status: 'ok' as const }),
+      model: { async generateStructured(o: { system: string }) {
+        if (o.system.includes('extract')) return { associations: [{ regionLabel: 'VH', seqId: 1 }] } as never;
+        if (o.system.includes('group')) return { constructs: [{ name: 'Ab1', members: [{ regionLabel: 'VH', seqId: 1 }] }] } as never;
+        return { summary: 'ACME.', points: [] } as never;
+      } },
+      verifier: { model: { async generateStructured() { return { status: 'supported', rationale: '' } as never; } }, modelId: 'x', decorrelated: false },
+      blastCache: cache,
+      reconcileDeps: {
+        blast: async () => [],
+        anarci: async () => ({
+          overallStatus: 'confirmed' as const,
+          domains: [{ chain: 'H' as const, species: 'homo_sapiens', germline: { v: '', j: '' }, numberedRegions: { 'CDR-H3': { seq: 'ARDYYGSSYFDY', imgtStart: 105, imgtEnd: 117, residues: [] } } }],
+          regionChecks: [],
+          speciesSummary: [],
+        }),
+        epo: async () => ({ input: 'US10123456', found: true, applicants: ['ACME'], inventors: [], ipc: [], family: [] }),
+      },
+    });
+    expect(out.ok).toBe(true);
+    // cache.get was called at least once (cdrBlast queried the cache for the CDR-H3 sequence).
+    // Since get() returned a fresh hit, the inner blastVerifyTool.call was never invoked (no network).
+    // sets === 0 confirms every lookup was a cache hit (nothing needed to be stored).
+    expect(gets).toBeGreaterThan(0);
+    expect(sets).toBe(0);
   });
 });

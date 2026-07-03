@@ -1,4 +1,4 @@
-import { ingestToMarkdown, blastVerifyTool } from '@mrsirquanzo/sonny-mcp-gateway';
+import { ingestToMarkdown, blastVerifyTool, blastCacheFromEnv, cacheTtlMsFromEnv, makeCachedBlast } from '@mrsirquanzo/sonny-mcp-gateway';
 import {
   extractPatentData, reconcilePatent, groupConstructs, buildWorkup, synthesizeCompetitiveIP,
   graphRelationships, matchCdrCompetitors, AnthropicModel, makeDecorrelatedVerifier, verifyNarrative,
@@ -23,14 +23,18 @@ export async function runLivePatent(golden: GoldenPatent, patentFile: string, ca
   const res = await ingestToMarkdown(patentFile);
   if (res.status !== 'ok') throw new Error(`ingest failed for ${patentFile}: ${res.error ?? 'unknown'}`);
   const model = new AnthropicModel();
+  const cache = blastCacheFromEnv();
+  const rawBlast = (seq: string, db: string, opts?: { wordSize?: number; matrix?: string; expect?: number }) =>
+    blastVerifyTool.call({ sequence: seq, database: db, ...opts });
+  const blast = cache ? makeCachedBlast(rawBlast, cache, { maxAgeMs: cacheTtlMsFromEnv() }) : rawBlast;
+  if (cache) notes.push('BLAST cache active');
   const extracted = await extractPatentData(res.markdown, model);
-  const reconciliation = await reconcilePatent(extracted);  // real blast/anarci/epo defaults
+  const reconciliation = await reconcilePatent(extracted, { blast });  // cache-wrapped blast
   const constructs = await groupConstructs(res.markdown, extracted.associations, model);
   const workup: PatentWorkup = buildWorkup(extracted, reconciliation, constructs);
   workup.narrative = await synthesizeCompetitiveIP(workup, model);
   workup.narrative = await verifyNarrative(workup.narrative, workup, makeDecorrelatedVerifier());
-  const cdrBlast = (seq: string, db: string, opts?: { wordSize?: number; matrix?: string; expect?: number }) =>
-    blastVerifyTool.call({ sequence: seq, database: db, ...opts });
+  const cdrBlast = blast;
   await matchCdrCompetitors(workup, reconciliation, cdrBlast);
   workup.graph = graphRelationships(workup);
   if (!caps.epo) notes.push('EPO disabled: patent identity/family/legal not verified this run');
