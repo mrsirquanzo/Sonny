@@ -26,6 +26,8 @@ export interface VerifiedSequence {
   nrTopHit?: BlastHit;
   patentHits: BlastHit[];
   domain?: { chain: 'H' | 'K' | 'L'; species: string; numberedRegions: Partial<Record<RegionLabel, NumberedRegion>> };
+  declaredLength?: number;
+  fullLengthConfirmed?: boolean;
 }
 
 export interface PatentReconciliation {
@@ -65,6 +67,13 @@ function emptyPatent(input: string, error: string): PatentRecord {
   return { input, found: false, applicants: [], inventors: [], ipc: [], family: [], error };
 }
 
+function applyFullLengthGuard(hits: BlastHit[], extractedLen: number, declaredLength: number | undefined): { hits: BlastHit[]; fullLengthConfirmed: boolean } {
+  const lengthMismatch = declaredLength !== undefined && extractedLen !== declaredLength;
+  const fullLengthConfirmed = declaredLength !== undefined && extractedLen === declaredLength;
+  const guarded = lengthMismatch ? hits.map((h) => ({ ...h, exactMatch: false })) : hits;
+  return { hits: guarded, fullLengthConfirmed };
+}
+
 export async function reconcilePatent(
   extracted: ExtractedPatent,
   deps: ReconcileDeps = {},
@@ -100,6 +109,15 @@ export async function reconcilePatent(
           .filter((h): h is BlastHit => h !== undefined && h.percentIdentity >= COMPETITOR_MIN_IDENTITY);
       }
 
+      const declaredLength = s.declaredLength;
+      const guardedPatent = applyFullLengthGuard(patentHits, length, declaredLength);
+      patentHits = guardedPatent.hits;
+      const fullLengthConfirmed = guardedPatent.fullLengthConfirmed;
+      if (nrTopHit !== undefined) {
+        const guardedNr = applyFullLengthGuard([nrTopHit], length, declaredLength);
+        nrTopHit = guardedNr.hits[0];
+      }
+
       let domain: VerifiedSequence['domain'];
       const isHeavy = regionLabels.includes('VH');
       const isLight = regionLabels.includes('VL');
@@ -109,7 +127,7 @@ export async function reconcilePatent(
         if (d) domain = { chain: d.chain, species: d.species, numberedRegions: d.numberedRegions ?? {} };
       }
 
-      return { seqId: s.seqId, residues: s.residues, regionLabels, length, blasted, nrTopHit, patentHits, domain };
+      return { seqId: s.seqId, residues: s.residues, regionLabels, length, blasted, nrTopHit, patentHits, domain, declaredLength, fullLengthConfirmed };
     }),
   );
 
