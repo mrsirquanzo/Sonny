@@ -18,3 +18,5 @@ export { ingestToMarkdown } from './ingest.js';
 export type { MarkitdownExec, IngestResult } from './ingest.js';
 export { extractPatentNumber, extractSequenceListing, extractSequences, extractSequenceListingST26, isST26 } from './patentExtract.js';
 export type { ExtractedSequence } from './patentExtract.js';
+export { rerankHits } from './rerank.js';
+export type { RerankOpts } from './rerank.js';

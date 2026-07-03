@@ -33,7 +33,8 @@ export const europePmcSearchTool: Tool = {
   async call(args, fetchImpl = fetch) {
     const query = String(args.query ?? '').trim();
     if (!query) return [];
-    const url = `${ENDPOINT}?query=${encodeURIComponent(query)}&format=json&resultType=core&pageSize=8&sort=${encodeURIComponent('CITED desc')}`;
+    const pageSize = Math.min(Math.max(Number(args.pageSize ?? 8), 1), 100);
+    const url = `${ENDPOINT}?query=${encodeURIComponent(query)}&format=json&resultType=core&pageSize=${pageSize}&sort=${encodeURIComponent('CITED desc')}`;
     const res = await fetchImpl(url);
     if (!res.ok) throw new Error(`Europe PMC HTTP ${res.status}`);
     const hits = (((await res.json()) as { resultList?: { result?: Hit[] } }).resultList?.result) ?? [];
