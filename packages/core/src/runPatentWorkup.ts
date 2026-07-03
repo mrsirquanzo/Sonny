@@ -1,9 +1,10 @@
 import { ingestToMarkdown, blastVerifyTool, blastCacheFromEnv, cacheTtlMsFromEnv, makeCachedBlast } from '@mrsirquanzo/sonny-mcp-gateway';
 import type { IngestResult, BlastCache, BlastFn } from '@mrsirquanzo/sonny-mcp-gateway';
-import {
-  extractPatentData, reconcilePatent, groupConstructs, buildWorkup, synthesizeCompetitiveIP, graphRelationships, makeModel, makeDecorrelatedVerifier, verifyNarrative, matchCdrCompetitors,
-} from '@mrsirquanzo/sonny-core';
-import type { StructuredModel, ReconcileDeps, PatentWorkup, Verifier, CdrBlast } from '@mrsirquanzo/sonny-core';
+import { extractPatentData } from './patentData.js';
+import { reconcilePatent, type ReconcileDeps } from './patentReconcile.js';
+import { groupConstructs, buildWorkup, synthesizeCompetitiveIP, graphRelationships, matchCdrCompetitors, type PatentWorkup, type CdrBlast } from './patentWorkup.js';
+import { makeModel, type StructuredModel } from './model.js';
+import { makeDecorrelatedVerifier, verifyNarrative, type Verifier } from './narrativeVerify.js';
 
 export interface WorkupDeps {
   ingest?: (filePath: string) => Promise<IngestResult>;

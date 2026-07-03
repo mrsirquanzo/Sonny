@@ -32,3 +32,4 @@ export {
   type ClaimVerdict, type CdrBlast,
 } from './patentWorkup.js';
 export { makeDecorrelatedVerifier, verifyNarrative, type Verifier } from './narrativeVerify.js';
+export { runPatentWorkup, type WorkupDeps } from './runPatentWorkup.js';
