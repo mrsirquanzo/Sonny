@@ -13,12 +13,22 @@ export async function weighAcrossThreads(opts: {
   leadModel: StructuredModel; verifierModel: StructuredModel; emit: (e: TraceEvent) => void;
 }): Promise<{ takeaway: string; claims: Claim[] }> {
   const { sections, store, leadModel, verifierModel, emit } = opts;
+  const LEVEL_ORDER = ['very_low', 'low', 'moderate', 'high'];
+  const gradeById = new Map<string, string>();
+  for (const s of sections) for (const cr of s.critiques ?? []) if (cr.evidenceLevel) gradeById.set(cr.evidenceId, cr.evidenceLevel);
+  const bestGrade = (citations: string[]): string => {
+    let best = -1;
+    for (const id of citations) { const g = gradeById.get(id); if (g) best = Math.max(best, LEVEL_ORDER.indexOf(g)); }
+    return best < 0 ? 'ungraded' : LEVEL_ORDER[best];
+  };
+  const claimLine = (c: { text: string; citations: string[] }) =>
+    `- ${c.text} ${c.citations.map((id) => `[${id}]`).join(' ')} (GRADE: ${bestGrade(c.citations)})`;
   const digest = sections.map((s) =>
-    `## ${s.title} [${s.rag}]\n${s.takeaway}\n${s.claims.map((c) => `- ${c.text} ${c.citations.map((id) => `[${id}]`).join(' ')}`).join('\n')}`,
+    `## ${s.title} [${s.rag}]\n${s.takeaway}\n${s.claims.map(claimLine).join('\n')}`,
   ).join('\n\n');
 
   const draft = await leadModel.generateStructured({
-    system: `You are the lead scientist weighing the findings across every thread of a target assessment. Identify the tensions between threads - for example a weak genetic association against strong mechanistic evidence, or a promising mechanism against a thin clinical pipeline. For each tension write a reconciliation claim that names it, states which way the evidence leans, and why. Cite ONLY evidence ids that already appear in the section claims, copied verbatim. Write a one-line cross-thread takeaway.`,
+    system: `You are the lead scientist weighing the findings across every thread of a target assessment. Identify the tensions between threads - for example a weak genetic association against strong mechanistic evidence, or a promising mechanism against a thin clinical pipeline. For each tension write a reconciliation claim that names it, states which way the evidence leans, and why. Cite ONLY evidence ids that already appear in the section claims, copied verbatim. Each finding is tagged with a GRADE evidence level (high > moderate > low > very_low, or ungraded); when findings of different levels are in tension, weigh the higher-GRADE evidence more heavily. Write a one-line cross-thread takeaway.`,
     prompt: `THREAD FINDINGS:\n${digest}\n\nReturn a takeaway and reconciliation claims c1, c2, ... each citing existing evidence ids.`,
     schema: WeighSchema,
     model: MODEL_ROUTER.specialist,

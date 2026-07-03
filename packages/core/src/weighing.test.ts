@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { Section } from '@mrsirquanzo/sonny-shared';
+import type { StructuredModel } from './model.js';
 import { EvidenceStore } from './evidenceStore.js';
 import { weighAcrossThreads } from './weighing.js';
 
@@ -26,5 +27,28 @@ describe('weighAcrossThreads', () => {
     const out = await weighAcrossThreads({ sections, store, leadModel, verifierModel, emit: () => {} });
     expect(out.takeaway).toContain('mechanism');
     expect(out.claims.map((c) => c.id)).toEqual(['w1']);
+  });
+});
+
+const gradeSections: Section[] = [{
+  id: 'a', title: 'A', takeaway: 't', rag: 'amber', sources: ['PMID:1'],
+  claims: [
+    { id: 'c1', text: 'Strong RCT finding.', citations: ['PMID:1'], confidence: 0.9 },
+    { id: 'c2', text: 'Abstract-only finding.', citations: ['PMID:9'], confidence: 0.5 },
+  ],
+  critiques: [{ evidenceId: 'PMID:1', studyDesign: 'randomized_controlled', redFlags: [], evidenceLevel: 'high' }],
+}];
+
+describe('weighAcrossThreads grade annotation', () => {
+  it('annotates claim lines with the cited evidence GRADE and instructs weighing it', async () => {
+    let prompt = ''; let system = '';
+    const model: StructuredModel = {
+      async generateStructured(opts) { prompt = opts.prompt; system = opts.system; return { takeaway: 'tk', claims: [] } as never; },
+    };
+    const store = new EvidenceStore();
+    await weighAcrossThreads({ sections: gradeSections, store, leadModel: model, verifierModel: model, emit: () => {} });
+    expect(prompt).toContain('(GRADE: high)');       // c1 cites a graded RCT
+    expect(prompt).toContain('(GRADE: ungraded)');    // c2 cites an un-audited abstract
+    expect(system.toLowerCase()).toContain('grade');  // instruction to weigh by tier
   });
 });
