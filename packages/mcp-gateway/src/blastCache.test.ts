@@ -55,6 +55,42 @@ describe('makeCachedBlast', () => {
     expect(calls).toBe(1);
     expect(out.map((e) => e.id)).toEqual(['BLAST:A']);
   });
+  it('cache.get throwing is treated as a miss and does not propagate', async () => {
+    let calls = 0;
+    const inner = async () => { calls++; return [ev('LIVE')]; };
+    const throwingCache = {
+      get: () => { throw new Error('cache get failed'); },
+      set: () => { /* ok */ },
+    };
+    const cached = makeCachedBlast(inner, throwingCache);
+    const out = await cached('EVQLV', 'nr');
+    expect(calls).toBe(1);
+    expect(out.map((e) => e.id)).toEqual(['BLAST:LIVE']);
+  });
+  it('cache.set throwing is swallowed and does not propagate', async () => {
+    let calls = 0;
+    const inner = async () => { calls++; return [ev('LIVE')]; };
+    const throwingCache = {
+      get: () => undefined,
+      set: () => { throw new Error('cache set failed'); },
+    };
+    const cached = makeCachedBlast(inner, throwingCache);
+    const out = await cached('EVQLV', 'nr');
+    expect(calls).toBe(1);
+    expect(out.map((e) => e.id)).toEqual(['BLAST:LIVE']);
+  });
+  it('cache.get and cache.set both throwing still returns live result', async () => {
+    let calls = 0;
+    const inner = async () => { calls++; return [ev('LIVE')]; };
+    const throwingCache = {
+      get: () => { throw new Error('cache get failed'); },
+      set: () => { throw new Error('cache set failed'); },
+    };
+    const cached = makeCachedBlast(inner, throwingCache);
+    const out = await cached('EVQLV', 'nr');
+    expect(calls).toBe(1);
+    expect(out.map((e) => e.id)).toEqual(['BLAST:LIVE']);
+  });
 });
 
 describe('FileBlastCache', () => {

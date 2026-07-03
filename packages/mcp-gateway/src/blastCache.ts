@@ -38,10 +38,19 @@ export class FileBlastCache implements BlastCache {
 export function makeCachedBlast(inner: BlastFn, cache: BlastCache, opts?: { maxAgeMs?: number }): BlastFn {
   return async (sequence, database, callOpts) => {
     const key = blastCacheKey({ sequence, database, wordSize: callOpts?.wordSize, matrix: callOpts?.matrix, expect: callOpts?.expect });
-    const hit = cache.get(key);
+    let hit: CachedBlast | undefined;
+    try {
+      hit = cache.get(key);
+    } catch {
+      hit = undefined;
+    }
     if (hit && !isExpired(hit.cachedAt, opts?.maxAgeMs)) return hit.evidence;
     const evidence = await inner(sequence, database, callOpts);
-    cache.set(key, { evidence, cachedAt: new Date().toISOString() });
+    try {
+      cache.set(key, { evidence, cachedAt: new Date().toISOString() });
+    } catch {
+      /* best-effort cache write; inner succeeded, so return it */
+    }
     return evidence;
   };
 }
