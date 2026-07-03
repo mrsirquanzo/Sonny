@@ -7,7 +7,7 @@ import type { GoldenPatent } from './goldenPatent.js';
 import type { StructuredModel, ReconcileDeps, PatentWorkup } from '@mrsirquanzo/sonny-core';
 import type { Evidence } from '@mrsirquanzo/sonny-shared';
 
-const golden = JSON.parse(readFileSync(fileURLToPath(new URL('../golden/synthetic-antibody.json', import.meta.url)), 'utf8')) as GoldenPatent;
+const golden = JSON.parse(readFileSync(fileURLToPath(new URL('../golden/synthetic-antibody.patent.json', import.meta.url)), 'utf8')) as GoldenPatent;
 
 // A >=50-residue VH and a >=50-residue VL, matching the golden known sequences.
 const VH = 'EVQLVESGGGLVQPGGSLRLSCAASGFTFSSYAMSWVRQAPGKGLEWVSAISGSGGSTYYADSVKG';
