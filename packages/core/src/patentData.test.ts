@@ -73,6 +73,26 @@ describe('extraction completeness', () => {
   });
 });
 
+describe('extractPatentData ST.26 structured associations', () => {
+  const ST26 = '<ST26SequenceListing><SequenceData sequenceIDNumber="1"><INSDSeq><INSDSeq_length>12</INSDSeq_length><INSDSeq_sequence>ARDYYGSSYFDY</INSDSeq_sequence><INSDSeq_feature-table><INSDFeature><INSDFeature_key>REGION</INSDFeature_key><INSDFeature_location>1..12</INSDFeature_location><INSDFeature_quals><INSDQualifier><INSDQualifier_name>note</INSDQualifier_name><INSDQualifier_value>CDR-H3</INSDQualifier_value></INSDQualifier></INSDFeature_quals></INSDFeature></INSDSeq_feature-table></INSDSeq></SequenceData></ST26SequenceListing>';
+
+  it('uses ST.26 features and does NOT call the LLM', async () => {
+    let llmCalls = 0;
+    const model = { async generateStructured() { llmCalls++; return { associations: [] } as never; } };
+    const out = await extractPatentData(ST26, model);
+    expect(out.associations).toContainEqual(expect.objectContaining({ regionLabel: 'CDR-H3', seqId: 1 }));
+    expect(llmCalls).toBe(0);
+  });
+
+  it('still uses the LLM for text patents', async () => {
+    let llmCalls = 0;
+    const model = { async generateStructured() { llmCalls++; return { associations: [{ regionLabel: 'VH', seqId: 1 }] } as never; } };
+    const out = await extractPatentData('SEQ ID NO: 1\nEVQLVESGG\n\nThe heavy chain variable region is SEQ ID NO: 1.', model);
+    expect(llmCalls).toBe(1);
+    expect(out.associations).toContainEqual(expect.objectContaining({ regionLabel: 'VH', seqId: 1 }));
+  });
+});
+
 describe('ST.26 + reconcilePatent end-to-end', () => {
   it('ST.26 sequence survives reconcile and carries declaredLength through to VerifiedSequence', async () => {
     // Use a 12-residue sequence (below the 50-aa BLAST gate) so we can inject empty blast deps.

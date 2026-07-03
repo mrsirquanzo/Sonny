@@ -1,5 +1,6 @@
 import { normalizePatentNumber } from './epoPatent.js';
 import { XMLParser } from 'fast-xml-parser';
+import type { RegionLabel } from './anarci.js';
 
 export interface ExtractedSequence {
   seqId: number;
@@ -91,4 +92,88 @@ export function extractSequenceListingST26(content: string): ExtractedSequence[]
 
 export function extractSequences(content: string): ExtractedSequence[] {
   return isST26(content) ? extractSequenceListingST26(content) : extractSequenceListing(content);
+}
+
+function locationSpan(loc: unknown): { start: number; end: number } | undefined {
+  const nums = String(loc ?? '').match(/\d+/g);
+  if (!nums || nums.length === 0) return undefined;
+  const ints = nums.map(Number);
+  return { start: Math.min(...ints), end: Math.max(...ints) };
+}
+
+function qualifierValue(feature: Record<string, unknown>): string | undefined {
+  const quals = (feature['INSDFeature_quals'] ?? {}) as Record<string, unknown>;
+  const precedence = ['note', 'product', 'standard_name'];
+  const found = new Map<string, string>();
+  for (const q of asArray(quals['INSDQualifier']) as Array<Record<string, unknown>>) {
+    const name = String(q['INSDQualifier_name'] ?? '').toLowerCase();
+    if (precedence.includes(name) && !found.has(name)) {
+      found.set(name, String(q['INSDQualifier_value'] ?? ''));
+    }
+  }
+  for (const p of precedence) {
+    if (found.has(p)) return found.get(p);
+  }
+  return undefined;
+}
+
+export function extractST26Associations(content: string): Array<{ regionLabel: RegionLabel; seqId: number }> {
+  let parsed: unknown;
+  try { parsed = st26Parser.parse(content); } catch { return []; }
+  const root = (parsed as { ST26SequenceListing?: { SequenceData?: unknown } })?.ST26SequenceListing;
+  const data = asArray(root?.SequenceData) as Array<Record<string, unknown>>;
+  const out: Array<{ regionLabel: RegionLabel; seqId: number }> = [];
+  const seen = new Set<string>();
+  for (const d of data) {
+    const seqId = Number(d['@_sequenceIDNumber']);
+    if (!Number.isInteger(seqId) || seqId <= 0) continue;
+    const insd = (d.INSDSeq ?? {}) as Record<string, unknown>;
+    const declaredLength = Number(insd['INSDSeq_length']);
+    if (!Number.isInteger(declaredLength)) continue; // cannot disambiguate whole vs sub
+    const table = (insd['INSDSeq_feature-table'] ?? {}) as Record<string, unknown>;
+    for (const f of asArray(table['INSDFeature']) as Array<Record<string, unknown>>) {
+      const note = qualifierValue(f);
+      if (!note) continue;
+      const label = normalizeRegionNote(note);
+      if (!label) continue;
+      const span = locationSpan(f['INSDFeature_location']);
+      if (!span || !(span.start <= 1 && span.end >= declaredLength)) continue; // whole-sequence only
+      const k = `${label}|${seqId}`;
+      if (seen.has(k)) continue;
+      seen.add(k);
+      out.push({ regionLabel: label, seqId });
+    }
+  }
+  return out;
+}
+
+export function normalizeRegionNote(note: string): RegionLabel | undefined {
+  const n = note.toLowerCase();
+  const heavy = /heavy|\bhc\b|\bvh\b|hcdr|\bh[- ]?cdr|\bfr[- ]?h/.test(n);
+  const light = /light|\blc\b|\bvl\b|lcdr|\bl[- ]?cdr|\bfr[- ]?l|kappa|lambda/.test(n);
+  const cdr = n.match(/cdr[- ]?[hl]?[- ]?([123])\b/) ?? n.match(/[hl]cdr[- ]?([123])\b/) ?? n.match(/cdr\D*?([123])\b/);
+  if (/cdr/.test(n) && cdr) {
+    const num = cdr[1];
+    const chainLetter = n.match(/([hl])[- ]?cdr/) ?? n.match(/cdr[- ]?([hl])(?=\d|\W|$)/);
+    const isH = heavy || chainLetter?.[1] === 'h';
+    const isL = light || chainLetter?.[1] === 'l';
+    if (isH && !isL) return `CDR-H${num}` as RegionLabel;
+    if (isL && !isH) return `CDR-L${num}` as RegionLabel;
+    return undefined;
+  }
+  if (/variable|\bvh\b|\bvl\b|\bfv\b/.test(n)) {
+    if (heavy && !light) return 'VH';
+    if (light && !heavy) return 'VL';
+    return undefined;
+  }
+  if (/\bfab\b/.test(n)) return 'Fab';
+  if (/\bfc\b/.test(n)) return 'Fc';
+  if (/\bch1\b/.test(n)) return 'CH1';
+  if (/\bcl\b|constant light/.test(n)) return 'CL';
+  if (/hinge/.test(n)) return 'hinge';
+  if (/chain/.test(n)) {
+    if (heavy && !light) return 'heavy-chain';
+    if (light && !heavy) return 'light-chain';
+  }
+  return undefined;
 }

@@ -1,5 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { extractPatentNumber, extractSequenceListing } from './patentExtract.js';
+import {
+  extractPatentNumber,
+  extractSequenceListing,
+  normalizeRegionNote,
+  isST26,
+  extractSequenceListingST26,
+  extractSequences,
+  extractST26Associations,
+} from './patentExtract.js';
 
 describe('extractPatentNumber', () => {
   it('finds and normalizes a patent number embedded in text', () => {
@@ -76,8 +84,6 @@ describe('extractSequenceListing declared length', () => {
   });
 });
 
-import { isST26, extractSequenceListingST26, extractSequences } from './patentExtract.js';
-
 const ST26 = `<?xml version="1.0"?>
 <ST26SequenceListing>
   <SequenceData sequenceIDNumber="1">
@@ -129,5 +135,161 @@ describe('ST.26 parsing', () => {
     expect(out[0].seqId).toBe(3);
     expect(out[0].residues).toBe('EVQLVESGG');
     expect(out[0].declaredLength).toBe(9);
+  });
+});
+
+describe('normalizeRegionNote', () => {
+  it('maps confident CDR notes with chain + number', () => {
+    expect(normalizeRegionNote('CDR-H3')).toBe('CDR-H3');
+    expect(normalizeRegionNote('HCDR3')).toBe('CDR-H3');
+    expect(normalizeRegionNote('heavy chain CDR 1')).toBe('CDR-H1');
+    expect(normalizeRegionNote('CDR-L2')).toBe('CDR-L2');
+  });
+  it('maps variable domains and full chains', () => {
+    expect(normalizeRegionNote('VH')).toBe('VH');
+    expect(normalizeRegionNote('heavy chain variable region')).toBe('VH');
+    expect(normalizeRegionNote('variable light')).toBe('VL');
+    expect(normalizeRegionNote('heavy chain')).toBe('heavy-chain');
+    expect(normalizeRegionNote('light chain')).toBe('light-chain');
+    expect(normalizeRegionNote('Fc region')).toBe('Fc');
+    expect(normalizeRegionNote('hinge')).toBe('hinge');
+  });
+  it('returns undefined for unknown or chain-ambiguous notes', () => {
+    expect(normalizeRegionNote('signal peptide')).toBeUndefined();
+    expect(normalizeRegionNote('linker')).toBeUndefined();
+    expect(normalizeRegionNote('CDR 3')).toBeUndefined(); // no chain -> ambiguous
+    expect(normalizeRegionNote('')).toBeUndefined();
+  });
+  it('maps constant-region labels CH1, CL, and Fab', () => {
+    expect(normalizeRegionNote('CH1')).toBe('CH1');
+    expect(normalizeRegionNote('CL')).toBe('CL');
+    expect(normalizeRegionNote('Fab')).toBe('Fab');
+  });
+  it('does NOT map FR-H1 (framework regions are intentionally excluded)', () => {
+    expect(normalizeRegionNote('FR-H1')).toBeUndefined();
+  });
+});
+
+const ST26_FEAT = `<?xml version="1.0"?>
+<ST26SequenceListing>
+  <SequenceData sequenceIDNumber="1">
+    <INSDSeq><INSDSeq_length>12</INSDSeq_length><INSDSeq_sequence>ARDYYGSSYFDY</INSDSeq_sequence>
+      <INSDSeq_feature-table><INSDFeature>
+        <INSDFeature_key>REGION</INSDFeature_key><INSDFeature_location>1..12</INSDFeature_location>
+        <INSDFeature_quals><INSDQualifier><INSDQualifier_name>note</INSDQualifier_name><INSDQualifier_value>CDR-H3</INSDQualifier_value></INSDQualifier></INSDFeature_quals>
+      </INSDFeature></INSDSeq_feature-table>
+    </INSDSeq>
+  </SequenceData>
+  <SequenceData sequenceIDNumber="2">
+    <INSDSeq><INSDSeq_length>120</INSDSeq_length><INSDSeq_sequence>${'E'.repeat(120)}</INSDSeq_sequence>
+      <INSDSeq_feature-table>
+        <INSDFeature><INSDFeature_key>REGION</INSDFeature_key><INSDFeature_location>1..120</INSDFeature_location>
+          <INSDFeature_quals><INSDQualifier><INSDQualifier_name>note</INSDQualifier_name><INSDQualifier_value>heavy chain variable region</INSDQualifier_value></INSDQualifier></INSDFeature_quals></INSDFeature>
+        <INSDFeature><INSDFeature_key>REGION</INSDFeature_key><INSDFeature_location>99..111</INSDFeature_location>
+          <INSDFeature_quals><INSDQualifier><INSDQualifier_name>note</INSDQualifier_name><INSDQualifier_value>CDR-H3</INSDQualifier_value></INSDQualifier></INSDFeature_quals></INSDFeature>
+      </INSDSeq_feature-table>
+    </INSDSeq>
+  </SequenceData>
+</ST26SequenceListing>`;
+
+describe('extractST26Associations', () => {
+  it('emits whole-sequence associations, skips sub-span features', () => {
+    const out = extractST26Associations(ST26_FEAT);
+    // SEQ 1: CDR-H3 spans full 12; SEQ 2: VH spans full 120; SEQ 2 sub-span CDR-H3 @ 99..111 skipped
+    expect(out).toContainEqual({ regionLabel: 'CDR-H3', seqId: 1 });
+    expect(out).toContainEqual({ regionLabel: 'VH', seqId: 2 });
+    expect(out).not.toContainEqual({ regionLabel: 'CDR-H3', seqId: 2 });
+  });
+  it('returns [] on malformed xml and skips unrecognized notes', () => {
+    expect(extractST26Associations('<ST26SequenceListing><SequenceData')).toEqual([]);
+  });
+
+  it('reads product qualifier and yields normalized association', () => {
+    const xml = `<?xml version="1.0"?>
+<ST26SequenceListing>
+  <SequenceData sequenceIDNumber="1">
+    <INSDSeq><INSDSeq_length>10</INSDSeq_length><INSDSeq_sequence>EVQLVESGGX</INSDSeq_sequence>
+      <INSDSeq_feature-table><INSDFeature>
+        <INSDFeature_key>mat_peptide</INSDFeature_key><INSDFeature_location>1..10</INSDFeature_location>
+        <INSDFeature_quals><INSDQualifier><INSDQualifier_name>product</INSDQualifier_name><INSDQualifier_value>heavy chain</INSDQualifier_value></INSDQualifier></INSDFeature_quals>
+      </INSDFeature></INSDSeq_feature-table>
+    </INSDSeq>
+  </SequenceData>
+</ST26SequenceListing>`;
+    const out = extractST26Associations(xml);
+    expect(out).toContainEqual({ regionLabel: 'heavy-chain', seqId: 1 });
+  });
+
+  it('note qualifier wins over product qualifier when both are present', () => {
+    const xml = `<?xml version="1.0"?>
+<ST26SequenceListing>
+  <SequenceData sequenceIDNumber="1">
+    <INSDSeq><INSDSeq_length>12</INSDSeq_length><INSDSeq_sequence>ARDYYGSSYFDY</INSDSeq_sequence>
+      <INSDSeq_feature-table><INSDFeature>
+        <INSDFeature_key>REGION</INSDFeature_key><INSDFeature_location>1..12</INSDFeature_location>
+        <INSDFeature_quals>
+          <INSDQualifier><INSDQualifier_name>note</INSDQualifier_name><INSDQualifier_value>CDR-H3</INSDQualifier_value></INSDQualifier>
+          <INSDQualifier><INSDQualifier_name>product</INSDQualifier_name><INSDQualifier_value>heavy chain</INSDQualifier_value></INSDQualifier>
+        </INSDFeature_quals>
+      </INSDFeature></INSDSeq_feature-table>
+    </INSDSeq>
+  </SequenceData>
+</ST26SequenceListing>`;
+    const out = extractST26Associations(xml);
+    expect(out).toContainEqual({ regionLabel: 'CDR-H3', seqId: 1 });
+    expect(out).not.toContainEqual({ regionLabel: 'heavy-chain', seqId: 1 });
+  });
+
+  it('skips SequenceData with sequenceIDNumber="0"', () => {
+    const xml = `<?xml version="1.0"?>
+<ST26SequenceListing>
+  <SequenceData sequenceIDNumber="0">
+    <INSDSeq><INSDSeq_length>12</INSDSeq_length><INSDSeq_sequence>ARDYYGSSYFDY</INSDSeq_sequence>
+      <INSDSeq_feature-table><INSDFeature>
+        <INSDFeature_key>REGION</INSDFeature_key><INSDFeature_location>1..12</INSDFeature_location>
+        <INSDFeature_quals><INSDQualifier><INSDQualifier_name>note</INSDQualifier_name><INSDQualifier_value>CDR-H3</INSDQualifier_value></INSDQualifier></INSDFeature_quals>
+      </INSDFeature></INSDSeq_feature-table>
+    </INSDSeq>
+  </SequenceData>
+</ST26SequenceListing>`;
+    expect(extractST26Associations(xml)).toEqual([]);
+  });
+
+  it('skips sequence with absent INSDSeq_length (no-length skip path)', () => {
+    const xml = `<?xml version="1.0"?>
+<ST26SequenceListing>
+  <SequenceData sequenceIDNumber="1">
+    <INSDSeq><INSDSeq_sequence>ARDYYGSSYFDY</INSDSeq_sequence>
+      <INSDSeq_feature-table><INSDFeature>
+        <INSDFeature_key>REGION</INSDFeature_key><INSDFeature_location>1..12</INSDFeature_location>
+        <INSDFeature_quals><INSDQualifier><INSDQualifier_name>note</INSDQualifier_name><INSDQualifier_value>CDR-H3</INSDQualifier_value></INSDQualifier></INSDFeature_quals>
+      </INSDFeature></INSDSeq_feature-table>
+    </INSDSeq>
+  </SequenceData>
+</ST26SequenceListing>`;
+    expect(extractST26Associations(xml)).toEqual([]);
+  });
+
+  it('deduplicates identical whole-span region features declared twice', () => {
+    const xml = `<?xml version="1.0"?>
+<ST26SequenceListing>
+  <SequenceData sequenceIDNumber="1">
+    <INSDSeq><INSDSeq_length>12</INSDSeq_length><INSDSeq_sequence>ARDYYGSSYFDY</INSDSeq_sequence>
+      <INSDSeq_feature-table>
+        <INSDFeature>
+          <INSDFeature_key>REGION</INSDFeature_key><INSDFeature_location>1..12</INSDFeature_location>
+          <INSDFeature_quals><INSDQualifier><INSDQualifier_name>note</INSDQualifier_name><INSDQualifier_value>CDR-H3</INSDQualifier_value></INSDQualifier></INSDFeature_quals>
+        </INSDFeature>
+        <INSDFeature>
+          <INSDFeature_key>REGION</INSDFeature_key><INSDFeature_location>1..12</INSDFeature_location>
+          <INSDFeature_quals><INSDQualifier><INSDQualifier_name>note</INSDQualifier_name><INSDQualifier_value>CDR-H3</INSDQualifier_value></INSDQualifier></INSDFeature_quals>
+        </INSDFeature>
+      </INSDSeq_feature-table>
+    </INSDSeq>
+  </SequenceData>
+</ST26SequenceListing>`;
+    const out = extractST26Associations(xml);
+    const matches = out.filter((a) => a.regionLabel === 'CDR-H3' && a.seqId === 1);
+    expect(matches).toHaveLength(1);
   });
 });
