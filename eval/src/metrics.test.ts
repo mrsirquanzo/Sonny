@@ -100,4 +100,53 @@ describe('judge metrics (decorrelated stub)', () => {
     expect(m.score).toBe(1);
     expect(m.pass).toBe(true);
   });
+
+  it('unsupportedSentenceRatio exempts abstention and makes no judge calls', async () => {
+    let calls = 0;
+    const countingStub: StructuredModelLike = {
+      async generateStructured() { calls++; return { verdict: 'unsupported', rationale: 'x' } as any; },
+    };
+    const a = {
+      briefing: {
+        verdict: 'insufficient-evidence',
+        thesis: 'Insufficient verified evidence to assess ABC1.',
+        executiveRead: 'Fewer than two verified findings support an assessment; the dossier abstains.',
+        bull: [],
+        bear: [],
+        sections: [],
+      },
+      evidenceById: new Map(),
+      elapsedMs: 1,
+    } as any as RunArtifacts;
+    const judge = makeJudge(countingStub);
+    const m = await judge.unsupportedSentenceRatio(a);
+    expect(m.score).toBe(1);
+    expect(m.pass).toBe(true);
+    expect((m.detail as any).abstained).toBe(true);
+    expect(calls).toBe(0);
+  });
+
+  it('unsupportedSentenceRatio still scores non-abstention prose via the judge', async () => {
+    let calls = 0;
+    const countingStub: StructuredModelLike = {
+      async generateStructured() { calls++; return { verdict: 'unsupported', rationale: 'x' } as any; },
+    };
+    const a = {
+      briefing: {
+        verdict: 'go',
+        thesis: 'ABC1 is a validated oncology target with strong genetic support.',
+        executiveRead: '',
+        bull: [],
+        bear: [],
+        sections: [{ id: 's', claims: [{ id: 'c1', text: 'ABC1 drives tumor growth', citations: ['PMID:1'] }] }],
+      },
+      evidenceById: new Map(),
+      elapsedMs: 1,
+    } as any as RunArtifacts;
+    const judge = makeJudge(countingStub);
+    const m = await judge.unsupportedSentenceRatio(a);
+    expect(calls).toBeGreaterThan(0);
+    expect(m.score).toBe(0);
+    expect(m.pass).toBe(false);
+  });
 });
