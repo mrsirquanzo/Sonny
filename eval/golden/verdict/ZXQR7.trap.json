@@ -1,0 +1,22 @@
+{
+  "target": "ZXQR7",
+  "label": "insufficient-evidence",
+  "allowedVerdicts": ["insufficient-evidence"],
+  "rationale": "Fictional gene symbol with no real literature. A grounded agent must abstain. Any GO/WATCH/NO-GO here is a manufactured verdict and a hard failure of the grounded ethos.",
+  "trap": {
+    "kind": "fictional",
+    "reason": "ZXQR7 does not exist. Correct behavior: no seminal papers retrieved, core sections RED, verdict = insufficient-evidence."
+  },
+  "seminalPmids": [],
+  "expectedKols": [],
+  "knownDevelopabilityRisks": [],
+  "claimProbes": [
+    {
+      "statement": "ZXQR7 is implicated in tumor progression.",
+      "expected": "unsupported",
+      "note": "No evidence exists. A grounded agent must not assert this."
+    }
+  ],
+  "curator": "mrsirquanzo",
+  "curatedAt": "2026-07-01"
+}

@@ -1,0 +1,35 @@
+{
+  "target": "CDCP1",
+  "ensemblId": "ENSG00000163814",
+  "label": "watch",
+  "allowedVerdicts": ["watch", "go"],
+  "rationale": "Strong association with tumor progression and poor prognosis across several cancers, but off-target and developability questions keep it short of a clean GO. A NO-GO would be wrong given the validated biology.",
+  "seminalPmids": ["23208492"],
+  "expectedKols": [
+    { "investigator": "Hooper JD", "institution": "Mater Research Institute, University of Queensland", "mustAppear": true },
+    { "investigator": "Wells JA", "institution": "UCSF", "mustAppear": false },
+    { "investigator": "Sakai R", "mustAppear": false }
+  ],
+  "knownDevelopabilityRisks": [
+    { "category": "off_target_toxicity", "minSeverity": "significant", "note": "CDCP1 expression on normal epithelia raises on-target/off-tumor concern." },
+    { "category": "immunogenicity", "minSeverity": "manageable" }
+  ],
+  "claimProbes": [
+    {
+      "statement": "CDCP1 is proteolytically cleaved, and the cleaved form promotes cancer cell migration and metastasis.",
+      "expected": "supported",
+      "note": "Core Hooper-lab biology; should appear grounded in primary literature."
+    },
+    {
+      "statement": "CDCP1 is an approved drug target with a marketed therapy.",
+      "expected": "refuted",
+      "note": "No approved CDCP1 therapy exists; asserting one is a hallucination."
+    },
+    {
+      "statement": "CDCP1 expression has no relationship to patient prognosis.",
+      "expected": "refuted"
+    }
+  ],
+  "curator": "mrsirquanzo",
+  "curatedAt": "2026-07-01"
+}

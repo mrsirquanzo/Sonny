@@ -1,6 +1,13 @@
 name: ci
-on: [push, pull_request]
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: "0 6 * * *" # nightly full eval (06:00 UTC)
+  workflow_dispatch:      # on-demand live fast eval
+
 jobs:
+  # Existing per-PR gate: build (type-checks via each package's tsc build) + test.
   build-test:
     runs-on: ubuntu-latest
     steps:
@@ -15,3 +22,31 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm -r build
       - run: pnpm -r test
+
+  # Output-quality eval. Live and paid, so it NEVER runs on a pull_request:
+  # nightly (schedule) runs the full golden set, workflow_dispatch runs the
+  # fast subset on demand. A nondeterministic paid call must not block a PR.
+  eval-live:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    needs: build-test
+    env:
+      SONNY_BACKEND: anthropic
+      SONNY_EVAL_REPEATS: "3"
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @sonny/eval run eval -- --subset ${{ github.event_name == 'schedule' && 'full' || 'fast' }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eval-scorecard
+          path: eval/.eval-out
