@@ -6,6 +6,7 @@ export { clinicalTrialsTool } from './clinicalTrials.js';
 export { europePmcSearchTool } from './europePmc.js';
 export { europePmcCitationsTool } from './europePmcCitations.js';
 export { pmcFullTextTool } from './pmcFullText.js';
+export { pmcFiguresTool } from './pmcFigures.js';
 export { blastVerifyTool } from './blastVerify.js';
 export { confirmRegions } from './anarci.js';
 export type {
