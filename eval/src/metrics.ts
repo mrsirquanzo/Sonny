@@ -310,6 +310,15 @@ export function makeJudge(model: StructuredModelLike, judgeModel?: string): Judg
     },
 
     async unsupportedSentenceRatio(a) {
+      // An abstention (insufficient-evidence) synthesizes no recommendation: bull/bear
+      // are empty and thesis/executiveRead are structural refusal boilerplate with no
+      // backing claims. This metric scores prose overreach beyond the evidence, which
+      // is not applicable when nothing was synthesized. Exempt it (and skip judge calls),
+      // the same way claimProbes early-returns on "no probes".
+      if (a.briefing.verdict === 'insufficient-evidence') {
+        return { name: 'unsupported_sentence_ratio', score: 1, pass: true, detail: { abstained: true } };
+      }
+
       const prose = [
         a.briefing.thesis,
         a.briefing.executiveRead,
