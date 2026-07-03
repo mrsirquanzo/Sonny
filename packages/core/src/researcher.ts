@@ -46,6 +46,7 @@ import type { EvidenceStore } from './evidenceStore.js';
 import type { Tool } from '@mrsirquanzo/sonny-mcp-gateway';
 import { safeToolCall } from './safeToolCall.js';
 import { runSkepticAudit } from './critique/skepticAudit.js';
+import { researchFigures } from './figureStep.js';
 import { rerankResearchHits } from './rerankStep.js';
 
 export interface ResearchBudget { maxRounds: number }
@@ -137,6 +138,14 @@ export async function runResearcher(opts: {
         }
       } catch (err) {
         emit({ type: 'error', message: `skeptic audit failed: ${String(err)}` });
+      }
+      // Figures: additive, gated, and degrades text-only. Captions land in the
+      // store here and flow into extractClaims via store.all() below.
+      // Opt-in (=== 'on') until Slice 4b lands the real sidecar: with no sidecar,
+      // running this would duplicate the efetch, register captions unconditionally,
+      // and emit a failing localhost POST on every deep-read. Slice 4b flips the default.
+      if (process.env.SONNY_FIGURES === 'on') {
+        await researchFigures({ pmcid, question: item.question, store, emit, specialist: brief.id });
       }
       if (!snowballed) {
         snowballed = true;

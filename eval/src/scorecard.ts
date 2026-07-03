@@ -33,6 +33,12 @@ export const REGRESSION_TOLERANCE: Record<string, number> = {
   kol_precision_at_k: 0.1,
   developability_catch: 0.1,
   claim_probes: 0.1,
+  figure_grounding: 0.1,
+};
+
+/** Absolute floors that must hold regardless of baseline (checked independently of REGRESSION_TOLERANCE). */
+export const ABSOLUTE_FLOORS: Record<string, number> = {
+  figure_grounding: 0.5, // calibrate after the first real figure runs
 };
 
 export function aggregate(targets: TargetScore[]): Record<string, number> {
@@ -82,6 +88,7 @@ export async function writeScorecard(sc: Scorecard, dir: string): Promise<void> 
 export interface RegressionResult {
   regressed: { metric: string; baseline: number; current: number; tolerance: number }[];
   hardFailures: string[]; // targets with a failing must-pass metric (e.g. grounding)
+  belowFloor: { metric: string; floor: number; current: number }[];
 }
 
 /** Compare current aggregates to a baseline; return regressions that should fail CI. */
@@ -108,5 +115,11 @@ export async function checkRegression(
   const hardFailures = sc.targets
     .filter((t) => t.metrics.some((m) => m.name === "grounding_integrity" && !m.pass))
     .map((t) => t.target);
-  return { regressed, hardFailures };
+  // Absolute floors are checked baseline-independently, same discipline as hardFailures.
+  const belowFloor: RegressionResult["belowFloor"] = [];
+  for (const [metric, floor] of Object.entries(ABSOLUTE_FLOORS)) {
+    const cur = sc.aggregates[metric];
+    if (cur !== undefined && cur < floor) belowFloor.push({ metric, floor, current: cur });
+  }
+  return { regressed, hardFailures, belowFloor };
 }

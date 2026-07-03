@@ -205,3 +205,41 @@ describe('Evidence metadata and KOLCluster schemas', () => {
     expect(() => KOLClusterSchema.parse({ target: 't', labs: [{ investigator: 'x', paperCount: 1.5, weight: 1, evidenceIds: [] }] })).toThrow();
   });
 });
+
+import {
+  EvidenceKindSchema, FigureReadingSchema, FiguresAnalyzeResponseSchema,
+} from './contracts.js';
+
+describe('figure contracts', () => {
+  it("accepts 'figure' as an Evidence kind", () => {
+    expect(EvidenceKindSchema.parse('figure')).toBe('figure');
+  });
+
+  it('validates a FigureReading with binary readRisk', () => {
+    const r = FigureReadingSchema.parse({
+      evidenceId: 'PMCID:PMC1#fig-0',
+      figureType: 'forest_plot',
+      reading: 'Pooled HR 0.62.',
+      extractedValues: [{ label: 'HR', value: '0.62', inCaption: true, readRisk: 'low' }],
+      confidence: 0.8,
+    });
+    expect(r.extractedValues[0].readRisk).toBe('low');
+  });
+
+  it('rejects readRisk="moderate" (no moderate tier this slice)', () => {
+    expect(() => FigureReadingSchema.parse({
+      evidenceId: 'x', reading: 'r', confidence: 0.5,
+      extractedValues: [{ label: 'HR', value: '1', inCaption: false, readRisk: 'moderate' }],
+    })).toThrow();
+  });
+
+  it('parses a sidecar wire response that omits inCaption/readRisk', () => {
+    const w = FiguresAnalyzeResponseSchema.parse({
+      readings: [{
+        figureId: 'PMCID:PMC1#fig-0', relevanceScore: 0.9, figureType: 'bar',
+        reading: 'r', extractedValues: [{ label: 'x', value: '1' }], confidence: 0.7,
+      }],
+    });
+    expect(w.readings[0].extractedValues[0]).not.toHaveProperty('readRisk');
+  });
+});

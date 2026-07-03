@@ -6,6 +6,7 @@ export { clinicalTrialsTool } from './clinicalTrials.js';
 export { europePmcSearchTool } from './europePmc.js';
 export { europePmcCitationsTool } from './europePmcCitations.js';
 export { pmcFullTextTool } from './pmcFullText.js';
+export { pmcFiguresTool } from './pmcFigures.js';
 export { blastVerifyTool } from './blastVerify.js';
 export { confirmRegions } from './anarci.js';
 export type {
@@ -18,5 +19,7 @@ export { ingestToMarkdown } from './ingest.js';
 export type { MarkitdownExec, IngestResult } from './ingest.js';
 export { extractPatentNumber, extractSequenceListing, extractSequences, extractSequenceListingST26, isST26 } from './patentExtract.js';
 export type { ExtractedSequence } from './patentExtract.js';
+export { readFigures, normalizeNumeric, captionContainsValue } from './figureRead.js';
+export type { FigureInput, ReadFiguresOpts } from './figureRead.js';
 export { rerankHits } from './rerank.js';
 export type { RerankOpts } from './rerank.js';

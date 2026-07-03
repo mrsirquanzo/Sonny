@@ -14,6 +14,7 @@ import {
   verdictInBand,
   verdictStability,
   costLatency,
+  figureGrounding,
   type RunArtifacts,
   type StructuredModelLike,
   type MetricResult,
@@ -83,6 +84,7 @@ async function scoreTarget(g: GoldenTarget, deps: EngineDeps): Promise<TargetSco
     verdictInBand(a, g),
     verdictStability(verdicts),
     costLatency(a),
+    figureGrounding(a),
     await judge.faithfulness(a),
     await judge.unsupportedSentenceRatio(a),
     await judge.claimProbes(a, g),
@@ -126,12 +128,13 @@ export async function runEval(
   await writeScorecard(sc, OUT_DIR);
 
   const reg = await checkRegression(sc, BASELINE);
-  const failed = reg.hardFailures.length > 0 || reg.regressed.length > 0;
+  const failed = reg.hardFailures.length > 0 || reg.regressed.length > 0 || reg.belowFloor.length > 0;
   if (failed) {
     console.error("[eval] FAIL");
     if (reg.hardFailures.length) console.error("  grounding failures:", reg.hardFailures);
     for (const r of reg.regressed)
       console.error(`  regression ${r.metric}: ${r.current.toFixed(3)} < ${r.baseline.toFixed(3)} (tol ${r.tolerance})`);
+    if (reg.belowFloor.length) console.error("  below floor:", reg.belowFloor);
     return 1;
   }
   console.log("[eval] PASS", sc.aggregates);

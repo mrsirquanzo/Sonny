@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   groundingIntegrity, retrievalRecall, verdictInBand, verdictStability,
-  makeJudge, type RunArtifacts, type StructuredModelLike,
+  makeJudge, figureGrounding, type RunArtifacts, type StructuredModelLike,
 } from './metrics.js';
 import { GoldenTarget } from './goldenSet.js';
 
@@ -50,6 +50,43 @@ describe('deterministic metrics', () => {
   it('verdictStability reports flip rate across repeats', () => {
     expect(verdictStability(['watch', 'watch', 'watch']).score).toBe(1);
     expect(verdictStability(['watch', 'go', 'watch']).pass).toBe(false);
+  });
+});
+
+function figArtifacts(claims: { text: string; citations: string[] }[], figureReadings: any[]): RunArtifacts {
+  return {
+    briefing: { verdict: 'watch', sections: [{ id: 's', claims: claims.map((c, i) => ({ id: `c${i}`, ...c })) }] },
+    evidenceById: new Map(), elapsedMs: 0, figureReadings,
+  } as unknown as RunArtifacts;
+}
+
+const lowReading = { evidenceId: 'PMCID:P#fig-0', reading: 'r', confidence: 0.8, extractedValues: [{ label: 'HR', value: '0.62', inCaption: true, readRisk: 'low' }] };
+const highReading = { evidenceId: 'PMCID:P#fig-1', reading: 'r', confidence: 0.8, extractedValues: [{ label: 'HR', value: '0.41', inCaption: false, readRisk: 'high' }] };
+
+describe('figureGrounding', () => {
+  it('is not gated (pass) when n < 3, reporting the denominator', () => {
+    const a = figArtifacts([{ text: 'HR 0.62', citations: ['PMCID:P#fig-0'] }], [lowReading]);
+    const m = figureGrounding(a);
+    expect((m.detail as any).n).toBe(1);
+    expect(m.pass).toBe(true);
+  });
+
+  it('scores fraction caption-anchored and fails below the floor when gated (n>=3)', () => {
+    const a = figArtifacts([
+      { text: 'a', citations: ['PMCID:P#fig-1'] },
+      { text: 'b', citations: ['PMCID:P#fig-1'] },
+      { text: 'c', citations: ['PMCID:P#fig-1'] },
+      { text: 'd', citations: ['PMCID:P#fig-0'] },
+    ], [lowReading, highReading]);
+    const m = figureGrounding(a);
+    expect((m.detail as any).n).toBe(4);
+    expect(m.score).toBeCloseTo(0.25, 5); // only the fig-0 claim is anchored
+    expect(m.pass).toBe(false);           // 0.25 < 0.5 floor
+  });
+
+  it('ignores non-figure claims (returns 1.0 when no figure claims)', () => {
+    const a = figArtifacts([{ text: 'x', citations: ['PMID:1'] }], []);
+    expect(figureGrounding(a).score).toBe(1);
   });
 });
 
