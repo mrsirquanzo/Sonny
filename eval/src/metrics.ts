@@ -58,6 +58,7 @@ export interface RunArtifacts {
   elapsedMs: number;
   costUsd?: number;
   tokens?: number;
+  figureReadings?: import('@mrsirquanzo/sonny-shared').FigureReading[];
 }
 
 export interface MetricResult {
@@ -214,6 +215,36 @@ export function costLatency(a: RunArtifacts): MetricResult {
     score: 1, // informational; gate via baseline diff in the scorecard
     pass: true,
     detail: { elapsedMs: a.elapsedMs, costUsd: a.costUsd, tokens: a.tokens },
+  };
+}
+
+const FLOOR_FIGURE_GROUNDING = 0.5;
+
+/**
+ * figure_grounding: of claims citing a figure evidence id, the fraction whose
+ * cited figures are caption-anchored (have a low-risk value). Guards against a
+ * dossier filling up with pixel-guessed numbers. A distribution, so it is a
+ * band (scorecard REGRESSION_TOLERANCE) plus an absolute floor (ABSOLUTE_FLOORS),
+ * gated only when n >= 3.
+ */
+export function figureGrounding(a: RunArtifacts): MetricResult {
+  const isFig = (id: string) => id.includes('#fig-');
+  const figClaims = allClaims(a.briefing).filter((c) => c.citations.some(isFig));
+  const n = figClaims.length;
+  const anchored = new Set<string>();
+  for (const r of a.figureReadings ?? []) {
+    if (r.extractedValues.some((v) => v.readRisk === 'low')) anchored.add(r.evidenceId);
+  }
+  const low = figClaims.filter((c) =>
+    c.citations.filter(isFig).every((id) => anchored.has(id)),
+  ).length;
+  const score = n ? low / n : 1;
+  const gated = n >= 3;
+  return {
+    name: 'figure_grounding',
+    score,
+    pass: gated ? score >= FLOOR_FIGURE_GROUNDING : true,
+    detail: { n, low, gated, floor: FLOOR_FIGURE_GROUNDING },
   };
 }
 

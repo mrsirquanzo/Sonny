@@ -9,7 +9,7 @@ import type { RunArtifacts, BriefingLike, EvidenceLike } from './metrics.js';
 export function toRunArtifacts(
   briefing: Briefing,
   evidence: Evidence[],
-  _events: TraceEvent[],
+  events: TraceEvent[],
   elapsedMs: number,
 ): RunArtifacts {
   const briefingLike: BriefingLike = {
@@ -30,5 +30,6 @@ export function toRunArtifacts(
   const evidenceById = new Map<string, EvidenceLike>(
     evidence.map((e) => [e.id, { id: e.id, passage: e.passage, snippet: e.snippet, title: e.title }]),
   );
-  return { briefing: briefingLike, evidenceById, elapsedMs };
+  const figureReadings = events.flatMap((e) => (e.type === 'figure_read' ? e.readings : []));
+  return { briefing: briefingLike, evidenceById, elapsedMs, figureReadings };
 }
