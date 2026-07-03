@@ -32,13 +32,16 @@ export async function rerankHits(opts: RerankOpts): Promise<Evidence[]> {
   const res = await fetchImpl(endpoint, {
     method: 'POST',
     headers: { 'content-type': 'application/json', authorization: `Bearer ${apiKey}` },
+    // top_n is the Cohere/Jina param name; Voyage uses top_k and ignores unknown
+    // keys. Either way the append-unranked backfill below loses no candidate.
     body: JSON.stringify({ model, query: question, documents, top_n: topN }),
   });
   if (!res.ok) throw new Error(`rerank HTTP ${res.status}`);
 
   const body = (await res.json()) as { results?: RerankItem[]; data?: RerankItem[] };
   const ranked = (body.results ?? body.data ?? [])
-    .filter((r) => Number.isInteger(r.index) && r.index >= 0 && r.index < hits.length)
+    // Guard both fields: a malformed item must not fabricate an index or NaN-sort.
+    .filter((r) => Number.isInteger(r.index) && r.index >= 0 && r.index < hits.length && Number.isFinite(r.relevance_score))
     .sort((a, b) => b.relevance_score - a.relevance_score);
 
   const seen = new Set<number>();
