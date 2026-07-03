@@ -1,4 +1,5 @@
 import { normalizePatentNumber } from './epoPatent.js';
+import { XMLParser } from 'fast-xml-parser';
 
 export interface ExtractedSequence {
   seqId: number;
@@ -55,4 +56,39 @@ export function extractSequenceListing(markdown: string): ExtractedSequence[] {
     out.push(declaredLength !== undefined ? { seqId, residues, declaredLength } : { seqId, residues });
   }
   return out;
+}
+
+export function isST26(content: string): boolean {
+  return /<ST26SequenceListing|<INSDSeq_sequence>/.test(content);
+}
+
+const st26Parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: '@_', parseTagValue: false });
+
+function asArray<T>(v: T | T[] | undefined): T[] {
+  if (v === undefined || v === null) return [];
+  return Array.isArray(v) ? v : [v];
+}
+
+export function extractSequenceListingST26(content: string): ExtractedSequence[] {
+  let parsed: unknown;
+  try { parsed = st26Parser.parse(content); } catch { return []; }
+  const root = (parsed as { ST26SequenceListing?: { SequenceData?: unknown } })?.ST26SequenceListing;
+  const data = asArray(root?.SequenceData) as Array<Record<string, unknown>>;
+  const out: ExtractedSequence[] = [];
+  const seen = new Set<number>();
+  for (const d of data) {
+    const seqId = Number(d['@_sequenceIDNumber']);
+    if (!Number.isInteger(seqId) || seen.has(seqId)) continue;
+    const insd = (d.INSDSeq ?? {}) as Record<string, unknown>;
+    const residues = normalizeResidues(String(insd.INSDSeq_sequence ?? ''));
+    if (residues.length < 4) continue;
+    const len = Number(insd['INSDSeq_length']);
+    seen.add(seqId);
+    out.push(Number.isInteger(len) ? { seqId, residues, declaredLength: len } : { seqId, residues });
+  }
+  return out;
+}
+
+export function extractSequences(content: string): ExtractedSequence[] {
+  return isST26(content) ? extractSequenceListingST26(content) : extractSequenceListing(content);
 }

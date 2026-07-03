@@ -54,3 +54,41 @@ describe('extractSequenceListing declared length', () => {
     expect(out.find((s) => s.seqId === 2)?.declaredLength).toBeUndefined();
   });
 });
+
+import { isST26, extractSequenceListingST26, extractSequences } from './patentExtract.js';
+
+const ST26 = `<?xml version="1.0"?>
+<ST26SequenceListing>
+  <SequenceData sequenceIDNumber="1">
+    <INSDSeq><INSDSeq_length>12</INSDSeq_length><INSDSeq_moltype>AA</INSDSeq_moltype><INSDSeq_sequence>ARDYYGSSYFDY</INSDSeq_sequence></INSDSeq>
+  </SequenceData>
+  <SequenceData sequenceIDNumber="2">
+    <INSDSeq><INSDSeq_length>9</INSDSeq_length><INSDSeq_moltype>AA</INSDSeq_moltype><INSDSeq_sequence>EVQLVESGG</INSDSeq_sequence></INSDSeq>
+  </SequenceData>
+</ST26SequenceListing>`;
+
+describe('ST.26 parsing', () => {
+  it('isST26 detects XML listing vs text', () => {
+    expect(isST26(ST26)).toBe(true);
+    expect(isST26('SEQ ID NO: 1\nEVQLVESGG\n')).toBe(false);
+  });
+
+  it('extractSequenceListingST26 yields seqId, residues, declaredLength', () => {
+    const out = extractSequenceListingST26(ST26);
+    expect(out).toEqual([
+      { seqId: 1, residues: 'ARDYYGSSYFDY', declaredLength: 12 },
+      { seqId: 2, residues: 'EVQLVESGG', declaredLength: 9 },
+    ]);
+  });
+
+  it('returns [] on malformed xml and skips <4-residue entries', () => {
+    expect(extractSequenceListingST26('<ST26SequenceListing><SequenceData')).toEqual([]);
+    const short = ST26.replace('ARDYYGSSYFDY', 'AR');
+    expect(extractSequenceListingST26(short).map((s) => s.seqId)).toEqual([2]);
+  });
+
+  it('extractSequences routes ST.26 to the xml path and text to the regex path', () => {
+    expect(extractSequences(ST26).map((s) => s.seqId)).toEqual([1, 2]);
+    expect(extractSequences('SEQ ID NO: 5\nEVQLVESGG\n\n').map((s) => s.seqId)).toEqual([5]);
+  });
+});
