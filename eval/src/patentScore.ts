@@ -16,8 +16,12 @@ export interface PatentMetrics {
 
 export function scorePatent(workup: PatentWorkup, golden: GoldenPatent): PatentMetrics {
   const foundSeqIds = golden.knownSequences.map((k) => k.seqId).filter((id) =>
-    workup.constructs.some((c) => c.regions.some((r) => r.seqId === id)));
-  const extracted = workup.constructs.flatMap((c) => c.regions.map((r) => ({ seqId: r.seqId, residues: r.residues })));
+    workup.constructs.some((c) => c.regions.some((r) => r.seqId === id)) ||
+    workup.ungrouped.some((s) => s.seqId === id));
+  const extracted = [
+    ...workup.constructs.flatMap((c) => c.regions.map((r) => ({ seqId: r.seqId, residues: r.residues }))),
+    ...workup.ungrouped.map((s) => ({ seqId: s.seqId, residues: s.residues })),
+  ];
   const gc = gotConstructs(workup);
   const overlaps = gotCompetitorOverlaps(workup);
   return {
