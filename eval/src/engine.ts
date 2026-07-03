@@ -34,7 +34,7 @@ export function makeRunOnce(): (target: string) => Promise<RunArtifacts> {
       budget: { maxRounds: 4 },
     });
     const { recommendation, executiveRead } = await synthesizeRecommendation({
-      sections: result.sections, weighing: result.weighing, evidence: result.evidence, model: leadModel,
+      target, sections: result.sections, weighing: result.weighing, evidence: result.evidence, model: leadModel,
     });
     const briefing: Briefing = {
       target, recommendation, executiveRead,

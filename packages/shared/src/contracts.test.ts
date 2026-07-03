@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { TraceEvent, Briefing } from './contracts.js';
-import { ClaimSchema, ClaimsSchema, EvidenceSchema, VerdictSchema, RecommendationSchema, ReferenceSchema, MethodologicalCritiqueSchema, RedFlagSchema, SectionSchema, DevelopabilityRiskSchema } from './contracts.js';
+import { ClaimSchema, ClaimsSchema, EvidenceSchema, VerdictSchema, RecommendationSchema, ReferenceSchema, MethodologicalCritiqueSchema, RedFlagSchema, SectionSchema, DevelopabilityRiskSchema, VerdictLabelSchema } from './contracts.js';
 
 describe('contracts', () => {
   it('accepts a valid evidence record', () => {
@@ -69,6 +69,20 @@ describe('briefing contracts', () => {
     expect(() => RecommendationSchema.parse({
       verdict: 'maybe', thesis: 't', bull: [], bear: [], conditions: [],
     })).toThrow();
+  });
+});
+
+describe('abstention verdict', () => {
+  it("accepts 'insufficient-evidence' as a verdict label", () => {
+    expect(VerdictLabelSchema.parse('insufficient-evidence')).toBe('insufficient-evidence');
+  });
+
+  it('RecommendationSchema accepts an abstention recommendation', () => {
+    const r = RecommendationSchema.parse({
+      verdict: 'insufficient-evidence', thesis: 'Insufficient verified evidence.',
+      bull: [], bear: [], conditions: [],
+    });
+    expect(r.verdict).toBe('insufficient-evidence');
   });
 });
 

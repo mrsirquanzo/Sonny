@@ -149,7 +149,7 @@ export const SectionSchema = z.object({
 });
 export type Section = z.infer<typeof SectionSchema>;
 
-export const VerdictLabelSchema = z.enum(['go', 'watch', 'no-go']);
+export const VerdictLabelSchema = z.enum(['go', 'watch', 'no-go', 'insufficient-evidence']);
 export type VerdictLabel = z.infer<typeof VerdictLabelSchema>;
 
 export const CasePointSchema = z.object({

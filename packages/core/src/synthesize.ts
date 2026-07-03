@@ -24,10 +24,26 @@ function devLines(sections: Section[]): string {
 }
 
 export async function synthesizeRecommendation(opts: {
-  sections: Section[]; weighing: { takeaway: string; claims: Claim[] };
+  target: string; sections: Section[]; weighing: { takeaway: string; claims: Claim[] };
   evidence: Evidence[]; model: StructuredModel;
 }): Promise<{ recommendation: Recommendation; executiveRead: string }> {
-  const { sections, weighing, evidence, model } = opts;
+  const { target, sections, weighing, evidence, model } = opts;
+
+  // Abstention gate (deterministic, no model call). Section.claims is the
+  // supported-only subset, so this counts grounded findings. Fewer than two
+  // means there is nothing to weigh into a two-sided bull-and-bear.
+  const supportedCount = sections.reduce((n, s) => n + s.claims.length, 0);
+  if (supportedCount < 2) {
+    const recommendation: Recommendation = {
+      verdict: 'insufficient-evidence',
+      thesis: `Insufficient verified evidence to assess ${target}.`,
+      bull: [], bear: [], conditions: [],
+    };
+    return {
+      recommendation,
+      executiveRead: `Fewer than two verified findings support an assessment of ${target}; the dossier abstains rather than synthesize an unsupported recommendation.`,
+    };
+  }
 
   const digest = sections.map((s) => `## ${s.title} [${s.rag}]\n${s.takeaway}\n${claimLines(s.claims)}`).join('\n\n')
     + `\n\n## Cross-thread weighing\n${weighing.takeaway}\n${claimLines(weighing.claims)}`
