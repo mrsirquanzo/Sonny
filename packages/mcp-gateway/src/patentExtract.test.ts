@@ -156,3 +156,40 @@ describe('normalizeRegionNote', () => {
     expect(normalizeRegionNote('')).toBeUndefined();
   });
 });
+
+import { extractST26Associations } from './patentExtract.js';
+
+const ST26_FEAT = `<?xml version="1.0"?>
+<ST26SequenceListing>
+  <SequenceData sequenceIDNumber="1">
+    <INSDSeq><INSDSeq_length>12</INSDSeq_length><INSDSeq_sequence>ARDYYGSSYFDY</INSDSeq_sequence>
+      <INSDSeq_feature-table><INSDFeature>
+        <INSDFeature_key>REGION</INSDFeature_key><INSDFeature_location>1..12</INSDFeature_location>
+        <INSDFeature_quals><INSDQualifier><INSDQualifier_name>note</INSDQualifier_name><INSDQualifier_value>CDR-H3</INSDQualifier_value></INSDQualifier></INSDFeature_quals>
+      </INSDFeature></INSDSeq_feature-table>
+    </INSDSeq>
+  </SequenceData>
+  <SequenceData sequenceIDNumber="2">
+    <INSDSeq><INSDSeq_length>120</INSDSeq_length><INSDSeq_sequence>${'E'.repeat(120)}</INSDSeq_sequence>
+      <INSDSeq_feature-table>
+        <INSDFeature><INSDFeature_key>REGION</INSDFeature_key><INSDFeature_location>1..120</INSDFeature_location>
+          <INSDFeature_quals><INSDQualifier><INSDQualifier_name>note</INSDQualifier_name><INSDQualifier_value>heavy chain variable region</INSDQualifier_value></INSDQualifier></INSDFeature_quals></INSDFeature>
+        <INSDFeature><INSDFeature_key>REGION</INSDFeature_key><INSDFeature_location>99..111</INSDFeature_location>
+          <INSDFeature_quals><INSDQualifier><INSDQualifier_name>note</INSDQualifier_name><INSDQualifier_value>CDR-H3</INSDQualifier_value></INSDQualifier></INSDFeature_quals></INSDFeature>
+      </INSDSeq_feature-table>
+    </INSDSeq>
+  </SequenceData>
+</ST26SequenceListing>`;
+
+describe('extractST26Associations', () => {
+  it('emits whole-sequence associations, skips sub-span features', () => {
+    const out = extractST26Associations(ST26_FEAT);
+    // SEQ 1: CDR-H3 spans full 12; SEQ 2: VH spans full 120; SEQ 2 sub-span CDR-H3 @ 99..111 skipped
+    expect(out).toContainEqual({ regionLabel: 'CDR-H3', seqId: 1 });
+    expect(out).toContainEqual({ regionLabel: 'VH', seqId: 2 });
+    expect(out).not.toContainEqual({ regionLabel: 'CDR-H3', seqId: 2 });
+  });
+  it('returns [] on malformed xml and skips unrecognized notes', () => {
+    expect(extractST26Associations('<ST26SequenceListing><SequenceData')).toEqual([]);
+  });
+});

@@ -94,6 +94,51 @@ export function extractSequences(content: string): ExtractedSequence[] {
   return isST26(content) ? extractSequenceListingST26(content) : extractSequenceListing(content);
 }
 
+function locationSpan(loc: unknown): { start: number; end: number } | undefined {
+  const nums = String(loc ?? '').match(/\d+/g);
+  if (!nums || nums.length === 0) return undefined;
+  const ints = nums.map(Number);
+  return { start: Math.min(...ints), end: Math.max(...ints) };
+}
+
+function noteValue(feature: Record<string, unknown>): string | undefined {
+  const quals = (feature['INSDFeature_quals'] ?? {}) as Record<string, unknown>;
+  for (const q of asArray(quals['INSDQualifier']) as Array<Record<string, unknown>>) {
+    if (String(q['INSDQualifier_name'] ?? '').toLowerCase() === 'note') return String(q['INSDQualifier_value'] ?? '');
+  }
+  return undefined;
+}
+
+export function extractST26Associations(content: string): Array<{ regionLabel: RegionLabel; seqId: number }> {
+  let parsed: unknown;
+  try { parsed = st26Parser.parse(content); } catch { return []; }
+  const root = (parsed as { ST26SequenceListing?: { SequenceData?: unknown } })?.ST26SequenceListing;
+  const data = asArray(root?.SequenceData) as Array<Record<string, unknown>>;
+  const out: Array<{ regionLabel: RegionLabel; seqId: number }> = [];
+  const seen = new Set<string>();
+  for (const d of data) {
+    const seqId = Number(d['@_sequenceIDNumber']);
+    if (!Number.isInteger(seqId)) continue;
+    const insd = (d.INSDSeq ?? {}) as Record<string, unknown>;
+    const declaredLength = Number(insd['INSDSeq_length']);
+    if (!Number.isInteger(declaredLength)) continue; // cannot disambiguate whole vs sub
+    const table = (insd['INSDSeq_feature-table'] ?? {}) as Record<string, unknown>;
+    for (const f of asArray(table['INSDFeature']) as Array<Record<string, unknown>>) {
+      const note = noteValue(f);
+      if (!note) continue;
+      const label = normalizeRegionNote(note);
+      if (!label) continue;
+      const span = locationSpan(f['INSDFeature_location']);
+      if (!span || !(span.start <= 1 && span.end >= declaredLength)) continue; // whole-sequence only
+      const k = `${label}|${seqId}`;
+      if (seen.has(k)) continue;
+      seen.add(k);
+      out.push({ regionLabel: label, seqId });
+    }
+  }
+  return out;
+}
+
 export function normalizeRegionNote(note: string): RegionLabel | undefined {
   const n = note.toLowerCase();
   const heavy = /heavy|\bhc\b|\bvh\b|hcdr|\bh[- ]?cdr|\bfr[- ]?h/.test(n);
