@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { StudyDesignSchema, RedFlagSchema, type MethodologicalCritique, type Evidence } from '@mrsirquanzo/sonny-shared';
 import type { StructuredModel } from '../model.js';
 import { MODEL_ROUTER } from '../model.js';
+import { gradeEvidence } from './grade.js';
 
 // The model returns the audit body; evidenceId is attached in code so it is always
 // the audited paper's real store id (no token, no ship).
@@ -18,5 +19,5 @@ export async function runSkepticAudit(paper: Evidence, model: StructuredModel): 
     schema: AuditSchema,
     model: MODEL_ROUTER.verifier,
   });
-  return { evidenceId: paper.id, ...audit };
+  return { evidenceId: paper.id, ...audit, evidenceLevel: gradeEvidence(audit) };
 }

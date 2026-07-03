@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import type { Section, Claim, Evidence } from '@mrsirquanzo/sonny-shared';
+import type { Section, Claim, Evidence, ContradictionFlag } from '@mrsirquanzo/sonny-shared';
 import type { StructuredModel } from './model.js';
 import { synthesizeRecommendation } from './synthesize.js';
 
@@ -169,5 +169,32 @@ describe('synthesizeRecommendation abstention gate', () => {
     expect(gen).toHaveBeenCalledOnce();
     expect(recommendation.verdict).toBe('watch');
     expect(recommendation.bull).toEqual([{ point: 'b', citations: ['PMID:1'] }]);
+  });
+});
+
+describe('synthesizeRecommendation contradictions', () => {
+  it('renders contradictions into the digest and instructs the bear case', async () => {
+    let prompt = ''; let system = '';
+    const model = { async generateStructured(o: { prompt: string; system: string }) { prompt = o.prompt; system = o.system;
+      return { verdict: 'watch', thesis: 't', bull: [], bear: [], conditions: [], executiveRead: 'e' } as never; } };
+    const contradictions: ContradictionFlag[] = [{ evidenceIdA: 'PMID:1', evidenceIdB: 'PMID:2', endpoint: 'OS', explanation: 'opposite OS effect' }];
+    await synthesizeRecommendation({
+      target: 'EGFR',
+      sections: [{ id: 'a', title: 'A', takeaway: 't', rag: 'green', sources: ['PMID:1'],
+        claims: [
+          { id: 'c1', text: 'x', citations: ['PMID:1'], confidence: 0.9 },
+          { id: 'c2', text: 'y', citations: ['PMID:2'], confidence: 0.9 },
+        ] }] as never,
+      weighing: { takeaway: '', claims: [] },
+      evidence: [
+        { id: 'PMID:1', kind: 'publication', source: 's', title: 't', snippet: '', url: 'u', raw: {}, retrievedAt: 'now' },
+        { id: 'PMID:2', kind: 'publication', source: 's', title: 't', snippet: '', url: 'u', raw: {}, retrievedAt: 'now' },
+      ] as never,
+      model: model as never,
+      contradictions,
+    });
+    expect(prompt).toContain('## Contradictions');
+    expect(prompt).toContain('opposite OS effect');
+    expect(system.toLowerCase()).toContain('contradiction');
   });
 });

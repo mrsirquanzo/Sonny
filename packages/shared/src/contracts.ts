@@ -53,13 +53,25 @@ export const StudyDesignSchema = z.enum([
 ]);
 export type StudyDesign = z.infer<typeof StudyDesignSchema>;
 
+export const EvidenceLevelSchema = z.enum(['high', 'moderate', 'low', 'very_low']);
+export type EvidenceLevel = z.infer<typeof EvidenceLevelSchema>;
+
 export const MethodologicalCritiqueSchema = z.object({
   evidenceId: z.string().min(1),
   studyDesign: StudyDesignSchema,
   sampleSize: z.number().int().positive().nullable().optional(),
   redFlags: z.array(RedFlagSchema),
+  evidenceLevel: EvidenceLevelSchema.optional(),
 });
 export type MethodologicalCritique = z.infer<typeof MethodologicalCritiqueSchema>;
+
+export const ContradictionFlagSchema = z.object({
+  evidenceIdA: z.string().min(1),
+  evidenceIdB: z.string().min(1),
+  endpoint: z.string().min(1),
+  explanation: z.string().min(1),
+});
+export type ContradictionFlag = z.infer<typeof ContradictionFlagSchema>;
 
 export const DevelopabilitySeveritySchema = z.enum(['manageable', 'significant', 'severe']);
 export type DevelopabilitySeverity = z.infer<typeof DevelopabilitySeveritySchema>;
@@ -179,6 +191,7 @@ export type TraceEvent =
   | { type: 'completeness_verdict'; complete: boolean; gaps: string[] }
   | { type: 'gap_filler'; specialist: string; question: string }
   | { type: 'methodological_critique'; specialist: string; critique: MethodologicalCritique }
+  | { type: 'contradiction'; flag: ContradictionFlag }
   | { type: 'figure_read'; specialist: string; readings: FigureReading[] }
   | { type: 'developability_assessment'; risks: DevelopabilityRisk[] }
   | { type: 'kol_cluster'; cluster: KOLCluster }
