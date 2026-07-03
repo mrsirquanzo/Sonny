@@ -20,3 +20,5 @@ export { extractPatentNumber, extractSequenceListing, extractSequences, extractS
 export type { ExtractedSequence } from './patentExtract.js';
 export { rerankHits } from './rerank.js';
 export type { RerankOpts } from './rerank.js';
+export { blastCacheKey, makeCachedBlast, FileBlastCache, blastCacheFromEnv, cacheTtlMsFromEnv } from './blastCache.js';
+export type { BlastCache, CachedBlast, BlastFn } from './blastCache.js';
