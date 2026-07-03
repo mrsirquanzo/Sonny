@@ -101,10 +101,18 @@ function locationSpan(loc: unknown): { start: number; end: number } | undefined 
   return { start: Math.min(...ints), end: Math.max(...ints) };
 }
 
-function noteValue(feature: Record<string, unknown>): string | undefined {
+function qualifierValue(feature: Record<string, unknown>): string | undefined {
   const quals = (feature['INSDFeature_quals'] ?? {}) as Record<string, unknown>;
+  const precedence = ['note', 'product', 'standard_name'];
+  const found = new Map<string, string>();
   for (const q of asArray(quals['INSDQualifier']) as Array<Record<string, unknown>>) {
-    if (String(q['INSDQualifier_name'] ?? '').toLowerCase() === 'note') return String(q['INSDQualifier_value'] ?? '');
+    const name = String(q['INSDQualifier_name'] ?? '').toLowerCase();
+    if (precedence.includes(name) && !found.has(name)) {
+      found.set(name, String(q['INSDQualifier_value'] ?? ''));
+    }
+  }
+  for (const p of precedence) {
+    if (found.has(p)) return found.get(p);
   }
   return undefined;
 }
@@ -118,13 +126,13 @@ export function extractST26Associations(content: string): Array<{ regionLabel: R
   const seen = new Set<string>();
   for (const d of data) {
     const seqId = Number(d['@_sequenceIDNumber']);
-    if (!Number.isInteger(seqId)) continue;
+    if (!Number.isInteger(seqId) || seqId <= 0) continue;
     const insd = (d.INSDSeq ?? {}) as Record<string, unknown>;
     const declaredLength = Number(insd['INSDSeq_length']);
     if (!Number.isInteger(declaredLength)) continue; // cannot disambiguate whole vs sub
     const table = (insd['INSDSeq_feature-table'] ?? {}) as Record<string, unknown>;
     for (const f of asArray(table['INSDFeature']) as Array<Record<string, unknown>>) {
-      const note = noteValue(f);
+      const note = qualifierValue(f);
       if (!note) continue;
       const label = normalizeRegionNote(note);
       if (!label) continue;

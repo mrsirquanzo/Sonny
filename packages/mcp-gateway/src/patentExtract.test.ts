@@ -1,6 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { extractPatentNumber, extractSequenceListing } from './patentExtract.js';
-import { normalizeRegionNote } from './patentExtract.js';
+import {
+  extractPatentNumber,
+  extractSequenceListing,
+  normalizeRegionNote,
+  isST26,
+  extractSequenceListingST26,
+  extractSequences,
+  extractST26Associations,
+} from './patentExtract.js';
 
 describe('extractPatentNumber', () => {
   it('finds and normalizes a patent number embedded in text', () => {
@@ -76,8 +83,6 @@ describe('extractSequenceListing declared length', () => {
     expect(s2?.declaredLength).toBe(9);
   });
 });
-
-import { isST26, extractSequenceListingST26, extractSequences } from './patentExtract.js';
 
 const ST26 = `<?xml version="1.0"?>
 <ST26SequenceListing>
@@ -157,8 +162,6 @@ describe('normalizeRegionNote', () => {
   });
 });
 
-import { extractST26Associations } from './patentExtract.js';
-
 const ST26_FEAT = `<?xml version="1.0"?>
 <ST26SequenceListing>
   <SequenceData sequenceIDNumber="1">
@@ -191,5 +194,56 @@ describe('extractST26Associations', () => {
   });
   it('returns [] on malformed xml and skips unrecognized notes', () => {
     expect(extractST26Associations('<ST26SequenceListing><SequenceData')).toEqual([]);
+  });
+
+  it('reads product qualifier and yields normalized association', () => {
+    const xml = `<?xml version="1.0"?>
+<ST26SequenceListing>
+  <SequenceData sequenceIDNumber="1">
+    <INSDSeq><INSDSeq_length>10</INSDSeq_length><INSDSeq_sequence>EVQLVESGGX</INSDSeq_sequence>
+      <INSDSeq_feature-table><INSDFeature>
+        <INSDFeature_key>mat_peptide</INSDFeature_key><INSDFeature_location>1..10</INSDFeature_location>
+        <INSDFeature_quals><INSDQualifier><INSDQualifier_name>product</INSDQualifier_name><INSDQualifier_value>heavy chain</INSDQualifier_value></INSDQualifier></INSDFeature_quals>
+      </INSDFeature></INSDSeq_feature-table>
+    </INSDSeq>
+  </SequenceData>
+</ST26SequenceListing>`;
+    const out = extractST26Associations(xml);
+    expect(out).toContainEqual({ regionLabel: 'heavy-chain', seqId: 1 });
+  });
+
+  it('note qualifier wins over product qualifier when both are present', () => {
+    const xml = `<?xml version="1.0"?>
+<ST26SequenceListing>
+  <SequenceData sequenceIDNumber="1">
+    <INSDSeq><INSDSeq_length>12</INSDSeq_length><INSDSeq_sequence>ARDYYGSSYFDY</INSDSeq_sequence>
+      <INSDSeq_feature-table><INSDFeature>
+        <INSDFeature_key>REGION</INSDFeature_key><INSDFeature_location>1..12</INSDFeature_location>
+        <INSDFeature_quals>
+          <INSDQualifier><INSDQualifier_name>note</INSDQualifier_name><INSDQualifier_value>CDR-H3</INSDQualifier_value></INSDQualifier>
+          <INSDQualifier><INSDQualifier_name>product</INSDQualifier_name><INSDQualifier_value>heavy chain</INSDQualifier_value></INSDQualifier>
+        </INSDFeature_quals>
+      </INSDFeature></INSDSeq_feature-table>
+    </INSDSeq>
+  </SequenceData>
+</ST26SequenceListing>`;
+    const out = extractST26Associations(xml);
+    expect(out).toContainEqual({ regionLabel: 'CDR-H3', seqId: 1 });
+    expect(out).not.toContainEqual({ regionLabel: 'heavy-chain', seqId: 1 });
+  });
+
+  it('skips SequenceData with sequenceIDNumber="0"', () => {
+    const xml = `<?xml version="1.0"?>
+<ST26SequenceListing>
+  <SequenceData sequenceIDNumber="0">
+    <INSDSeq><INSDSeq_length>12</INSDSeq_length><INSDSeq_sequence>ARDYYGSSYFDY</INSDSeq_sequence>
+      <INSDSeq_feature-table><INSDFeature>
+        <INSDFeature_key>REGION</INSDFeature_key><INSDFeature_location>1..12</INSDFeature_location>
+        <INSDFeature_quals><INSDQualifier><INSDQualifier_name>note</INSDQualifier_name><INSDQualifier_value>CDR-H3</INSDQualifier_value></INSDQualifier></INSDFeature_quals>
+      </INSDFeature></INSDSeq_feature-table>
+    </INSDSeq>
+  </SequenceData>
+</ST26SequenceListing>`;
+    expect(extractST26Associations(xml)).toEqual([]);
   });
 });
