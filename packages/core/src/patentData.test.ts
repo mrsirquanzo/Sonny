@@ -40,6 +40,17 @@ describe('extractAssociations', () => {
   });
 });
 
+describe('extractPatentData ST.26 + declaredLength', () => {
+  it('extracts sequences from an ST.26 listing and carries declaredLength', async () => {
+    const st26 = '<ST26SequenceListing><SequenceData sequenceIDNumber="1"><INSDSeq><INSDSeq_length>12</INSDSeq_length><INSDSeq_sequence>ARDYYGSSYFDY</INSDSeq_sequence></INSDSeq></SequenceData></ST26SequenceListing>';
+    const model = { async generateStructured() { return { associations: [] } as never; } };
+    const out = await extractPatentData(st26, model);
+    const s1 = out.sequences.find((s) => s.seqId === 1);
+    expect(s1?.residues).toBe('ARDYYGSSYFDY');
+    expect(s1?.declaredLength).toBe(12);
+  });
+});
+
 describe('extraction completeness', () => {
   it('flags referenced-but-unextracted SEQ-IDs and residue-alphabet garbage', async () => {
     const md = [
