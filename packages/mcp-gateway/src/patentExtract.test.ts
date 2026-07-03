@@ -38,3 +38,19 @@ describe('extractSequenceListing', () => {
     expect(ids).not.toContain(5);
   });
 });
+
+describe('extractSequenceListing declared length', () => {
+  it('captures ST.25 <211> length paired with <210> seq id', () => {
+    const md = '<210> 1\n<211> 12\n<212> PRT\n<213> Homo sapiens\nSEQ ID NO: 1\nARDYYGSSYFDY\n\n';
+    const out = extractSequenceListing(md);
+    const s1 = out.find((s) => s.seqId === 1);
+    expect(s1?.residues).toBe('ARDYYGSSYFDY');
+    expect(s1?.declaredLength).toBe(12);
+  });
+
+  it('leaves declaredLength undefined when no length is declared', () => {
+    const md = 'SEQ ID NO: 2\nEVQLVESGG\n\n';
+    const out = extractSequenceListing(md);
+    expect(out.find((s) => s.seqId === 2)?.declaredLength).toBeUndefined();
+  });
+});
