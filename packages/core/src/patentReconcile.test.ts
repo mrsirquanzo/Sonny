@@ -149,10 +149,13 @@ describe('exactMatch full-length guard', () => {
   });
 
   it('declared length differs from extracted -> exactMatch forced false, fullLengthConfirmed false', async () => {
+    // guardDeps returns the same exactHitEvidence for all databases, so nrTopHit is also populated.
+    // Both patentHits and nrTopHit must have exactMatch downgraded by the full-length guard.
     const r = await reconcilePatent(inputWith('A'.repeat(60), 120), guardDeps('PAT_B'));
     const s = r.sequences[0];
     expect(s.fullLengthConfirmed).toBe(false);
     expect(s.patentHits[0].exactMatch).toBe(false);
+    expect(s.nrTopHit?.exactMatch).toBe(false);
   });
 
   it('declared length unknown -> exactMatch kept, fullLengthConfirmed false', async () => {

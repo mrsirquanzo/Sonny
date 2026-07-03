@@ -112,4 +112,22 @@ describe('ST.26 parsing', () => {
     expect(extractSequences(ST26).map((s) => s.seqId)).toEqual([1, 2]);
     expect(extractSequences('SEQ ID NO: 5\nEVQLVESGG\n\n').map((s) => s.seqId)).toEqual([5]);
   });
+
+  it('single-element ST.26 listing returns exactly one sequence (asArray non-array branch)', () => {
+    // fast-xml-parser returns a plain object (not an array) when there is only one <SequenceData>.
+    // asArray() must handle this case and still return one ExtractedSequence.
+    const singleST26 = [
+      '<?xml version="1.0"?>',
+      '<ST26SequenceListing>',
+      '  <SequenceData sequenceIDNumber="3">',
+      '    <INSDSeq><INSDSeq_length>9</INSDSeq_length><INSDSeq_moltype>AA</INSDSeq_moltype><INSDSeq_sequence>EVQLVESGG</INSDSeq_sequence></INSDSeq>',
+      '  </SequenceData>',
+      '</ST26SequenceListing>',
+    ].join('\n');
+    const out = extractSequenceListingST26(singleST26);
+    expect(out).toHaveLength(1);
+    expect(out[0].seqId).toBe(3);
+    expect(out[0].residues).toBe('EVQLVESGG');
+    expect(out[0].declaredLength).toBe(9);
+  });
 });

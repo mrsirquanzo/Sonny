@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { extractPatentData, extractAssociations } from './patentData.js';
+import { reconcilePatent } from './patentReconcile.js';
+import type { ReconcileDeps } from './patentReconcile.js';
 import type { StructuredModel } from './model.js';
 
 const MD = [
@@ -68,5 +70,34 @@ describe('extraction completeness', () => {
     const warn = c.alphabetWarnings.find((w) => w.seqId === 2);
     expect(warn?.invalidChars).toContain('B');
     expect(c.alphabetWarnings.find((w) => w.seqId === 1)).toBeUndefined(); // clean
+  });
+});
+
+describe('ST.26 + reconcilePatent end-to-end', () => {
+  it('ST.26 sequence survives reconcile and carries declaredLength through to VerifiedSequence', async () => {
+    // Use a 12-residue sequence (below the 50-aa BLAST gate) so we can inject empty blast deps.
+    // Goal: verify the ST.26 path through extractPatentData populates declaredLength and that
+    // reconcilePatent does not drop the sequence.
+    const st26 = [
+      '<ST26SequenceListing>',
+      '  <SequenceData sequenceIDNumber="1">',
+      '    <INSDSeq><INSDSeq_length>12</INSDSeq_length><INSDSeq_sequence>ARDYYGSSYFDY</INSDSeq_sequence></INSDSeq>',
+      '  </SequenceData>',
+      '</ST26SequenceListing>',
+    ].join('\n');
+    const model = { async generateStructured() { return { associations: [] } as never; } };
+    const extracted = await extractPatentData(st26, model);
+
+    const reconcileDeps: ReconcileDeps = {
+      blast: async () => [],
+      anarci: async () => ({ overallStatus: 'anarci_unavailable', domains: [], regionChecks: [], speciesSummary: [] }),
+      epo: async () => ({ input: '', found: false, applicants: [], inventors: [], ipc: [], family: [] }),
+    };
+    const reconciliation = await reconcilePatent(extracted, reconcileDeps);
+
+    const s = reconciliation.sequences.find((seq) => seq.seqId === 1);
+    expect(s).toBeDefined();
+    expect(s?.residues).toBe('ARDYYGSSYFDY');
+    expect(s?.declaredLength).toBe(12);
   });
 });
