@@ -1,0 +1,15 @@
+{
+  "readings": [
+    {
+      "figureId": "PMCID:PMC7897327#fig-0",
+      "relevanceScore": 0.91,
+      "figureType": "forest_plot",
+      "reading": "Figure 2 is a forest plot of overall survival; the pooled hazard ratio is 0.62 (95% CI 0.48-0.79), favoring treatment. A PD-L1-high subgroup shows HR 0.41.",
+      "extractedValues": [
+        { "label": "pooled HR", "value": "0.62" },
+        { "label": "PD-L1-high subgroup HR", "value": "0.41" }
+      ],
+      "confidence": 0.78
+    }
+  ]
+}
