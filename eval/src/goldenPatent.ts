@@ -15,6 +15,7 @@ export interface GoldenPatent {
   expectedCompetitorOverlaps: GoldenCompetitor[];
   mustNotAssert: string[];
   traps?: Array<'single-residue' | 'non-antibody' | 'image-or-st26'>;
+  groundTruthVerified?: boolean;
 }
 
 export function extractionRecall(foundSeqIds: number[], declaredCount: number): number {
