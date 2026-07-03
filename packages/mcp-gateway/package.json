@@ -6,6 +6,7 @@
   "files": ["dist"],
   "scripts": { "test": "vitest run", "build": "tsc -p tsconfig.json" },
   "dependencies": { "@mrsirquanzo/sonny-shared": "workspace:*", "fast-xml-parser": "^4.5.0" },
+  "devDependencies": { "@types/node": "^18.19.130" },
   "publishConfig": {
     "registry": "https://npm.pkg.github.com",
     "main": "./dist/index.js",

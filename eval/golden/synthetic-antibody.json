@@ -1,0 +1,16 @@
+{
+  "name": "synthetic-antibody",
+  "patentNumber": "US10123456",
+  "expectedAssignees": ["ACME BIO INC"],
+  "expectedFamilyMembers": ["EP1234567"],
+  "expectedLegalDirection": "active",
+  "declaredSequenceCount": 2,
+  "knownSequences": [
+    { "seqId": 1, "residues": "EVQLVESGGGLVQPGGSLRLSCAASGFTFSSYAMSWVRQAPGKGLEWVSAISGSGGSTYYADSVKG" },
+    { "seqId": 2, "residues": "DIQMTQSPSSLSASVGDRVTITCRASQSISSYLNWYQQKPGKAPKLLIYAASSLQSGVPSRFSGSG" }
+  ],
+  "expectedConstructs": [{ "name": "Ab1", "vhSeqId": 1, "vlSeqId": 2, "species": "human-like" }],
+  "expectedCompetitorOverlaps": [{ "seqId": 1, "competitorAccession": "PAT_COMP", "level": "whole" }],
+  "mustNotAssert": ["identical to a prior molecule"],
+  "traps": []
+}

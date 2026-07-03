@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 import type { ZodType } from 'zod';
 import { OllamaModel } from './ollamaModel.js';
+export { OllamaModel };
 
 export type Backend = 'ollama' | 'anthropic';
 
