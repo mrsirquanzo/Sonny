@@ -13,7 +13,7 @@ const golden: GoldenPatent = {
 
 const workup = {
   patentNumber: 'US1',
-  patent: { input: 'US1', found: true, applicants: ['ACME'], inventors: [], ipc: [], family: ['EP1'] },
+  patent: { input: 'US1', found: true, applicants: ['ACME'], inventors: [], ipc: [], family: [{ country: 'EP', number: '1', status: 'unknown', events: [] }] },
   constructs: [{ name: 'Ab1', regions: [
     { regionLabel: 'VH', seqId: 1, residues: 'EVQL' }, { regionLabel: 'VL', seqId: 2, residues: 'DIQM' },
   ], species: { classification: 'human-like', evidence: '' } }],

@@ -24,7 +24,7 @@ export function scorePatent(workup: PatentWorkup, golden: GoldenPatent): PatentM
     extractionRecall: extractionRecall(foundSeqIds, golden.declaredSequenceCount),
     residueFidelity: residueFidelity(extracted, golden.knownSequences),
     assigneeRecall: setRecall(workup.patent.applicants ?? [], golden.expectedAssignees),
-    familyRecall: setRecall(workup.patent.family ?? [], golden.expectedFamilyMembers),
+    familyRecall: setRecall((workup.patent.family ?? []).map((m) => `${m.country}${m.number}`), golden.expectedFamilyMembers),
     speciesAccuracy: speciesAccuracy(gc, golden.expectedConstructs),
     pairingAccuracy: pairingAccuracy(gc, golden.expectedConstructs),
     competitorRecallWhole: competitorRecall(overlaps, golden.expectedCompetitorOverlaps, 'whole'),
