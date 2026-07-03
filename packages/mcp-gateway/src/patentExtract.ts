@@ -26,7 +26,7 @@ function normalizeResidues(raw: string): string {
 // ST.25 numeric identifiers: <210> is the SEQ ID number, <211> is its length.
 // Pair them when <211> follows <210> within a small window (the <212>/<213> lines may sit between).
 function declaredLengths(markdown: string): Map<number, number> {
-  const re = /<210>\s*(\d+)[\s\S]{0,60}?<211>\s*(\d+)/g;
+  const re = /<210>\s*(\d+)(?:(?!<210>)[\s\S]){0,80}?<211>\s*(\d+)/g;
   const out = new Map<number, number>();
   let m: RegExpExecArray | null;
   while ((m = re.exec(markdown)) !== null) {

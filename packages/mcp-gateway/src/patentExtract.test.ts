@@ -53,6 +53,27 @@ describe('extractSequenceListing declared length', () => {
     const out = extractSequenceListing(md);
     expect(out.find((s) => s.seqId === 2)?.declaredLength).toBeUndefined();
   });
+
+  it('SEQ ID 1 with no <211> does not inherit the next entry\'s <211>', () => {
+    // SEQ ID 1 has <210> 1 but no <211>. SEQ ID 2 has both <210> 2 and <211> 9.
+    // The length-pairing regex must not let SEQ ID 1 cross into SEQ ID 2's <211>.
+    const md = [
+      '<210> 1',
+      '<210> 2',
+      '<211> 9',
+      'SEQ ID NO: 1',
+      'EVQLVESGG',
+      '',
+      'SEQ ID NO: 2',
+      'ARDYYGSS',
+      '',
+    ].join('\n');
+    const out = extractSequenceListing(md);
+    const s1 = out.find((s) => s.seqId === 1);
+    const s2 = out.find((s) => s.seqId === 2);
+    expect(s1?.declaredLength).toBeUndefined();
+    expect(s2?.declaredLength).toBe(9);
+  });
 });
 
 import { isST26, extractSequenceListingST26, extractSequences } from './patentExtract.js';
