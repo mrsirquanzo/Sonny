@@ -46,6 +46,7 @@ import type { EvidenceStore } from './evidenceStore.js';
 import type { Tool } from '@mrsirquanzo/sonny-mcp-gateway';
 import { safeToolCall } from './safeToolCall.js';
 import { runSkepticAudit } from './critique/skepticAudit.js';
+import { researchFigures } from './figureStep.js';
 
 export interface ResearchBudget { maxRounds: number }
 export interface ThreadFindings { takeaway: string; claims: Claim[]; openQuestions: string[]; critiques: MethodologicalCritique[] }
@@ -129,6 +130,11 @@ export async function runResearcher(opts: {
         }
       } catch (err) {
         emit({ type: 'error', message: `skeptic audit failed: ${String(err)}` });
+      }
+      // Figures: additive, gated, and degrades text-only. Captions land in the
+      // store here and flow into extractClaims via store.all() below.
+      if (process.env.SONNY_FIGURES !== 'off') {
+        await researchFigures({ pmcid, question: item.question, store, emit, specialist: brief.id });
       }
       if (!snowballed) {
         snowballed = true;
