@@ -160,6 +160,14 @@ describe('normalizeRegionNote', () => {
     expect(normalizeRegionNote('CDR 3')).toBeUndefined(); // no chain -> ambiguous
     expect(normalizeRegionNote('')).toBeUndefined();
   });
+  it('maps constant-region labels CH1, CL, and Fab', () => {
+    expect(normalizeRegionNote('CH1')).toBe('CH1');
+    expect(normalizeRegionNote('CL')).toBe('CL');
+    expect(normalizeRegionNote('Fab')).toBe('Fab');
+  });
+  it('does NOT map FR-H1 (framework regions are intentionally excluded)', () => {
+    expect(normalizeRegionNote('FR-H1')).toBeUndefined();
+  });
 });
 
 const ST26_FEAT = `<?xml version="1.0"?>
@@ -245,5 +253,43 @@ describe('extractST26Associations', () => {
   </SequenceData>
 </ST26SequenceListing>`;
     expect(extractST26Associations(xml)).toEqual([]);
+  });
+
+  it('skips sequence with absent INSDSeq_length (no-length skip path)', () => {
+    const xml = `<?xml version="1.0"?>
+<ST26SequenceListing>
+  <SequenceData sequenceIDNumber="1">
+    <INSDSeq><INSDSeq_sequence>ARDYYGSSYFDY</INSDSeq_sequence>
+      <INSDSeq_feature-table><INSDFeature>
+        <INSDFeature_key>REGION</INSDFeature_key><INSDFeature_location>1..12</INSDFeature_location>
+        <INSDFeature_quals><INSDQualifier><INSDQualifier_name>note</INSDQualifier_name><INSDQualifier_value>CDR-H3</INSDQualifier_value></INSDQualifier></INSDFeature_quals>
+      </INSDFeature></INSDSeq_feature-table>
+    </INSDSeq>
+  </SequenceData>
+</ST26SequenceListing>`;
+    expect(extractST26Associations(xml)).toEqual([]);
+  });
+
+  it('deduplicates identical whole-span region features declared twice', () => {
+    const xml = `<?xml version="1.0"?>
+<ST26SequenceListing>
+  <SequenceData sequenceIDNumber="1">
+    <INSDSeq><INSDSeq_length>12</INSDSeq_length><INSDSeq_sequence>ARDYYGSSYFDY</INSDSeq_sequence>
+      <INSDSeq_feature-table>
+        <INSDFeature>
+          <INSDFeature_key>REGION</INSDFeature_key><INSDFeature_location>1..12</INSDFeature_location>
+          <INSDFeature_quals><INSDQualifier><INSDQualifier_name>note</INSDQualifier_name><INSDQualifier_value>CDR-H3</INSDQualifier_value></INSDQualifier></INSDFeature_quals>
+        </INSDFeature>
+        <INSDFeature>
+          <INSDFeature_key>REGION</INSDFeature_key><INSDFeature_location>1..12</INSDFeature_location>
+          <INSDFeature_quals><INSDQualifier><INSDQualifier_name>note</INSDQualifier_name><INSDQualifier_value>CDR-H3</INSDQualifier_value></INSDQualifier></INSDFeature_quals>
+        </INSDFeature>
+      </INSDSeq_feature-table>
+    </INSDSeq>
+  </SequenceData>
+</ST26SequenceListing>`;
+    const out = extractST26Associations(xml);
+    const matches = out.filter((a) => a.regionLabel === 'CDR-H3' && a.seqId === 1);
+    expect(matches).toHaveLength(1);
   });
 });
