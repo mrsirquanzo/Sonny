@@ -133,7 +133,10 @@ export async function runResearcher(opts: {
       }
       // Figures: additive, gated, and degrades text-only. Captions land in the
       // store here and flow into extractClaims via store.all() below.
-      if (process.env.SONNY_FIGURES !== 'off') {
+      // Opt-in (=== 'on') until Slice 4b lands the real sidecar: with no sidecar,
+      // running this would duplicate the efetch, register captions unconditionally,
+      // and emit a failing localhost POST on every deep-read. Slice 4b flips the default.
+      if (process.env.SONNY_FIGURES === 'on') {
         await researchFigures({ pmcid, question: item.question, store, emit, specialist: brief.id });
       }
       if (!snowballed) {

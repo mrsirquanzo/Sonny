@@ -169,7 +169,7 @@ Every step emits a trace event; a new `figure_read` `TraceEvent` joins the glass
 If the sidecar is unavailable, `safeToolCall` returns `[]`, no figure evidence is registered, and the run completes text-only.
 Figures are additive, never load-bearing for completion.
 
-Both figure Tools are gated behind a `SONNY_FIGURES` flag (default `on`; `SONNY_FIGURES=off` disables `pmc_figures` and `figure_read` entirely, running the pipeline text-only).
+Both figure Tools are gated behind a `SONNY_FIGURES` flag. It is **opt-in** (`SONNY_FIGURES=on` enables `pmc_figures` and `figure_read`) until Slice 4b lands the real sidecar; with no sidecar the default-off path keeps the pipeline text-only and avoids a duplicate efetch and a failing sidecar POST on every deep-read. Slice 4b flips the default to on once a healthz-gated sidecar exists.
 This flag is in this slice's scope, not assumed.
 It is what makes task 0's acceptance criterion (figures-off miss to figures-on catch) reproducible, and it gives the eval harness a clean ablation switch for any figures-on/off A/B.
 
@@ -297,7 +297,7 @@ Fixture-based, no network and no GPU.
 2. `pmc_figures` Tool: fetch and parse PMC OA figures into `Evidence`. Tests, no network.
 3. Shared fixture `figures-analyze.fixture.json` (section 3.5).
 4. `figure_read` Tool: call the (stubbed) sidecar, map the wire response to `FigureReading[]`, compute deterministic normalized `inCaption`, derive the binary `readRisk`. Tests assert the derivation from the shared wire-shape fixture (fixture carries no derived fields).
-5. Wire both into `researcher.ts` deep-read after the skeptic audit; emit the trace event; caption-anchored verification path; gate both Tools behind `SONNY_FIGURES` (default on).
+5. Wire both into `researcher.ts` deep-read after the skeptic audit; emit the trace event; caption-anchored verification path; gate both Tools behind `SONNY_FIGURES` (opt-in `=== 'on'` until Slice 4b; the deferred sidecar makes default-on unsafe in production).
 6. Eval hooks: `figure_grounding` metric in `eval` with the `REGRESSION_TOLERANCE` band entry, the `ABSOLUTE_FLOORS` backstop in `checkRegression`, and the `n >= 3` denominator gate; add the confirmed golden target from task 0; prove the figures-off-miss to figures-on-catch delta via `SONNY_FIGURES`.
 
 ## 9. Slice 4b (fast-follow, out of scope here)
