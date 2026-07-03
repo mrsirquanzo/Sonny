@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { extractPatentNumber, extractSequenceListing } from './patentExtract.js';
+import { normalizeRegionNote } from './patentExtract.js';
 
 describe('extractPatentNumber', () => {
   it('finds and normalizes a patent number embedded in text', () => {
@@ -129,5 +130,29 @@ describe('ST.26 parsing', () => {
     expect(out[0].seqId).toBe(3);
     expect(out[0].residues).toBe('EVQLVESGG');
     expect(out[0].declaredLength).toBe(9);
+  });
+});
+
+describe('normalizeRegionNote', () => {
+  it('maps confident CDR notes with chain + number', () => {
+    expect(normalizeRegionNote('CDR-H3')).toBe('CDR-H3');
+    expect(normalizeRegionNote('HCDR3')).toBe('CDR-H3');
+    expect(normalizeRegionNote('heavy chain CDR 1')).toBe('CDR-H1');
+    expect(normalizeRegionNote('CDR-L2')).toBe('CDR-L2');
+  });
+  it('maps variable domains and full chains', () => {
+    expect(normalizeRegionNote('VH')).toBe('VH');
+    expect(normalizeRegionNote('heavy chain variable region')).toBe('VH');
+    expect(normalizeRegionNote('variable light')).toBe('VL');
+    expect(normalizeRegionNote('heavy chain')).toBe('heavy-chain');
+    expect(normalizeRegionNote('light chain')).toBe('light-chain');
+    expect(normalizeRegionNote('Fc region')).toBe('Fc');
+    expect(normalizeRegionNote('hinge')).toBe('hinge');
+  });
+  it('returns undefined for unknown or chain-ambiguous notes', () => {
+    expect(normalizeRegionNote('signal peptide')).toBeUndefined();
+    expect(normalizeRegionNote('linker')).toBeUndefined();
+    expect(normalizeRegionNote('CDR 3')).toBeUndefined(); // no chain -> ambiguous
+    expect(normalizeRegionNote('')).toBeUndefined();
   });
 });

@@ -1,5 +1,6 @@
 import { normalizePatentNumber } from './epoPatent.js';
 import { XMLParser } from 'fast-xml-parser';
+import type { RegionLabel } from './anarci.js';
 
 export interface ExtractedSequence {
   seqId: number;
@@ -91,4 +92,35 @@ export function extractSequenceListingST26(content: string): ExtractedSequence[]
 
 export function extractSequences(content: string): ExtractedSequence[] {
   return isST26(content) ? extractSequenceListingST26(content) : extractSequenceListing(content);
+}
+
+export function normalizeRegionNote(note: string): RegionLabel | undefined {
+  const n = note.toLowerCase();
+  const heavy = /heavy|\bhc\b|\bvh\b|hcdr|\bh[- ]?cdr|\bfr[- ]?h/.test(n);
+  const light = /light|\blc\b|\bvl\b|lcdr|\bl[- ]?cdr|\bfr[- ]?l|kappa|lambda/.test(n);
+  const cdr = n.match(/cdr[- ]?[hl]?[- ]?([123])\b/) ?? n.match(/[hl]cdr[- ]?([123])\b/) ?? n.match(/cdr\D*?([123])\b/);
+  if (/cdr/.test(n) && cdr) {
+    const num = cdr[1];
+    const chainLetter = n.match(/([hl])[- ]?cdr/) ?? n.match(/cdr[- ]?([hl])(?=\d|\W|$)/);
+    const isH = heavy || chainLetter?.[1] === 'h';
+    const isL = light || chainLetter?.[1] === 'l';
+    if (isH && !isL) return `CDR-H${num}` as RegionLabel;
+    if (isL && !isH) return `CDR-L${num}` as RegionLabel;
+    return undefined;
+  }
+  if (/variable|\bvh\b|\bvl\b|\bfv\b/.test(n)) {
+    if (heavy && !light) return 'VH';
+    if (light && !heavy) return 'VL';
+    return undefined;
+  }
+  if (/\bfab\b/.test(n)) return 'Fab';
+  if (/\bfc\b/.test(n)) return 'Fc';
+  if (/\bch1\b/.test(n)) return 'CH1';
+  if (/\bcl\b|constant light/.test(n)) return 'CL';
+  if (/hinge/.test(n)) return 'hinge';
+  if (/chain/.test(n)) {
+    if (heavy && !light) return 'heavy-chain';
+    if (light && !heavy) return 'light-chain';
+  }
+  return undefined;
 }
