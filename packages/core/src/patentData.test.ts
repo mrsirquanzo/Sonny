@@ -70,6 +70,15 @@ describe('extraction completeness', () => {
     const warn = c.alphabetWarnings.find((w) => w.seqId === 2);
     expect(warn?.invalidChars).toContain('B');
     expect(c.alphabetWarnings.find((w) => w.seqId === 1)).toBeUndefined(); // clean
+    expect(c.associationCount).toBe(1); // one association returned by the model
+  });
+
+  it('surfaces the construct-less case: sequences found but zero associations', async () => {
+    const md = ['SEQ ID NO: 1', 'EVQLVESGG', '', 'SEQ ID NO: 2', 'DIQMTQSPS', ''].join('\n');
+    const model = { async generateStructured() { return { associations: [] } as never; } };
+    const c = (await extractPatentData(md, model)).completeness!;
+    expect(c.foundCount).toBe(2);
+    expect(c.associationCount).toBe(0); // foundCount > 0 && associationCount === 0 -> construct-less workup signal
   });
 });
 
