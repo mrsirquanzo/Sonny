@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { TraceEvent, Briefing } from './contracts.js';
-import { ClaimSchema, ClaimsSchema, EvidenceSchema, VerdictSchema, RecommendationSchema, ReferenceSchema, MethodologicalCritiqueSchema, RedFlagSchema, SectionSchema, DevelopabilityRiskSchema, VerdictLabelSchema } from './contracts.js';
+import { ClaimSchema, ClaimsSchema, EvidenceSchema, VerdictSchema, RecommendationSchema, ReferenceSchema, MethodologicalCritiqueSchema, RedFlagSchema, SectionSchema, DevelopabilityRiskSchema, VerdictLabelSchema, EvidenceLevelSchema, ContradictionFlagSchema } from './contracts.js';
 
 describe('contracts', () => {
   it('accepts a valid evidence record', () => {
@@ -241,5 +241,25 @@ describe('figure contracts', () => {
       }],
     });
     expect(w.readings[0].extractedValues[0]).not.toHaveProperty('readRisk');
+  });
+});
+
+describe('grading + contradiction contracts', () => {
+  it('EvidenceLevelSchema accepts the four GRADE tiers', () => {
+    expect(EvidenceLevelSchema.parse('very_low')).toBe('very_low');
+  });
+
+  it('MethodologicalCritique accepts an optional evidenceLevel', () => {
+    const c = MethodologicalCritiqueSchema.parse({
+      evidenceId: 'PMID:1', studyDesign: 'randomized_controlled', redFlags: [], evidenceLevel: 'high',
+    });
+    expect(c.evidenceLevel).toBe('high');
+    // still valid without it (backward compatible)
+    expect(MethodologicalCritiqueSchema.parse({ evidenceId: 'PMID:1', studyDesign: 'observational', redFlags: [] }).evidenceLevel).toBeUndefined();
+  });
+
+  it('ContradictionFlagSchema validates a flag', () => {
+    const f = ContradictionFlagSchema.parse({ evidenceIdA: 'PMID:1', evidenceIdB: 'PMID:2', endpoint: 'OS', explanation: 'opposite' });
+    expect(f.evidenceIdB).toBe('PMID:2');
   });
 });
