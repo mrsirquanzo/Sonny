@@ -19,3 +19,5 @@ export { ingestToMarkdown } from './ingest.js';
 export type { MarkitdownExec, IngestResult } from './ingest.js';
 export { extractPatentNumber, extractSequenceListing } from './patentExtract.js';
 export type { ExtractedSequence } from './patentExtract.js';
+export { readFigures, normalizeNumeric, captionContainsValue } from './figureRead.js';
+export type { FigureInput, ReadFiguresOpts } from './figureRead.js';
