@@ -258,3 +258,30 @@ describe('blastVerifyTool short-query params', () => {
     expect(body.value).not.toContain('MATRIX');
   });
 });
+
+describe('blastVerify db-version provenance', () => {
+  const XML_WITH_DB = `<?xml version="1.0"?>
+<BlastOutput>
+  <BlastOutput_version>BLASTP 2.15.0+</BlastOutput_version>
+  <BlastOutput_db>nr</BlastOutput_db>
+  <BlastOutput_query-len>10</BlastOutput_query-len>
+  <BlastOutput_iterations><Iteration><Iteration_hits><Hit>
+    <Hit_accession>ABC123</Hit_accession><Hit_def>test [Homo sapiens]</Hit_def>
+    <Hit_hsps><Hsp><Hsp_align-len>10</Hsp_align-len><Hsp_identity>10</Hsp_identity>
+      <Hsp_query-from>1</Hsp_query-from><Hsp_query-to>10</Hsp_query-to>
+      <Hsp_evalue>0.0</Hsp_evalue><Hsp_bit-score>20</Hsp_bit-score></Hsp></Hit_hsps>
+  </Hit></Iteration_hits></Iteration></BlastOutput_iterations>
+</BlastOutput>`;
+
+  it('stamps dbVersion and blastVersion onto each hit raw', async () => {
+    const out = await blastVerifyTool.call({ sequence: 'EVQLVESGGG', pollIntervalMs: 0 }, makeFetch(['READY'], { xml: XML_WITH_DB }));
+    expect((out[0].raw as Record<string, unknown>).dbVersion).toBe('nr');
+    expect((out[0].raw as Record<string, unknown>).blastVersion).toBe('BLASTP 2.15.0+');
+  });
+
+  it('defaults provenance to empty strings when the fields are absent', async () => {
+    const out = await blastVerifyTool.call({ sequence: 'EVQLVESGGG', pollIntervalMs: 0 }, makeFetch(['READY']));
+    expect((out[0].raw as Record<string, unknown>).dbVersion).toBe('');
+    expect((out[0].raw as Record<string, unknown>).blastVersion).toBe('');
+  });
+});

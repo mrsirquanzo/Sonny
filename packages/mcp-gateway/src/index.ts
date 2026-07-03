@@ -23,3 +23,5 @@ export { readFigures, normalizeNumeric, captionContainsValue } from './figureRea
 export type { FigureInput, ReadFiguresOpts } from './figureRead.js';
 export { rerankHits } from './rerank.js';
 export type { RerankOpts } from './rerank.js';
+export { blastCacheKey, makeCachedBlast, FileBlastCache, blastCacheFromEnv, cacheTtlMsFromEnv } from './blastCache.js';
+export type { BlastCache, CachedBlast, BlastFn } from './blastCache.js';
