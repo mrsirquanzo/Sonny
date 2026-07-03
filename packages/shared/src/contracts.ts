@@ -173,6 +173,7 @@ export type TraceEvent =
   | { type: 'section_complete'; section: Section }
   | { type: 'research_plan'; specialist: string; questions: string[] }
   | { type: 'research_read'; specialist: string; sourceId: string; locator: string }
+  | { type: 'rerank'; specialist: string; before: string[]; after: string[] }
   | { type: 'research_reflect'; specialist: string; note: string; followups: string[] }
   | { type: 'lead_decompose'; specialists: string[] }
   | { type: 'completeness_verdict'; complete: boolean; gaps: string[] }

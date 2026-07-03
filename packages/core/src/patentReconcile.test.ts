@@ -119,3 +119,49 @@ describe('reconcilePatent', () => {
     expect(s.domain).toBeUndefined();
   });
 });
+
+describe('exactMatch full-length guard', () => {
+  const exactHitEvidence = (accession: string): Evidence => ({
+    id: `BLAST:${accession}`, kind: 'patent', source: 'NCBI BLAST', title: `hit ${accession}`, snippet: '', url: 'u', retrievedAt: 'now',
+    raw: { accession, percentIdentity: 100, queryCoverage: 100, identity: 60, alignLen: 60, organism: '' },
+  });
+
+  function inputWith(residues: string, declaredLength?: number): ExtractedPatent {
+    const seq = declaredLength !== undefined
+      ? { seqId: 1, residues, declaredLength }
+      : { seqId: 1, residues };
+    return { patentNumber: 'US1', sequences: [seq], associations: [] };
+  }
+
+  function guardDeps(acc: string): ReconcileDeps {
+    return {
+      blast: async (_seq, _db) => [exactHitEvidence(acc)],
+      anarci: async () => ({ overallStatus: 'anarci_unavailable', domains: [], regionChecks: [], speciesSummary: [] }),
+      epo: async () => ({ input: 'US1', found: false, applicants: [], inventors: [], ipc: [], family: [] }),
+    };
+  }
+
+  it('declared length equals extracted -> exactMatch kept, fullLengthConfirmed true', async () => {
+    const r = await reconcilePatent(inputWith('A'.repeat(60), 60), guardDeps('PAT_A'));
+    const s = r.sequences[0];
+    expect(s.fullLengthConfirmed).toBe(true);
+    expect(s.patentHits[0].exactMatch).toBe(true);
+  });
+
+  it('declared length differs from extracted -> exactMatch forced false, fullLengthConfirmed false', async () => {
+    // guardDeps returns the same exactHitEvidence for all databases, so nrTopHit is also populated.
+    // Both patentHits and nrTopHit must have exactMatch downgraded by the full-length guard.
+    const r = await reconcilePatent(inputWith('A'.repeat(60), 120), guardDeps('PAT_B'));
+    const s = r.sequences[0];
+    expect(s.fullLengthConfirmed).toBe(false);
+    expect(s.patentHits[0].exactMatch).toBe(false);
+    expect(s.nrTopHit?.exactMatch).toBe(false);
+  });
+
+  it('declared length unknown -> exactMatch kept, fullLengthConfirmed false', async () => {
+    const r = await reconcilePatent(inputWith('A'.repeat(60)), guardDeps('PAT_C'));
+    const s = r.sequences[0];
+    expect(s.fullLengthConfirmed).toBe(false);
+    expect(s.patentHits[0].exactMatch).toBe(true);
+  });
+});

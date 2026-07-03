@@ -4,10 +4,10 @@ import { fileURLToPath } from 'node:url';
 import { runPatentPipeline, gotConstructs, gotCompetitorOverlaps } from './patentPipeline.js';
 import { extractionRecall, residueFidelity, setRecall, speciesAccuracy, pairingAccuracy, competitorRecall } from './goldenPatent.js';
 import type { GoldenPatent } from './goldenPatent.js';
-import type { StructuredModel, ReconcileDeps, PatentWorkup } from '@mrsirquanzo/sonny-core';
+import type { StructuredModel, ReconcileDeps, PatentWorkup, CdrBlast } from '@mrsirquanzo/sonny-core';
 import type { Evidence } from '@mrsirquanzo/sonny-shared';
 
-const golden = JSON.parse(readFileSync(fileURLToPath(new URL('../golden/synthetic-antibody.json', import.meta.url)), 'utf8')) as GoldenPatent;
+const golden = JSON.parse(readFileSync(fileURLToPath(new URL('../golden/synthetic-antibody.patent.json', import.meta.url)), 'utf8')) as GoldenPatent;
 
 // A >=50-residue VH and a >=50-residue VL, matching the golden known sequences.
 const VH = 'EVQLVESGGGLVQPGGSLRLSCAASGFTFSSYAMSWVRQAPGKGLEWVSAISGSGGSTYYADSVKG';
@@ -54,6 +54,30 @@ describe('gotCompetitorOverlaps level', () => {
     const got = gotCompetitorOverlaps(wk);
     expect(got).toContainEqual({ seqId: 1, competitorAccession: 'PAT_W', level: 'whole' });
     expect(got).toContainEqual({ seqId: 1, competitorAccession: 'PAT_C', level: 'cdr' });
+  });
+});
+
+describe('runPatentPipeline cdr competitor overlap', () => {
+  it('scores a cdr-level overlap when cdrBlast returns a >=90% pataa hit', async () => {
+    const model = { async generateStructured(opts: { system: string }) {
+      if (opts.system.includes('extract')) return { associations: [{ regionLabel: 'VH', seqId: 1 }] } as never;
+      if (opts.system.includes('group')) return { constructs: [{ name: 'Ab1', members: [{ regionLabel: 'VH', seqId: 1 }] }] } as never;
+      return { summary: 'ACME.', points: [] } as never;
+    } };
+    const cdrBlast: CdrBlast = async () => [
+      { id: 'x', kind: 'patent', source: 'b', title: 't', snippet: '', url: '', retrievedAt: '', raw: { accession: 'PAT_CDR', percentIdentity: 100, queryCoverage: 100, identity: 12, alignLen: 12, organism: '' } } as never,
+    ];
+    const md = 'Patent US 10,123,456 B2\nClaims\nSEQ ID NO: 1\nEVQLVESGGGLVQPGGSLRLSCAASGFTFSSYAMSWVRQAPGKGLEWVS\n';
+    const workup = await runPatentPipeline(md, {
+      model,
+      reconcileDeps: {
+        blast: async () => [],
+        anarci: async () => ({ overallStatus: 'confirmed', domains: [{ chain: 'H', species: 'homo_sapiens', germline: { v: '', j: '' }, numberedRegions: { 'CDR-H3': { seq: 'ARDYYGSSYFDY', imgtStart: 105, imgtEnd: 117, residues: [] } } }], regionChecks: [], speciesSummary: [] }),
+        epo: async () => ({ input: 'US10123456', found: true, applicants: ['ACME'], inventors: [], ipc: [], family: [] }),
+      },
+      cdrBlast,
+    });
+    expect(gotCompetitorOverlaps(workup)).toContainEqual({ seqId: 1, competitorAccession: 'PAT_CDR', level: 'cdr' });
   });
 });
 
