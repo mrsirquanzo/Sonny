@@ -48,3 +48,19 @@ describe('europePmcSearchTool', () => {
     expect(out[1].metadata).toBeUndefined(); // second hit has no authorList
   });
 });
+
+describe('europepmc_search pageSize', () => {
+  it('defaults to pageSize=8 and honors an explicit pageSize', async () => {
+    const urls: string[] = [];
+    const fakeFetch = (async (u: RequestInfo | URL) => {
+      urls.push(String(u));
+      return new Response(JSON.stringify({ resultList: { result: [] } }), { status: 200 });
+    }) as unknown as typeof fetch;
+
+    await europePmcSearchTool.call({ query: 'EGFR' }, fakeFetch);
+    await europePmcSearchTool.call({ query: 'EGFR', pageSize: 25 }, fakeFetch);
+
+    expect(urls[0]).toContain('pageSize=8');
+    expect(urls[1]).toContain('pageSize=25');
+  });
+});
