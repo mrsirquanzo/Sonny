@@ -1,11 +1,14 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import type { Section, Claim, Evidence } from '@mrsirquanzo/sonny-shared';
 import type { StructuredModel } from './model.js';
 import { synthesizeRecommendation } from './synthesize.js';
 
 const sections: Section[] = [
   { id: 'moa_pathway', title: 'MOA & Pathway', takeaway: 'Strong mechanism.',
-    claims: [{ id: 'c1', text: 'Drives EMT.', citations: ['PMID:1'], confidence: 0.8 }], sources: ['PMID:1'], rag: 'green' },
+    claims: [
+      { id: 'c1', text: 'Drives EMT.', citations: ['PMID:1'], confidence: 0.8 },
+      { id: 'c2', text: 'Promotes invasion.', citations: ['PMID:1'], confidence: 0.8 },
+    ], sources: ['PMID:1'], rag: 'green' },
 ];
 const weighing = { takeaway: 'Mechanism strong, genetics weak.', claims: [
   { id: 'w1', text: 'Mechanism outweighs weak genetics.', citations: ['PMID:1'], confidence: 0.7 } as Claim,
@@ -29,7 +32,7 @@ describe('synthesizeRecommendation', () => {
         } as never;
       },
     };
-    const { recommendation, executiveRead } = await synthesizeRecommendation({ sections, weighing, evidence, model });
+    const { recommendation, executiveRead } = await synthesizeRecommendation({ target: 'CDCP1', sections, weighing, evidence, model });
     expect(recommendation.verdict).toBe('watch');
     // phantom citation dropped, real one kept
     expect(recommendation.bull[0].citations).toEqual(['PMID:1']);
@@ -58,7 +61,7 @@ describe('synthesizeRecommendation', () => {
       ],
     }];
     await synthesizeRecommendation({
-      sections: sections as never, weighing: { takeaway: '', claims: [] },
+      target: 'FOO', sections: sections as never, weighing: { takeaway: '', claims: [] },
       evidence: [{ id: 'PMID:1', kind: 'publication', source: 's', title: 't', snippet: '', url: 'u', raw: {}, retrievedAt: 'now' }] as never,
       model,
     });
@@ -74,12 +77,15 @@ describe('synthesizeRecommendation', () => {
         return { verdict: 'go', thesis: 'strong biology', bull: [], bear: [], conditions: [], executiveRead: 'er' } as never; },
     };
     const sections = [
-      { id: 'target_biology', title: 'Target Biology', takeaway: 'great', rag: 'green', sources: [], claims: [] },
+      { id: 'target_biology', title: 'Target Biology', takeaway: 'great', rag: 'green', sources: ['PMID:1'], claims: [
+        { id: 'b1', text: 'Expressed in tumor.', citations: ['PMID:1'], confidence: 0.9 },
+        { id: 'b2', text: 'Correlates with stage.', citations: ['PMID:1'], confidence: 0.9 },
+      ] },
       { id: 'modality_developability', title: 'Modality & Developability', takeaway: 'tough', rag: 'red', sources: ['PMID:9'], claims: [],
         developabilityRisks: [{ evidenceId: 'PMID:9', category: 'immunogenicity', severity: 'severe', explanation: 'High ADA incidence.' }] },
     ];
     const { recommendation } = await synthesizeRecommendation({
-      sections: sections as never, weighing: { takeaway: '', claims: [] },
+      target: 'HARD', sections: sections as never, weighing: { takeaway: '', claims: [] },
       evidence: [{ id: 'PMID:9', kind: 'publication', source: 's', title: 't', snippet: '', url: 'u', raw: {}, retrievedAt: 'now' }] as never,
       model,
     });
@@ -92,14 +98,76 @@ describe('synthesizeRecommendation', () => {
       async generateStructured() { return { verdict: 'go', thesis: 't', bull: [], bear: [], conditions: [], executiveRead: 'er' } as never; },
     };
     const sections = [
-      { id: 'modality_developability', title: 'M', takeaway: 't', rag: 'amber', sources: ['PMID:9'], claims: [],
-        developabilityRisks: [{ evidenceId: 'PMID:9', category: 'half_life', severity: 'significant', explanation: 'Short half-life.' }] },
+      { id: 'modality_developability', title: 'M', takeaway: 't', rag: 'amber', sources: ['PMID:9'], claims: [
+        { id: 'm1', text: 'Feasible format.', citations: ['PMID:9'], confidence: 0.8 },
+        { id: 'm2', text: 'Manufacturable.', citations: ['PMID:9'], confidence: 0.8 },
+      ], developabilityRisks: [{ evidenceId: 'PMID:9', category: 'half_life', severity: 'significant', explanation: 'Short half-life.' }] },
     ];
     const { recommendation } = await synthesizeRecommendation({
-      sections: sections as never, weighing: { takeaway: '', claims: [] },
+      target: 'FOO', sections: sections as never, weighing: { takeaway: '', claims: [] },
       evidence: [{ id: 'PMID:9', kind: 'publication', source: 's', title: 't', snippet: '', url: 'u', raw: {}, retrievedAt: 'now' }] as never,
       model,
     });
     expect(recommendation.verdict).toBe('go');             // significant informs but does not override
+  });
+});
+
+function section(id: string, claimCount: number): Section {
+  return {
+    id, title: id, takeaway: 't',
+    claims: Array.from({ length: claimCount }, (_, i) => ({
+      id: `${id}-c${i}`, text: 'a finding', citations: ['PMID:1'], confidence: 0.9,
+    })),
+    sources: [], rag: claimCount ? 'amber' : 'red',
+  };
+}
+
+const abstentionEvidence: Evidence[] = [{
+  id: 'PMID:1', kind: 'publication', source: 's', title: 't', snippet: 's',
+  url: 'u', raw: {}, retrievedAt: 'now',
+}];
+
+const abstentionDraft = {
+  verdict: 'watch', thesis: 'th',
+  bull: [{ point: 'b', citations: ['PMID:1'] }],
+  bear: [{ point: 'x', citations: [] }],
+  conditions: [], executiveRead: 'exec',
+};
+
+describe('synthesizeRecommendation abstention gate', () => {
+  it('abstains on zero supported claims and never calls the model', async () => {
+    const gen = vi.fn();
+    const { recommendation, executiveRead } = await synthesizeRecommendation({
+      target: 'ZXQR7', sections: [section('a', 0), section('b', 0)],
+      weighing: { takeaway: '', claims: [] }, evidence: [], model: { generateStructured: gen } as any,
+    });
+    expect(recommendation.verdict).toBe('insufficient-evidence');
+    expect(recommendation.bull).toEqual([]);
+    expect(recommendation.bear).toEqual([]);
+    expect(recommendation.conditions).toEqual([]);
+    expect(recommendation.thesis).toContain('ZXQR7');
+    expect(executiveRead).toContain('ZXQR7');
+    expect(gen).not.toHaveBeenCalled();
+  });
+
+  it('abstains on exactly one supported claim (the single-finding gap)', async () => {
+    const gen = vi.fn();
+    const { recommendation } = await synthesizeRecommendation({
+      target: 'FOO', sections: [section('a', 1), section('b', 0)],
+      weighing: { takeaway: '', claims: [] }, evidence: abstentionEvidence, model: { generateStructured: gen } as any,
+    });
+    expect(recommendation.verdict).toBe('insufficient-evidence');
+    expect(gen).not.toHaveBeenCalled();
+  });
+
+  it('takes the normal path with two or more supported claims', async () => {
+    const gen = vi.fn().mockResolvedValue(abstentionDraft);
+    const { recommendation } = await synthesizeRecommendation({
+      target: 'EGFR', sections: [section('a', 2)],
+      weighing: { takeaway: '', claims: [] }, evidence: abstentionEvidence, model: { generateStructured: gen } as any,
+    });
+    expect(gen).toHaveBeenCalledOnce();
+    expect(recommendation.verdict).toBe('watch');
+    expect(recommendation.bull).toEqual([{ point: 'b', citations: ['PMID:1'] }]);
   });
 });

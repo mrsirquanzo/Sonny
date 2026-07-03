@@ -23,7 +23,7 @@ export async function produceBriefing(opts: {
 }): Promise<Briefing> {
   const result = await runDeepResearch(opts);
   const { recommendation, executiveRead } = await synthesizeRecommendation({
-    sections: result.sections, weighing: result.weighing, evidence: result.evidence, model: opts.leadModel,
+    target: result.target, sections: result.sections, weighing: result.weighing, evidence: result.evidence, model: opts.leadModel,
   });
   opts.emit({ type: 'recommendation', verdict: recommendation.verdict });
   return {
