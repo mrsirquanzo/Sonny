@@ -1,8 +1,7 @@
 import type { TraceEvent } from '@mrsirquanzo/sonny-shared';
-import { runDossier, AnthropicModel } from '@mrsirquanzo/sonny-core';
+import { runDossier, AnthropicModel, runPatentWorkup } from '@mrsirquanzo/sonny-core';
 import { openTargetsTargetTool, pubmedTool, clinicalTrialsTool } from '@mrsirquanzo/sonny-mcp-gateway';
 import { runExtractPatent } from './extractPatent.js';
-import { runPatentWorkup } from './patentWorkup.js';
 
 export function formatTrace(events: TraceEvent[]): string {
   return events.map((e) => {

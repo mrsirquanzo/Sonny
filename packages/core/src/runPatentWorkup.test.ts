@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { runPatentWorkup } from './patentWorkup.js';
-import type { StructuredModel, Verifier } from '@mrsirquanzo/sonny-core';
+import { runPatentWorkup } from './runPatentWorkup.js';
+import type { StructuredModel } from './model.js';
+import type { Verifier } from './narrativeVerify.js';
 
 // The pipeline calls the model three times, each with a distinct system prompt:
 // extractAssociations ("...extract..."), groupConstructs ("...group..."), synthesizeCompetitiveIP (neither).
@@ -65,7 +66,7 @@ describe('runPatentWorkup', () => {
 });
 
 import type { BlastCache } from '@mrsirquanzo/sonny-mcp-gateway';
-import type { CdrBlast } from '@mrsirquanzo/sonny-core';
+import type { CdrBlast } from './patentWorkup.js';
 
 describe('runPatentWorkup CDR competitor matching', () => {
   it('attaches a cdr-level competitor and emits its graph edge', async () => {
