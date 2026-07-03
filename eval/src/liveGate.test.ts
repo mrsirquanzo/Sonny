@@ -16,6 +16,16 @@ describe('detectLiveCapabilities', () => {
     expect(caps.reasons.join(' ')).toContain('ANARCI');
   });
 
+  it('returns epo: false when only SONNY_EPO_KEY is set (secret absent)', () => {
+    const caps = detectLiveCapabilities({ SONNY_LIVE: '1', ANTHROPIC_API_KEY: 'k', SONNY_EPO_KEY: 'a' } as NodeJS.ProcessEnv);
+    expect(caps.epo).toBe(false);
+  });
+
+  it('returns epo: false when only SONNY_EPO_SECRET is set (key absent)', () => {
+    const caps = detectLiveCapabilities({ SONNY_LIVE: '1', ANTHROPIC_API_KEY: 'k', SONNY_EPO_SECRET: 'b' } as NodeJS.ProcessEnv);
+    expect(caps.epo).toBe(false);
+  });
+
   it('liveEnabled requires live + anthropic', () => {
     expect(liveEnabled(detectLiveCapabilities({ SONNY_LIVE: '1', ANTHROPIC_API_KEY: 'k' } as NodeJS.ProcessEnv))).toBe(true);
     expect(liveEnabled(detectLiveCapabilities({ ANTHROPIC_API_KEY: 'k' } as NodeJS.ProcessEnv))).toBe(false);

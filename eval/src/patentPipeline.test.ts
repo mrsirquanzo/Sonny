@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { runPatentPipeline, gotConstructs, gotCompetitorOverlaps } from './patentPipeline.js';
 import { extractionRecall, residueFidelity, setRecall, speciesAccuracy, pairingAccuracy, competitorRecall } from './goldenPatent.js';
 import type { GoldenPatent } from './goldenPatent.js';
-import type { StructuredModel, ReconcileDeps, PatentWorkup } from '@mrsirquanzo/sonny-core';
+import type { StructuredModel, ReconcileDeps, PatentWorkup, CdrBlast } from '@mrsirquanzo/sonny-core';
 import type { Evidence } from '@mrsirquanzo/sonny-shared';
 
 const golden = JSON.parse(readFileSync(fileURLToPath(new URL('../golden/synthetic-antibody.patent.json', import.meta.url)), 'utf8')) as GoldenPatent;
@@ -56,8 +56,6 @@ describe('gotCompetitorOverlaps level', () => {
     expect(got).toContainEqual({ seqId: 1, competitorAccession: 'PAT_C', level: 'cdr' });
   });
 });
-
-import type { CdrBlast } from '@mrsirquanzo/sonny-core';
 
 describe('runPatentPipeline cdr competitor overlap', () => {
   it('scores a cdr-level overlap when cdrBlast returns a >=90% pataa hit', async () => {
