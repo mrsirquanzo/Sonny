@@ -83,10 +83,13 @@ export const blastVerifyTool: Tool = {
     if (!result.ok) throw new Error(`NCBI BLAST fetch HTTP ${result.status}`);
     const parsed = parser.parse(await result.text()) as {
       BlastOutput?: { 'BlastOutput_query-len'?: number;
+        'BlastOutput_version'?: string; 'BlastOutput_db'?: string;
         BlastOutput_iterations?: { Iteration?: unknown } };
     };
     const root = parsed.BlastOutput;
     const queryLen = Number(root?.['BlastOutput_query-len'] ?? 0);
+    const blastVersion = String(root?.['BlastOutput_version'] ?? '');
+    const dbVersion = String(root?.['BlastOutput_db'] ?? '');
     const iteration = asArray(root?.BlastOutput_iterations?.Iteration)[0] as
       { Iteration_hits?: { Hit?: unknown } } | undefined;
     const hits = asArray(iteration?.Iteration_hits?.Hit) as Array<Record<string, unknown>>;
@@ -124,7 +127,7 @@ export const blastVerifyTool: Tool = {
         snippet,
         passage: `Aligned ${alignLen} residues, query coverage ${queryCoverage}%.`,
         url: `https://www.ncbi.nlm.nih.gov/${accPath}/${accession}`,
-        raw: { accession, percentIdentity, eValue, bitScore, queryCoverage, organism, database, program, identity, alignLen },
+        raw: { accession, percentIdentity, eValue, bitScore, queryCoverage, organism, database, program, identity, alignLen, dbVersion, blastVersion },
         retrievedAt: now,
       };
     });
