@@ -204,7 +204,7 @@ export type TraceEvent =
   | { type: 'developability_assessment'; risks: DevelopabilityRisk[] }
   | { type: 'kol_cluster'; cluster: KOLCluster }
   | { type: 'recommendation'; verdict: string }
-  | { type: 'patent_ingest'; status: 'ok' | 'failed'; format?: string }
+  | { type: 'patent_ingest'; status: 'ok' | 'failed'; format?: string }  // format reserved for a future ingest that reports source format
   | { type: 'patent_extracted'; patentNumber: string | null; sequenceCount: number }
   | { type: 'patent_associations'; associationCount: number; source: 'st26' | 'llm' }
   | { type: 'patent_complete'; completeness: ExtractionCompletenessLike };

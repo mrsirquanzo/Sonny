@@ -27,4 +27,14 @@ describe('extractPatentSequences', () => {
     expect(events.map((e) => e.type)).toEqual(['error', 'patent_ingest']);
     expect((events[1] as Extract<TraceEvent, { type: 'patent_ingest' }>).status).toBe('failed');
   });
+
+  it('catches a thrown ingest, emits error + patent_ingest failed, returns ok:false', async () => {
+    const events: TraceEvent[] = [];
+    const ingest = async () => { throw new Error('boom'); };
+    const out = await extractPatentSequences({ filePath: '/x.pdf', emit: (e) => events.push(e), deps: { ingest } });
+    expect(out.ok).toBe(false);
+    if (!out.ok) expect(out.error).toContain('boom');
+    expect(events.map((e) => e.type)).toEqual(['error', 'patent_ingest']);
+    expect((events[1] as Extract<TraceEvent, { type: 'patent_ingest' }>).status).toBe('failed');
+  });
 });

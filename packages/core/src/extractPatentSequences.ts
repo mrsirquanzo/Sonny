@@ -29,8 +29,9 @@ export async function extractPatentSequences(opts: {
     const data = await extractPatentData(res.markdown, model, emit);
     return { ok: true, data };
   } catch (e) {
-    const error = `patent extraction failed: ${(e as Error).message}`;
+    const error = `patent extraction failed: ${e instanceof Error ? e.message : String(e)}`;
     emit({ type: 'error', message: error });
+    emit({ type: 'patent_ingest', status: 'failed' });
     return { ok: false, error };
   }
 }

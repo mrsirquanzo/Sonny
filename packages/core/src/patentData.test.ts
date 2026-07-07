@@ -1,9 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { extractPatentData, extractAssociations } from './patentData.js';
+import type { ExtractionCompleteness } from './patentData.js';
 import { reconcilePatent } from './patentReconcile.js';
 import type { ReconcileDeps } from './patentReconcile.js';
 import type { StructuredModel } from './model.js';
-import type { TraceEvent } from '@mrsirquanzo/sonny-shared';
+import type { TraceEvent, ExtractionCompletenessLike } from '@mrsirquanzo/sonny-shared';
 
 const MD = [
   'Patent US 10,123,456 B2',
@@ -163,5 +164,12 @@ describe('extractPatentData emit', () => {
     const md = 'SEQ ID NO: 1\nEVQLVESGGG\n';
     const model = { async generateStructured() { return { associations: [] } as never; } };
     await expect(extractPatentData(md, model)).resolves.toBeDefined();
+  });
+
+  it('ExtractionCompleteness stays structurally compatible with the shared ExtractionCompletenessLike', () => {
+    const core: ExtractionCompleteness = { foundCount: 1, referencedMax: 1, missingSeqIds: [], alphabetWarnings: [], associationCount: 0 };
+    const shared: ExtractionCompletenessLike = core; // fails to compile if core drops/renames a field
+    const back: ExtractionCompleteness = shared;     // fails to compile if shared drops/renames a field
+    expect(back.foundCount).toBe(1);
   });
 });
