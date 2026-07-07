@@ -3,6 +3,7 @@ import type { StructuredModel } from './model.js';
 import { MODEL_ROUTER } from './model.js';
 import { extractPatentNumber, extractSequences, isST26, extractST26Associations } from '@mrsirquanzo/sonny-mcp-gateway';
 import type { ExtractedSequence, RegionLabel } from '@mrsirquanzo/sonny-mcp-gateway';
+import type { TraceEvent } from '@mrsirquanzo/sonny-shared';
 
 export interface ExtractionCompleteness {
   foundCount: number;
@@ -87,14 +88,22 @@ export async function extractAssociations(
   }
 }
 
-export async function extractPatentData(markdown: string, model: StructuredModel): Promise<ExtractedPatent> {
+export async function extractPatentData(
+  markdown: string,
+  model: StructuredModel,
+  emit: (e: TraceEvent) => void = () => {},
+): Promise<ExtractedPatent> {
   const patentNumber = extractPatentNumber(markdown);
   const sequences = extractSequences(markdown);
-  const associations = isST26(markdown)
+  emit({ type: 'patent_extracted', patentNumber, sequenceCount: sequences.length });
+  const st26 = isST26(markdown);
+  const associations = st26
     ? extractST26Associations(markdown)
     : await extractAssociations(markdown, model);
+  emit({ type: 'patent_associations', associationCount: associations.length, source: st26 ? 'st26' : 'llm' });
   const byId = new Map(sequences.map((s) => [s.seqId, s.residues]));
   const completeness = computeCompleteness(sequences, associations);
+  emit({ type: 'patent_complete', completeness });
   return {
     patentNumber,
     sequences,

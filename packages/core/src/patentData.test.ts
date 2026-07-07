@@ -1,8 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { extractPatentData, extractAssociations } from './patentData.js';
+import type { ExtractionCompleteness } from './patentData.js';
 import { reconcilePatent } from './patentReconcile.js';
 import type { ReconcileDeps } from './patentReconcile.js';
 import type { StructuredModel } from './model.js';
+import type { TraceEvent, ExtractionCompletenessLike } from '@mrsirquanzo/sonny-shared';
 
 const MD = [
   'Patent US 10,123,456 B2',
@@ -128,5 +130,46 @@ describe('ST.26 + reconcilePatent end-to-end', () => {
     expect(s).toBeDefined();
     expect(s?.residues).toBe('ARDYYGSSYFDY');
     expect(s?.declaredLength).toBe(12);
+  });
+});
+
+describe('extractPatentData emit', () => {
+  // Reuse the ST26 fixture from the ST.26 structured associations describe block
+  const ST26 = '<ST26SequenceListing><SequenceData sequenceIDNumber="1"><INSDSeq><INSDSeq_length>12</INSDSeq_length><INSDSeq_sequence>ARDYYGSSYFDY</INSDSeq_sequence><INSDSeq_feature-table><INSDFeature><INSDFeature_key>REGION</INSDFeature_key><INSDFeature_location>1..12</INSDFeature_location><INSDFeature_quals><INSDQualifier><INSDQualifier_name>note</INSDQualifier_name><INSDQualifier_value>CDR-H3</INSDQualifier_value></INSDQualifier></INSDFeature_quals></INSDFeature></INSDSeq_feature-table></INSDSeq></SequenceData></ST26SequenceListing>';
+
+  it('emits stage events in order for a text patent', async () => {
+    const events: TraceEvent[] = [];
+    const md = 'US 10,123,456 B2\nSEQ ID NO: 1\nEVQLVESGGG\n';
+    const model = { async generateStructured() { return { associations: [{ regionLabel: 'CDR-H1', seqId: 1 }] } as never; } };
+    await extractPatentData(md, model, (e) => events.push(e));
+    expect(events.map((e) => e.type)).toEqual(['patent_extracted', 'patent_associations', 'patent_complete']);
+    const extracted = events[0] as Extract<TraceEvent, { type: 'patent_extracted' }>;
+    expect(extracted.sequenceCount).toBe(1);
+    expect(extracted.patentNumber).toBe('US10123456');
+    const assoc = events[1] as Extract<TraceEvent, { type: 'patent_associations' }>;
+    expect(assoc.source).toBe('llm');
+  });
+
+  it('reports source=st26 and calls no model for an ST.26 listing', async () => {
+    const events: TraceEvent[] = [];
+    let llmCalls = 0;
+    const model = { async generateStructured() { llmCalls++; return { associations: [] } as never; } };
+    await extractPatentData(ST26, model, (e) => events.push(e));
+    const assoc = events.find((e) => e.type === 'patent_associations') as Extract<TraceEvent, { type: 'patent_associations' }>;
+    expect(assoc.source).toBe('st26');
+    expect(llmCalls).toBe(0);
+  });
+
+  it('defaults emit to a no-op when omitted', async () => {
+    const md = 'SEQ ID NO: 1\nEVQLVESGGG\n';
+    const model = { async generateStructured() { return { associations: [] } as never; } };
+    await expect(extractPatentData(md, model)).resolves.toBeDefined();
+  });
+
+  it('ExtractionCompleteness stays structurally compatible with the shared ExtractionCompletenessLike', () => {
+    const core: ExtractionCompleteness = { foundCount: 1, referencedMax: 1, missingSeqIds: [], alphabetWarnings: [], associationCount: 0 };
+    const shared: ExtractionCompletenessLike = core; // fails to compile if core drops/renames a field
+    const back: ExtractionCompleteness = shared;     // fails to compile if shared drops/renames a field
+    expect(back.foundCount).toBe(1);
   });
 });

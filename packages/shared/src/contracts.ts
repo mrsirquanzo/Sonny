@@ -171,6 +171,14 @@ export const FigureReadingSchema = z.object({
 });
 export type FigureReading = z.infer<typeof FigureReadingSchema>;
 
+export interface ExtractionCompletenessLike {
+  foundCount: number;
+  referencedMax: number;
+  missingSeqIds: number[];
+  alphabetWarnings: Array<{ seqId: number; invalidChars: string }>;
+  associationCount: number;
+}
+
 export type TraceEvent =
   | { type: 'plan'; specialists: string[]; tools: string[] }
   | { type: 'tool_call'; tool: string; args: Record<string, unknown> }
@@ -195,7 +203,11 @@ export type TraceEvent =
   | { type: 'figure_read'; specialist: string; readings: FigureReading[] }
   | { type: 'developability_assessment'; risks: DevelopabilityRisk[] }
   | { type: 'kol_cluster'; cluster: KOLCluster }
-  | { type: 'recommendation'; verdict: string };
+  | { type: 'recommendation'; verdict: string }
+  | { type: 'patent_ingest'; status: 'ok' | 'failed'; format?: string }  // format reserved for a future ingest that reports source format
+  | { type: 'patent_extracted'; patentNumber: string | null; sequenceCount: number }
+  | { type: 'patent_associations'; associationCount: number; source: 'st26' | 'llm' }
+  | { type: 'patent_complete'; completeness: ExtractionCompletenessLike };
 
 export const RagRatingSchema = z.enum(['green', 'amber', 'red']);
 export type RagRating = z.infer<typeof RagRatingSchema>;
