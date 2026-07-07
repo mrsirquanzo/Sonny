@@ -22,6 +22,7 @@ export { assembleReferences, produceBriefing } from './briefing.js';
 export { safeToolCall, isTransient } from './safeToolCall.js';
 export { targetTerms, relevanceGate } from './relevance.js';
 export { extractPatentData, extractAssociations, type ExtractedPatent, type RegionAssociation, type ExtractionCompleteness } from './patentData.js';
+export { extractPatentSequences, type ExtractPatentDeps } from './extractPatentSequences.js';
 export { reconcilePatent, type PatentReconciliation, type VerifiedSequence, type BlastHit, type ReconcileDeps } from './patentReconcile.js';
 export {
   groupConstructs, buildWorkup, synthesizeCompetitiveIP, graphRelationships,
