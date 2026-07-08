@@ -8,7 +8,7 @@ const model: StructuredModel = {
 
 describe('runExtractPatent', () => {
   it('ingests then extracts, returning the ExtractedPatent', async () => {
-    const ingest = async () => ({ markdown: 'US 10,123,456 B2\nSEQ ID NO: 1\nEVQLVESGGG\n', status: 'ok' as const });
+    const ingest = async () => ({ markdown: 'United States Patent US 10,123,456 B2\nAnti-target antibody and methods of use.\nSEQ ID NO: 1\nEVQLVESGGG\n', status: 'ok' as const });
     const out = await runExtractPatent('/x.pdf', { ingest, model });
     expect(out.ok).toBe(true);
     if (out.ok) {
