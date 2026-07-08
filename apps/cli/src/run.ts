@@ -1,5 +1,5 @@
 import type { TraceEvent } from '@mrsirquanzo/sonny-shared';
-import { runDossier, AnthropicModel, runPatentWorkup } from '@mrsirquanzo/sonny-core';
+import { runDossier, makeModel, runPatentWorkup } from '@mrsirquanzo/sonny-core';
 import { openTargetsTargetTool, pubmedTool, clinicalTrialsTool } from '@mrsirquanzo/sonny-mcp-gateway';
 import { runExtractPatent } from './extractPatent.js';
 
@@ -74,7 +74,7 @@ export async function main(argv: string[]): Promise<void> {
   const symbol = (query.match(/\b[A-Z0-9]{2,7}\b/)?.[0]) ?? query;
   const { verdict } = await runDossier({
     query, symbol, tools: [openTargetsTargetTool, pubmedTool, clinicalTrialsTool],
-    plannerModel: new AnthropicModel(), specialistModel: new AnthropicModel(), verifierModel: new AnthropicModel(),
+    plannerModel: makeModel(), specialistModel: makeModel(), verifierModel: makeModel(),
     emit: (e) => { process.stdout.write(formatTrace([e]) + '\n'); },
   });
   process.stdout.write(`\nVERDICT: ${verdict}\n`);

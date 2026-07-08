@@ -1,6 +1,6 @@
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { runDossier, AnthropicModel } from '@mrsirquanzo/sonny-core';
+import { runDossier, makeModel } from '@mrsirquanzo/sonny-core';
 import { openTargetsTargetTool, pubmedTool, clinicalTrialsTool } from '@mrsirquanzo/sonny-mcp-gateway';
 import { createServer, type ServerDeps } from './server.js';
 
@@ -12,9 +12,9 @@ export function buildDeps(publicDir: string): ServerDeps {
         query,
         symbol,
         tools: [openTargetsTargetTool, pubmedTool, clinicalTrialsTool],
-        plannerModel: new AnthropicModel(),
-        specialistModel: new AnthropicModel(),
-        verifierModel: new AnthropicModel(),
+        plannerModel: makeModel(),
+        specialistModel: makeModel(),
+        verifierModel: makeModel(),
         emit,
       });
       return { verdict, sections };
