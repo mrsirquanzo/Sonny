@@ -12,7 +12,7 @@
 
 - **Language/runtime:** TypeScript, ESM, Node 20+. `.js` import extensions. No web framework — `node:http` only; zero runtime deps beyond the workspace packages.
 - **Streaming contract:** every `TraceEvent` from the orchestrator is sent as one SSE frame `data: <json>\n\n`; on completion send a final frame `event: done\ndata: <json {section}>\n\n`; on error send `event: error\ndata: <json {message}>\n\n`. Never leak the API key into any frame, log, or error sent to the client.
-- **Design system (locked — copy verbatim from the v7 mockup):** font Figtree (self-hosted from the OFL files at `~/Downloads/Figtree/`), IBM Plex Mono for ids; ink `#0F172A`, accent `#1D4ED8`, good `#0F766E`, attention `#B45309`, bg `#EEF0F3`/surface `#FFFFFF`, border `#E6E8EC`. Single-column document, verdict is the hero, ≤3 colored tokens/view, status = dot+label (not filled pills), citations are clickable → evidence drawer, "view agent edits" reveals the redline. Design source to adapt: `/Users/quanho/Quan_project/.superpowers/brainstorm/8278-1782519876/content/dossier-v7-figtree.html`.
+- **Design system (locked — copy verbatim from the v7 mockup):** font Figtree (self-hosted from the OFL files at `~/Downloads/Figtree/`), IBM Plex Mono for ids; ink `#0F172A`, accent `#1D4ED8`, good `#0F766E`, attention `#B45309`, bg `#EEF0F3`/surface `#FFFFFF`, border `#E6E8EC`. Single-column document, verdict is the hero, ≤3 colored tokens/view, status = dot+label (not filled pills), citations are clickable → evidence drawer, "view agent edits" reveals the redline. Design source to adapt: `~/Quan_project/.superpowers/brainstorm/8278-1782519876/content/dossier-v7-figtree.html`.
 - **BYO key:** server reads `ANTHROPIC_API_KEY` from env at startup of the real entry only; the unit tests inject a fake runner and never need a key.
 - **Testing:** Vitest. Unit tests inject fakes for the orchestrator runner; no network, no real model. Live run is manual.
 - **Commits:** conventional commits, one per task minimum, on the working branch.
@@ -356,7 +356,7 @@ git commit -m "feat(web): node http server with static routes + /api/run SSE"
 - Consumes: the SSE stream from `/api/run` (Task 3); `TraceEvent` shapes from `@sonny/shared`.
 - Produces: a browser UI. The HTML must contain these element ids that `app.js` targets (the structural contract this task's test enforces): `#query`, `#run`, `#verdict`, `#meta`, `#trace`, `#dossier`, `#evidence-list`, `#drawer`, `#drawer-body`, `#edits-toggle`.
 
-**Design source:** adapt `/Users/quanho/Quan_project/.superpowers/brainstorm/8278-1782519876/content/dossier-v7-figtree.html` — reuse its palette, Figtree/IBM-Plex-Mono typography, single-column journal layout, evidence-drawer markup, and "view agent edits" treatment. Move its inline `<style>` into `styles.css`; self-host the fonts via `@font-face` (do NOT load Google Fonts). Replace its hard-coded content with the live containers below.
+**Design source:** adapt `~/Quan_project/.superpowers/brainstorm/8278-1782519876/content/dossier-v7-figtree.html` — reuse its palette, Figtree/IBM-Plex-Mono typography, single-column journal layout, evidence-drawer markup, and "view agent edits" treatment. Move its inline `<style>` into `styles.css`; self-host the fonts via `@font-face` (do NOT load Google Fonts). Replace its hard-coded content with the live containers below.
 
 - [ ] **Step 1: Copy the self-hosted fonts**
 

@@ -74,7 +74,7 @@ describe('extractPatentData emit', () => {
 
 - [ ] **Step 2: Run the tests to verify they fail**
 
-Run: `cd /Users/quanho/code/Sonny && pnpm --filter @mrsirquanzo/sonny-core exec vitest run src/patentData.test.ts`
+Run: `cd . && pnpm --filter @mrsirquanzo/sonny-core exec vitest run src/patentData.test.ts`
 Expected: the two emit tests FAIL (`extractPatentData` ignores the third arg, so `events` stays empty and `.map(...type)` is `[]`). The no-op test passes already.
 
 - [ ] **Step 3: Add the event variants to sonny-shared**
@@ -140,18 +140,18 @@ export { extractPatentData, extractAssociations, type ExtractedPatent, type Regi
 
 - [ ] **Step 6: Run the tests to verify they pass**
 
-Run: `cd /Users/quanho/code/Sonny && pnpm --filter @mrsirquanzo/sonny-core exec vitest run src/patentData.test.ts`
+Run: `cd . && pnpm --filter @mrsirquanzo/sonny-core exec vitest run src/patentData.test.ts`
 Expected: PASS (all cases, including the pre-existing ones).
 
 - [ ] **Step 7: Typecheck shared + core**
 
-Run: `cd /Users/quanho/code/Sonny && pnpm --filter @mrsirquanzo/sonny-shared build && pnpm --filter @mrsirquanzo/sonny-core build`
+Run: `cd . && pnpm --filter @mrsirquanzo/sonny-shared build && pnpm --filter @mrsirquanzo/sonny-core build`
 Expected: both `tsc` runs complete with no errors.
 
 - [ ] **Step 8: Commit**
 
 ```bash
-cd /Users/quanho/code/Sonny
+cd .
 git add packages/shared/src/contracts.ts packages/core/src/patentData.ts packages/core/src/index.ts packages/core/src/patentData.test.ts
 git commit -m "feat(core): thread emit through extractPatentData with patent trace events"
 ```
@@ -209,7 +209,7 @@ describe('extractPatentSequences', () => {
 
 - [ ] **Step 2: Run the tests to verify they fail**
 
-Run: `cd /Users/quanho/code/Sonny && pnpm --filter @mrsirquanzo/sonny-core exec vitest run src/extractPatentSequences.test.ts`
+Run: `cd . && pnpm --filter @mrsirquanzo/sonny-core exec vitest run src/extractPatentSequences.test.ts`
 Expected: FAIL - `Cannot find module './extractPatentSequences.js'` (the file does not exist yet).
 
 - [ ] **Step 3: Create the entrypoint**
@@ -265,7 +265,7 @@ export { extractPatentSequences, type ExtractPatentDeps } from './extractPatentS
 
 - [ ] **Step 5: Run the entrypoint tests to verify they pass**
 
-Run: `cd /Users/quanho/code/Sonny && pnpm --filter @mrsirquanzo/sonny-core exec vitest run src/extractPatentSequences.test.ts`
+Run: `cd . && pnpm --filter @mrsirquanzo/sonny-core exec vitest run src/extractPatentSequences.test.ts`
 Expected: PASS (both cases).
 
 - [ ] **Step 6: Repoint the CLI runner to delegate**
@@ -288,18 +288,18 @@ export async function runExtractPatent(
 
 - [ ] **Step 7: Run the CLI tests to verify delegation kept behavior**
 
-Run: `cd /Users/quanho/code/Sonny && pnpm --filter @sonny/cli exec vitest run src/extractPatent.test.ts`
+Run: `cd . && pnpm --filter @sonny/cli exec vitest run src/extractPatent.test.ts`
 Expected: PASS (both existing cases - the happy path and the markitdown-unavailable path - still hold through delegation).
 
 - [ ] **Step 8: Typecheck core + cli**
 
-Run: `cd /Users/quanho/code/Sonny && pnpm --filter @mrsirquanzo/sonny-core build && pnpm --filter @sonny/cli build`
+Run: `cd . && pnpm --filter @mrsirquanzo/sonny-core build && pnpm --filter @sonny/cli build`
 Expected: both `tsc` runs complete with no errors.
 
 - [ ] **Step 9: Commit**
 
 ```bash
-cd /Users/quanho/code/Sonny
+cd .
 git add packages/core/src/extractPatentSequences.ts packages/core/src/extractPatentSequences.test.ts packages/core/src/index.ts apps/cli/src/extractPatent.ts
 git commit -m "feat(core): streamable extractPatentSequences entrypoint; CLI delegates"
 ```

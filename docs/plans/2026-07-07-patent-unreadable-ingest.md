@@ -74,7 +74,7 @@ describe('extractPatentSequences unreadable ingest', () => {
 
 - [ ] **Step 2: Run the tests to verify they fail**
 
-Run: `cd /Users/quanho/code/Sonny && pnpm --filter @mrsirquanzo/sonny-core exec vitest run src/extractPatentSequences.test.ts`
+Run: `cd . && pnpm --filter @mrsirquanzo/sonny-core exec vitest run src/extractPatentSequences.test.ts`
 Expected: the `isReadableMarkdown` suite FAILS to compile/run (`isReadableMarkdown is not exported`), and the unreadable-ingest test FAILS (current code emits `patent_ingest(ok)` and proceeds, so events are not `['error','patent_ingest']`). The false-positive-guard test passes already.
 
 - [ ] **Step 3: Add the predicate and the guard**
@@ -106,18 +106,18 @@ Then, inside `extractPatentSequences`, insert the guard between the `status !== 
 
 - [ ] **Step 4: Run the tests to verify they pass**
 
-Run: `cd /Users/quanho/code/Sonny && pnpm --filter @mrsirquanzo/sonny-core exec vitest run src/extractPatentSequences.test.ts`
+Run: `cd . && pnpm --filter @mrsirquanzo/sonny-core exec vitest run src/extractPatentSequences.test.ts`
 Expected: PASS (all cases, including the pre-existing happy-path and failure tests).
 
 - [ ] **Step 5: Typecheck core**
 
-Run: `cd /Users/quanho/code/Sonny && pnpm --filter @mrsirquanzo/sonny-core build`
+Run: `cd . && pnpm --filter @mrsirquanzo/sonny-core build`
 Expected: `tsc` completes with no errors.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-cd /Users/quanho/code/Sonny
+cd .
 git add packages/core/src/extractPatentSequences.ts packages/core/src/extractPatentSequences.test.ts
 git commit -m "fix(core): fail extractPatentSequences when ingest yields no extractable text"
 ```

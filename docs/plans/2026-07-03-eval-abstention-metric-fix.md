@@ -86,7 +86,7 @@ it('unsupportedSentenceRatio still scores non-abstention prose via the judge', a
 
 - [ ] **Step 2: Run the tests to verify the abstention test fails**
 
-Run: `cd /Users/quanho/code/Sonny && pnpm --filter @sonny/eval exec vitest run src/metrics.test.ts`
+Run: `cd . && pnpm --filter @sonny/eval exec vitest run src/metrics.test.ts`
 Expected: the "exempts abstention" test FAILS (current code runs the judge on the boilerplate sentences, so `calls` is greater than 0 and `score` is 0, not 1). The "still scores non-abstention prose" test PASSES already (it documents current behavior and guards against the guard being too broad).
 
 - [ ] **Step 3: Add the guard**
@@ -106,23 +106,23 @@ In `eval/src/metrics.ts`, at the very top of the `async unsupportedSentenceRatio
 
 - [ ] **Step 4: Run the tests to verify both pass**
 
-Run: `cd /Users/quanho/code/Sonny && pnpm --filter @sonny/eval exec vitest run src/metrics.test.ts`
+Run: `cd . && pnpm --filter @sonny/eval exec vitest run src/metrics.test.ts`
 Expected: both new tests PASS, and all pre-existing tests in the file still PASS.
 
 - [ ] **Step 5: Run the full eval package test suite**
 
-Run: `cd /Users/quanho/code/Sonny && pnpm --filter @sonny/eval test`
+Run: `cd . && pnpm --filter @sonny/eval test`
 Expected: PASS (the `patentLive` test may show as skipped, which is expected). No failures.
 
 - [ ] **Step 6: Typecheck the eval package**
 
-Run: `cd /Users/quanho/code/Sonny && pnpm --filter @sonny/eval build`
+Run: `cd . && pnpm --filter @sonny/eval build`
 Expected: `tsc` completes with no errors.
 
 - [ ] **Step 7: Commit**
 
 ```bash
-cd /Users/quanho/code/Sonny
+cd .
 git add eval/src/metrics.ts eval/src/metrics.test.ts
 git commit -m "fix(eval): exempt abstention verdict from unsupported_sentence_ratio"
 ```
