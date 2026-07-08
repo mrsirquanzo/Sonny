@@ -9,7 +9,12 @@ export type Backend = 'ollama' | 'anthropic';
 export interface RoleRouter { planner: string; specialist: string; verifier: string; writer: string }
 
 const ROUTERS: Record<Backend, RoleRouter> = {
-  anthropic: { planner: 'claude-opus-4-8', specialist: 'claude-opus-4-8', verifier: 'claude-sonnet-4-6', writer: 'claude-opus-4-8' },
+  anthropic: {
+    planner: process.env.SONNY_MODEL_PLANNER ?? 'claude-opus-4-8',
+    specialist: process.env.SONNY_MODEL_SPECIALIST ?? 'claude-opus-4-8',
+    verifier: process.env.SONNY_MODEL_VERIFIER ?? 'claude-sonnet-4-6',
+    writer: process.env.SONNY_MODEL_WRITER ?? 'claude-opus-4-8',
+  },
   ollama: { planner: 'qwen2.5:14b', specialist: 'qwen2.5:14b', verifier: 'llama3.1:8b', writer: 'qwen2.5:14b' },
 };
 
