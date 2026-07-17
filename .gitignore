@@ -8,3 +8,4 @@ coverage
 .turbo
 .superpowers/
 .claude/
+.gstack/

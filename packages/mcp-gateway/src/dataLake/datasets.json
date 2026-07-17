@@ -1,0 +1,133 @@
+{
+  "manifestVersion": "1.0.0",
+  "datasets": [
+    {
+      "id": "depmap.crispr_gene_effect",
+      "source": "DepMap Public Portal",
+      "sourceIds": {
+        "release": "DepMap public release re-hosted by Biomni (biomni-release S3); exact release id TODO(prod): pin before Slice 3",
+        "gene": "TACSTD2",
+        "entrezGeneId": 4070,
+        "geneEffectFile": "CRISPRGeneEffect.csv",
+        "modelMetadataFile": "Model.csv"
+      },
+      "acquisitionQuery": {
+        "kind": "release-matched-file-slice",
+        "geneEffectSelection": "Select the exact column TACSTD2 (4070), preserving every release model row and missing value.",
+        "metadataSelection": "Select ModelID, CellLineName, OncotreeLineage, and OncotreePrimaryDisease from Model.csv from the same release; left-join metadata models to TACSTD2 gene effect by ModelID.",
+        "releaseLandingPage": "https://depmap.org/portal/download/all/",
+        "resolvedUrls": {
+          "note": "depmap.org is behind Cloudflare Turnstile; fetched from Biomni's public re-hosted DepMap release (same data, same approach Biomni uses).",
+          "geneEffectUrl": "https://biomni-release.s3.amazonaws.com/data_lake/DepMap_CRISPRGeneEffect.csv",
+          "modelMetadataUrl": "https://biomni-release.s3.amazonaws.com/data_lake/DepMap_Model.csv"
+        }
+      },
+      "retrievedAt": "2026-07-17T20:58:39Z",
+      "rawSourceHashes": {
+        "geneEffectSliceSha256": "TODO(claude): sha256 of the raw TACSTD2 gene-effect response/input",
+        "modelMetadataSliceSha256": "TODO(claude): sha256 of the raw release-matched metadata response/input"
+      },
+      "preprocessingCodeHash": "TODO(slice3): pin sha256 of the committed fetch script bytes",
+      "preprocessingImageDigest": "TODO(claude): digest of the pinned acquisition/preprocessing image; do not substitute a mutable tag",
+      "preprocessingParams": {
+        "geneColumn": "TACSTD2 (4070)",
+        "join": "left metadata-to-gene-effect on model_id",
+        "duplicateModelPolicy": "error",
+        "missingGeneEffectPolicy": "preserve and count",
+        "missingLineagePolicy": "label Unknown"
+      },
+      "outputSha256": "53ada942b62a3d78b1784b04599e1b64f4cbe29367224dc9ef055b77b1d43948",
+      "license": {
+        "name": "DepMap public-data terms / CC BY 4.0 (expected; validate for the pinned release)",
+        "url": "https://depmap.org/portal/data_page/?tab=allData",
+        "redistributionStatus": "TODO(claude): complete license review and record whether this frozen slice may ship in the demo/repository"
+      },
+      "localPath": "frozen/depmap_crispr_gene_effect_tacstd2.csv"
+    },
+    {
+      "id": "gtex.median_tpm",
+      "source": "GTEx Portal API v2",
+      "sourceIds": {
+        "datasetId": "gtex_v8",
+        "gene": "TACSTD2",
+        "gencodeId": "ENSG00000184292.7"
+      },
+      "acquisitionQuery": {
+        "method": "GET",
+        "url": "https://gtexportal.org/api/v2/expression/medianGeneExpression",
+        "query": {
+          "gencodeId": "ENSG00000184292.7",
+          "datasetId": "gtex_v8"
+        },
+        "selection": "Retain TACSTD2 median TPM by GTEx tissue; do not infer cell type, epithelial localization, surface protein, or toxicity."
+      },
+      "retrievedAt": "2026-07-17T20:58:39Z",
+      "rawSourceHashes": {
+        "apiResponseSha256": "TODO(claude): sha256 of raw GTEx API response"
+      },
+      "preprocessingCodeHash": "TODO(slice3): pin sha256 of the committed fetch script bytes",
+      "preprocessingImageDigest": "TODO(claude): digest of the pinned acquisition/preprocessing image; do not substitute a mutable tag",
+      "preprocessingParams": {
+        "metric": "median TPM",
+        "tissueSet": "all tissues returned by GTEx V8 medianGeneExpression for ENSG00000184292.7",
+        "duplicateTissuePolicy": "error",
+        "missingMedianPolicy": "preserve and count",
+        "sort": "tissue_id ascending"
+      },
+      "outputSha256": "314cb8a7a31c030e14f6a011323bd95fa9cbb351e45e914a245320ce44edb1bd",
+      "license": {
+        "name": "GTEx Portal data-use policy / GTEx Consortium attribution (validate exact redistribution terms)",
+        "url": "https://gtexportal.org/home/data-access",
+        "redistributionStatus": "TODO(claude): complete license review and record whether this derived frozen slice may ship in the demo/repository"
+      },
+      "localPath": "frozen/gtex_median_tpm_tacstd2.csv"
+    },
+    {
+      "id": "expr.tumor",
+      "source": "cBioPortal public REST API",
+      "sourceIds": {
+        "studyId": "brca_tcga_pan_can_atlas_2018",
+        "molecularProfileId": "brca_tcga_pan_can_atlas_2018_rna_seq_v2_mrna",
+        "sampleListId": "brca_tcga_pan_can_atlas_2018_all",
+        "gene": "TACSTD2",
+        "entrezGeneId": 4070
+      },
+      "acquisitionQuery": {
+        "baseUrl": "https://www.cbioportal.org/api",
+        "sampleList": "GET /sample-lists/brca_tcga_pan_can_atlas_2018_all",
+        "molecularData": "POST /molecular-profiles/brca_tcga_pan_can_atlas_2018_rna_seq_v2_mrna/molecular-data/fetch with entrezGeneIds=[4070] and the frozen sampleIds",
+        "sampleType": "GET /studies/brca_tcga_pan_can_atlas_2018/clinical-data?clinicalDataType=SAMPLE; retain SAMPLE_TYPE",
+        "selection": "Keep TACSTD2 values and classify each sample as tumor, normal, or unknown from same-study sample metadata. Tumor and normal are reported separately; no comparison to GTEx."
+      },
+      "retrievedAt": "2026-07-17T20:58:39Z",
+      "rawSourceHashes": {
+        "sampleListResponseSha256": "TODO(claude): sha256 of raw cBioPortal sample-list response",
+        "molecularDataResponseSha256": "TODO(claude): sha256 of raw cBioPortal molecular-data response",
+        "sampleClinicalResponseSha256": "TODO(claude): sha256 of raw cBioPortal sample clinical-data response"
+      },
+      "preprocessingCodeHash": "TODO(slice3): pin sha256 of the committed fetch script bytes",
+      "preprocessingImageDigest": "TODO(claude): digest of the pinned acquisition/preprocessing image; do not substitute a mutable tag",
+      "preprocessingParams": {
+        "expressionUnit": "RSEM",
+        "tumorSampleTypes": [
+          "Primary Solid Tumor",
+          "Recurrent Solid Tumor",
+          "Metastatic"
+        ],
+        "normalSampleTypes": [
+          "Solid Tissue Normal"
+        ],
+        "unrecognizedSampleTypePolicy": "unknown; retain but exclude from tumor/normal summaries",
+        "duplicateSamplePolicy": "error",
+        "missingExpressionPolicy": "preserve and count"
+      },
+      "outputSha256": "9a759236c68fcd0482653a4e76d05175161e01f116bb9a37fe4ad5e1ffbf9939",
+      "license": {
+        "name": "TCGA/cBioPortal study-data terms (study-specific; cBioPortal software license does not license hosted data)",
+        "url": "https://www.cancer.gov/about-nci/organization/ccg/research/structural-genomics/tcga/using-tcga/citing-tcga",
+        "redistributionStatus": "TODO(claude): verify TCGA and cBioPortal terms for redistribution of this derived frozen slice"
+      },
+      "localPath": "frozen/cbioportal_tumor_expression_tacstd2.csv"
+    }
+  ]
+}
