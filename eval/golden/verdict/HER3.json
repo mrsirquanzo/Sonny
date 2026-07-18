@@ -1,0 +1,27 @@
+{
+  "target": "HER3",
+  "label": "watch",
+  "allowedVerdicts": [
+    "watch",
+    "go"
+  ],
+  "seminalPmids": [
+    "2687875",
+    "18454306"
+  ],
+  "claimProbes": [
+    {
+      "statement": "HER3/ERBB3 has weak-to-negligible intrinsic kinase activity and signals mainly by heterodimerizing with other ERBB receptors (notably HER2), coupling strongly to PI3K/AKT.",
+      "expected": "supported",
+      "note": "Kraus 1989; Stern 2008."
+    },
+    {
+      "statement": "HER3 is a potent stand-alone receptor tyrosine kinase that drives tumor growth autonomously without dimerizing with other ERBB members.",
+      "expected": "refuted",
+      "note": "Contradicts HER3 impaired catalytic activity / obligate heterodimerization."
+    }
+  ],
+  "rationale": "Validated biology (kinase-impaired, obligate heterodimer, PI3K-coupled) but no HER3-selective approval yet; ADC data maturing.",
+  "curator": "mrsirquanzo",
+  "curatedAt": "2026-07-18"
+}

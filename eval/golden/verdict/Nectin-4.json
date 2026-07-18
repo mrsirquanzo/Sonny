@@ -1,0 +1,28 @@
+{
+  "target": "Nectin-4",
+  "label": "go",
+  "allowedVerdicts": [
+    "watch",
+    "go"
+  ],
+  "seminalPmids": [
+    "27013195",
+    "31356140",
+    "33577729"
+  ],
+  "claimProbes": [
+    {
+      "statement": "Nectin-4 (PVRL4) is a cell-surface adhesion molecule overexpressed in urothelial and other epithelial carcinomas, and the Nectin-4-directed ADC enfortumab vedotin produces clinical responses in advanced urothelial cancer.",
+      "expected": "supported",
+      "note": "Challita-Eid 2016; Rosenberg 2019; Powles 2021."
+    },
+    {
+      "statement": "Nectin-4 is a secreted cytokine with no membrane expression, which is why it cannot be targeted by antibody-drug conjugates.",
+      "expected": "refuted",
+      "note": "False: Nectin-4 is a transmembrane adhesion molecule."
+    }
+  ],
+  "rationale": "Validated urothelial ADC target (enfortumab vedotin approved); watch floor for breadth beyond urothelial and tolerability.",
+  "curator": "mrsirquanzo",
+  "curatedAt": "2026-07-18"
+}
