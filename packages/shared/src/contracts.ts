@@ -291,6 +291,9 @@ export type TraceEvent =
   | { type: 'specialist_skipped'; specialist: string; reason: string }
   | { type: 'section_complete'; section: Section }
   | { type: 'research_plan'; specialist: string; questions: string[] }
+  | { type: 'query_rewrite'; specialist: string; question: string; variants: string[] }
+  | { type: 'dense_score'; specialist: string; model: string; candidates: number }
+  | { type: 'fusion'; specialist: string; before: string[]; after: string[] }
   | { type: 'research_read'; specialist: string; sourceId: string; locator: string }
   | { type: 'rerank'; specialist: string; before: string[]; after: string[] }
   | { type: 'research_reflect'; specialist: string; note: string; followups: string[] }

@@ -19,6 +19,7 @@ Sonny defaults to a local [Ollama](https://ollama.com) backend and free public s
 # 1. models the default router uses
 ollama pull qwen2.5:14b      # planner / specialist / writer
 ollama pull llama3.1:8b      # decorrelated verifier
+ollama pull nomic-embed-text # hybrid retrieval embeddings
 
 # 2. install + build
 pnpm install
@@ -29,6 +30,13 @@ pnpm --filter @sonny/cli start deep CDCP1
 ```
 
 To run on Anthropic models instead, set `SONNY_BACKEND=anthropic` and `ANTHROPIC_API_KEY`.
+
+Hybrid literature retrieval is enabled by default. It expands each research
+question into cached query variants, unions Europe PMC candidates, fuses
+lexical and Ollama dense ranks with RRF, then uses the configured cross-encoder
+reranker. Set `SONNY_HYBRID_RETRIEVAL=off` for the lexical-only path. The
+embedding defaults can be overridden with `SONNY_EMBED_MODEL` and
+`SONNY_EMBED_URL`.
 
 ## Architecture
 

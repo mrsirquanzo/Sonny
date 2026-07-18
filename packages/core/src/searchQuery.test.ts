@@ -18,6 +18,11 @@ describe('buildSearchQuery', () => {
   it('trims surrounding whitespace from the concept', () => {
     expect(buildSearchQuery('CDCP1', '  oncology  ')).toBe('TITLE_ABS:CDCP1 AND oncology');
   });
+
+  it('quotes a multi-word target alias', () => {
+    expect(buildSearchQuery('CUB domain-containing protein 1', 'metastasis'))
+      .toBe('TITLE_ABS:"CUB domain-containing protein 1" AND metastasis');
+  });
 });
 
 import { buildReviewQuery } from './searchQuery.js';

@@ -4,7 +4,8 @@
 // text. The concept stays free text and is phrase-quoted when multi-word.
 export function buildSearchQuery(target: string, concept: string): string {
   const c = concept.trim();
-  const pinned = `TITLE_ABS:${target}`;
+  const t = target.trim();
+  const pinned = `TITLE_ABS:${/\s/.test(t) ? `"${t}"` : t}`;
   if (!c) return pinned;
   return /\s/.test(c) ? `${pinned} AND "${c}"` : `${pinned} AND ${c}`;
 }
