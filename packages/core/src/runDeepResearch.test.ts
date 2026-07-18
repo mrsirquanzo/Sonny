@@ -50,8 +50,11 @@ describe('runDeepResearch', () => {
 
     expect(result.sections.map((s) => s.id).sort()).toEqual(['a', 'b']);
     expect(events.some((e) => e.type === 'lead_decompose')).toBe(true);
-    // structured seed evidence is visible to specialists (claim cites the seeded ENSG1)
-    expect(result.sections.every((s) => s.claims.length === 1)).toBe(true);
+    // Both specialists surface the same seeded fact (claim cites ENSG1); the
+    // cross-section consolidation pass collapses that duplicate to one grounded claim.
+    const allClaims = result.sections.flatMap((s) => s.claims);
+    expect(allClaims).toHaveLength(1);
+    expect(allClaims[0].citations).toContain('ENSG1');
     expect(result.weighing.claims).toEqual([]);
     // the run's evidence is surfaced for the briefing layer (references)
     expect(result.evidence.some((e) => e.id === 'ENSG1')).toBe(true);

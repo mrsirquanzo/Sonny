@@ -12,6 +12,7 @@ import { assessDevelopability } from './critique/developability.js';
 import { detectContradictions } from './critique/consistency.js';
 import { mapSpecialtyLabs } from './kolDetector.js';
 import { createSourceIdentityResolver } from './rag.js';
+import { consolidateSectionClaims } from './consolidateClaims.js';
 
 export interface DeepResearchResult {
   target: string;
@@ -75,6 +76,15 @@ export async function runDeepResearch(opts: {
         emit({ type: 'error', message: `gap-fill ${gap.specialistId} failed: ${String(err)}` });
       }
     }
+  }
+
+  // Consolidate duplicate facts across sections so each section adds new
+  // information rather than restating the same claim (specialists run in
+  // parallel and independently surface the same findings).
+  try {
+    finalSections = consolidateSectionClaims(finalSections).sections;
+  } catch (err) {
+    emit({ type: 'error', message: `claim consolidation failed: ${String(err)}` });
   }
 
   try {
