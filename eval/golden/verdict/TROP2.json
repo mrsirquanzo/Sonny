@@ -1,0 +1,28 @@
+{
+  "target": "TROP2",
+  "label": "go",
+  "allowedVerdicts": [
+    "watch",
+    "go"
+  ],
+  "seminalPmids": [
+    "7665234",
+    "30786188",
+    "33882206"
+  ],
+  "claimProbes": [
+    {
+      "statement": "TROP2 (TACSTD2) is a type-I transmembrane glycoprotein overexpressed on the surface of most epithelial carcinomas, which is what makes it exploitable as an antibody-drug-conjugate target.",
+      "expected": "supported",
+      "note": "Core biology (Fornaro 1995) exploited clinically by sacituzumab govitecan."
+    },
+    {
+      "statement": "TROP2 is an intracellular tyrosine kinase whose enzymatic activity directly phosphorylates EGFR to drive tumor growth.",
+      "expected": "refuted",
+      "note": "Hallucination: TROP2 is a cell-surface glycoprotein, not a kinase."
+    }
+  ],
+  "rationale": "Validated ADC target (sacituzumab govitecan approved) with broad carcinoma surface expression; watch floor for normal-tissue expression and evolving efficacy.",
+  "curator": "mrsirquanzo",
+  "curatedAt": "2026-07-18"
+}

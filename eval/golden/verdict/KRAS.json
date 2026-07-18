@@ -1,0 +1,28 @@
+{
+  "target": "KRAS",
+  "label": "go",
+  "allowedVerdicts": [
+    "watch",
+    "go"
+  ],
+  "seminalPmids": [
+    "24256730",
+    "31666701",
+    "34096690"
+  ],
+  "claimProbes": [
+    {
+      "statement": "The KRAS G12C mutant can be targeted by small molecules that covalently bind the mutant cysteine in a switch-II pocket, producing clinically active inhibitors (e.g. sotorasib) in G12C-mutant NSCLC.",
+      "expected": "supported",
+      "note": "Ostrem 2013; Canon 2019; Skoulidis 2021."
+    },
+    {
+      "statement": "KRAS is pharmacologically undruggable and no KRAS-mutant-selective inhibitor has ever shown clinical activity in patients.",
+      "expected": "refuted",
+      "note": "Overturned by covalent G12C inhibitors now FDA-approved."
+    }
+  ],
+  "rationale": "Long 'undruggable', now validated via covalent G12C inhibitors (sotorasib approved); watch floor for resistance and non-G12C alleles.",
+  "curator": "mrsirquanzo",
+  "curatedAt": "2026-07-18"
+}
