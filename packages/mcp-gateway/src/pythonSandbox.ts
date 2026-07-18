@@ -16,6 +16,7 @@ import {
   type JsonValue,
 } from '@mrsirquanzo/sonny-shared';
 import { z } from 'zod';
+import { resolveAnalysisRuntimeAssets } from './runtimeAssets.js';
 
 const ANALYSIS_UID = 65_532;
 const ANALYSIS_GID = 65_532;
@@ -30,10 +31,11 @@ const MAX_PNG_BYTES = 8 * 1024 * 1024;
 const FSIZE_LIMIT_BYTES = 16 * 1024 * 1024;
 const MAX_ARTIFACTS = 8;
 const MAX_STDIO_BYTES = 64 * 1024;
-const SECCOMP_PATH = fileURLToPath(new URL('../sandbox/seccomp.json', import.meta.url));
-const TEMPLATE_ROOT = fileURLToPath(new URL('./dataLake/templates/', import.meta.url));
-const DATA_ROOT = fileURLToPath(new URL('./dataLake/frozen/', import.meta.url));
-const DATASETS_MANIFEST_PATH = fileURLToPath(new URL('./dataLake/datasets.json', import.meta.url));
+const RUNTIME_ASSETS = resolveAnalysisRuntimeAssets();
+const SECCOMP_PATH = RUNTIME_ASSETS.seccomp;
+const TEMPLATE_ROOT = dirname(RUNTIME_ASSETS.template);
+const DATA_ROOT = dirname(RUNTIME_ASSETS.depmap);
+const DATASETS_MANIFEST_PATH = RUNTIME_ASSETS.datasetsManifest;
 const DEFAULT_RUN_ROOT = fileURLToPath(new URL('../../../.sonny/analysis-runs/', import.meta.url));
 const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 

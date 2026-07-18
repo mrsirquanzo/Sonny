@@ -1,6 +1,7 @@
 import {
   AnalysisResultsSchema,
   resolveResultBinding,
+  sha256CanonicalJson,
   type Claim,
   type ComputationEvidence,
   type GroupPoint,
@@ -11,6 +12,7 @@ import {
 import {
   runAnalysisTemplate,
   toComputationEvidence,
+  type AnalysisArtifact,
   type AnalysisExecutionResult,
   type RunAnalysisTemplateInput,
 } from '@mrsirquanzo/sonny-mcp-gateway';
@@ -71,6 +73,15 @@ export interface AnalysisSpecialistResult {
   evidence: ComputationEvidence[];
   dropped: ReproducibilityDrop[];
   abstentionReason?: string;
+  failureKind?: 'docker_unavailable' | 'analysis_failed';
+  verifiedRun?: VerifiedAnalysisRun;
+}
+
+export interface VerifiedAnalysisRun {
+  originReplayVerification: 'verified';
+  primaryResultHash: string;
+  replayResultHash: string;
+  artifacts: AnalysisArtifact[];
 }
 
 export interface RunAnalysisSpecialistInput {
@@ -117,7 +128,12 @@ async function planWithBoundedModel(target: string, model: StructuredModel): Pro
   };
 }
 
-function abstain(reason: string, evidence: ComputationEvidence[] = [], dropped: ReproducibilityDrop[] = []): AnalysisSpecialistResult {
+function abstain(
+  reason: string,
+  evidence: ComputationEvidence[] = [],
+  dropped: ReproducibilityDrop[] = [],
+  failureKind: AnalysisSpecialistResult['failureKind'] = 'analysis_failed',
+): AnalysisSpecialistResult {
   return {
     section: {
       kind: 'analysis',
@@ -133,6 +149,7 @@ function abstain(reason: string, evidence: ComputationEvidence[] = [], dropped: 
     evidence,
     dropped,
     abstentionReason: reason,
+    failureKind,
   };
 }
 
@@ -206,6 +223,21 @@ function successful(result: AnalysisExecutionResult): boolean {
 function errorMessage(error: unknown): string {
   if (error instanceof Error && error.message.trim()) return error.message;
   return String(error);
+}
+
+function isDockerUnavailable(error: unknown): boolean {
+  const messages: string[] = [];
+  let current: unknown = error;
+  for (let depth = 0; depth < 4 && current !== undefined && current !== null; depth += 1) {
+    if (current instanceof Error) messages.push(current.message);
+    if (typeof current === 'object') {
+      const record = current as { code?: unknown; cause?: unknown };
+      if (record.code === 'ENOENT' || record.code === 'ECONNREFUSED') return true;
+      current = record.cause;
+    } else break;
+  }
+  return /(?:SONNY_ANALYSIS_IMAGE|spawn\s+docker\s+ENOENT|docker[^\n]*(?:daemon|unavailable|not found|cannot connect|connection refused|is not running))/i
+    .test(messages.join('\n'));
 }
 
 /**
@@ -305,9 +337,17 @@ export async function runAnalysisSpecialist(input: RunAnalysisSpecialistInput): 
       },
       evidence: [evidence],
       dropped,
+      verifiedRun: {
+        originReplayVerification: 'verified',
+        primaryResultHash: sha256CanonicalJson(primaryResults),
+        replayResultHash: sha256CanonicalJson(replayResults),
+        artifacts: primary.artifacts,
+      },
     };
   } catch (error) {
-    return abstain(errorMessage(error));
+    return abstain(
+      errorMessage(error), [], [], isDockerUnavailable(error) ? 'docker_unavailable' : 'analysis_failed',
+    );
   }
 }
 

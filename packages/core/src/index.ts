@@ -38,8 +38,17 @@ export {
   type AnalysisQuestion,
   type AnalysisSection,
   type AnalysisSpecialistResult,
+  type VerifiedAnalysisRun,
   type RunAnalysisSpecialistInput,
 } from './analysisSpecialist.js';
+export {
+  CachedAnalysisBundleError,
+  createSignedCachedAnalysisBundle,
+  loadSignedCachedAnalysisBundle,
+  type CreateSignedCachedAnalysisBundleInput,
+  type LoadSignedCachedAnalysisBundleInput,
+} from './cachedAnalysis.js';
+export { ANALYSIS_RELEASE_PUBLIC_KEY_PEM } from './releasePublicKey.js';
 export { safeToolCall, isTransient } from './safeToolCall.js';
 export { targetTerms, relevanceGate } from './relevance.js';
 export { extractPatentData, extractAssociations, type ExtractedPatent, type RegionAssociation, type ExtractionCompleteness } from './patentData.js';

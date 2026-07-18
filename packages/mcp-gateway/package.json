@@ -5,9 +5,10 @@
   "exports": { ".": "./src/index.ts" },
   "files": ["dist"],
   "scripts": {
-    "test": "vitest run --exclude='src/**/*.docker.test.ts'",
+    "test": "vitest run --exclude='src/**/*.docker.test.ts' && pnpm run test:package",
+    "test:package": "node scripts/package-smoke.mjs",
     "test:docker": "vitest run src/pythonSandbox.docker.test.ts",
-    "build": "tsc -p tsconfig.json"
+    "build": "tsc -p tsconfig.json && node scripts/copy-analysis-assets.mjs"
   },
   "dependencies": { "@mrsirquanzo/sonny-shared": "workspace:*", "fast-xml-parser": "^4.5.0", "zod": "^3.23.0" },
   "devDependencies": { "@types/node": "^18.19.130" },

@@ -31,3 +31,4 @@ export type {
   AnalysisArtifact, AnalysisExecutionResult, ComputationDatasetHash,
   ComputationEvidenceOptions, RunAnalysisTemplateInput,
 } from './pythonSandbox.js';
+export { resolveAnalysisRuntimeAssets, type AnalysisRuntimeAssets } from './runtimeAssets.js';

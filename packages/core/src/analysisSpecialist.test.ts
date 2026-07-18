@@ -93,6 +93,11 @@ describe('runAnalysisSpecialist', () => {
     expect(result.section.claims[0].text).toContain('not an ADC suitability criterion');
     expect(result.section.claims[1].text).toContain('no cross-source comparison');
     expect(result.section.claims[2].text).toContain('protein-level and clinical confirmation');
+    expect(result.verifiedRun).toMatchObject({
+      originReplayVerification: 'verified',
+      primaryResultHash: sha256CanonicalJson(golden),
+      replayResultHash: sha256CanonicalJson(golden),
+    });
     expect(SectionSchema.parse(result.section)).toEqual(result.section);
   });
 
@@ -153,6 +158,19 @@ describe('runAnalysisSpecialist', () => {
     expect(result.section.takeaway).toContain('Analysis abstained');
     expect(result.abstentionReason).toContain('missing dataset');
     expect(result.evidence).toEqual([]);
+  });
+
+  it('classifies an unavailable Docker runtime without treating analysis failures as cacheable', async () => {
+    const dockerMissing = await runAnalysisSpecialist({
+      target: 'TACSTD2',
+      executor: async () => { throw Object.assign(new Error('spawn docker ENOENT'), { code: 'ENOENT' }); },
+    });
+    const analysisFailure = await runAnalysisSpecialist({
+      target: 'TACSTD2', executor: async () => { throw new Error('missing dataset'); },
+    });
+
+    expect(dockerMissing.failureKind).toBe('docker_unavailable');
+    expect(analysisFailure.failureKind).toBe('analysis_failed');
   });
 
   it('attaches to the existing Briefing result shape so references retain computation provenance', async () => {
