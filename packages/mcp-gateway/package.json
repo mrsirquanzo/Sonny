@@ -4,8 +4,12 @@
   "type": "module",
   "exports": { ".": "./src/index.ts" },
   "files": ["dist"],
-  "scripts": { "test": "vitest run", "build": "tsc -p tsconfig.json" },
-  "dependencies": { "@mrsirquanzo/sonny-shared": "workspace:*", "fast-xml-parser": "^4.5.0" },
+  "scripts": {
+    "test": "vitest run --exclude='src/**/*.docker.test.ts'",
+    "test:docker": "vitest run src/pythonSandbox.docker.test.ts",
+    "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": { "@mrsirquanzo/sonny-shared": "workspace:*", "fast-xml-parser": "^4.5.0", "zod": "^3.23.0" },
   "devDependencies": { "@types/node": "^18.19.130" },
   "publishConfig": {
     "registry": "https://npm.pkg.github.com",

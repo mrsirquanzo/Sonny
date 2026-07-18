@@ -9,3 +9,6 @@ coverage
 .superpowers/
 .claude/
 .gstack/
+.sonny/
+packages/mcp-gateway/src/.docker-test-runs/
+.docker-test-runs/

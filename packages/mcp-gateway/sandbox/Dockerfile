@@ -30,8 +30,9 @@ RUN python -m pip install \
 RUN groupadd --gid "${ANALYSIS_GID}" sonny-analysis \
     && useradd --uid "${ANALYSIS_UID}" --gid "${ANALYSIS_GID}" \
         --no-create-home --shell /usr/sbin/nologin sonny-analysis \
-    && mkdir /work \
-    && chown "${ANALYSIS_UID}:${ANALYSIS_GID}" /work
+    && mkdir /work /output \
+    && chown "${ANALYSIS_UID}:${ANALYSIS_GID}" /work /output \
+    && chmod 0700 /output
 
 WORKDIR /work
 USER 65532:65532
