@@ -25,6 +25,21 @@ export { assessCompleteness, fillGap, mergeGapClaims, type ResearchGap } from '.
 export { weighAcrossThreads } from './weighing.js';
 export { synthesizeRecommendation } from './synthesize.js';
 export { assembleReferences, produceBriefing } from './briefing.js';
+export {
+  ANALYSIS_SPECIALIST,
+  TROP2_DATASET_IDS,
+  TROP2_RESULT_KEYS,
+  attachAnalysisToDeepResearch,
+  mapTrop2ResultsToClaims,
+  runAnalysisSpecialist,
+  selectAnalysisPlan,
+  type AnalysisExecutor,
+  type AnalysisPlan,
+  type AnalysisQuestion,
+  type AnalysisSection,
+  type AnalysisSpecialistResult,
+  type RunAnalysisSpecialistInput,
+} from './analysisSpecialist.js';
 export { safeToolCall, isTransient } from './safeToolCall.js';
 export { targetTerms, relevanceGate } from './relevance.js';
 export { extractPatentData, extractAssociations, type ExtractedPatent, type RegionAssociation, type ExtractionCompleteness } from './patentData.js';
