@@ -26,6 +26,7 @@ export interface Scorecard {
 /** Regression thresholds: how far a metric may drop below baseline before CI fails. */
 export const REGRESSION_TOLERANCE: Record<string, number> = {
   grounding_integrity: 0.0, // must never drop
+  computation_grounding: 0.0,
   faithfulness: 0.03,
   retrieval_recall: 0.05,
   unsupported_sentence_ratio: 0.05,
@@ -39,6 +40,7 @@ export const REGRESSION_TOLERANCE: Record<string, number> = {
 /** Absolute floors that must hold regardless of baseline (checked independently of REGRESSION_TOLERANCE). */
 export const ABSOLUTE_FLOORS: Record<string, number> = {
   figure_grounding: 0.5, // calibrate after the first real figure runs
+  computation_grounding: 1.0,
 };
 
 export function aggregate(targets: TargetScore[]): Record<string, number> {
@@ -113,7 +115,8 @@ export async function checkRegression(
   }
   // Grounding integrity failing on ANY target is a hard failure regardless of baseline.
   const hardFailures = sc.targets
-    .filter((t) => t.metrics.some((m) => m.name === "grounding_integrity" && !m.pass))
+    .filter((t) => t.metrics.some((m) =>
+      (m.name === "grounding_integrity" || m.name === 'computation_grounding') && !m.pass))
     .map((t) => t.target);
   // Absolute floors are checked baseline-independently, same discipline as hardFailures.
   const belowFloor: RegressionResult["belowFloor"] = [];

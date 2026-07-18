@@ -5,10 +5,10 @@ import { EvidenceStore } from './evidenceStore.js';
 import { weighAcrossThreads } from './weighing.js';
 
 const sections: Section[] = [
-  { id: 'disease_indications', title: 'Disease & Indications', takeaway: 'Weak genetics.', claims: [
+  { kind: 'research', id: 'disease_indications', title: 'Disease & Indications', takeaway: 'Weak genetics.', claims: [
     { id: 'c1', text: 'Genetic association is 0.11.', citations: ['ENSG1'], confidence: 0.7 },
   ], sources: ['ENSG1'], rag: 'amber' },
-  { id: 'moa_pathway', title: 'MOA & Pathway', takeaway: 'Strong mechanism.', claims: [
+  { kind: 'research', id: 'moa_pathway', title: 'MOA & Pathway', takeaway: 'Strong mechanism.', claims: [
     { id: 'c2', text: 'Drives EMT.', citations: ['PMID:1'], confidence: 0.8 },
   ], sources: ['PMID:1'], rag: 'green' },
 ];
@@ -31,7 +31,7 @@ describe('weighAcrossThreads', () => {
 });
 
 const gradeSections: Section[] = [{
-  id: 'a', title: 'A', takeaway: 't', rag: 'amber', sources: ['PMID:1'],
+  kind: 'research', id: 'a', title: 'A', takeaway: 't', rag: 'amber', sources: ['PMID:1'],
   claims: [
     { id: 'c1', text: 'Strong RCT finding.', citations: ['PMID:1'], confidence: 0.9 },
     { id: 'c2', text: 'Abstract-only finding.', citations: ['PMID:9'], confidence: 0.5 },

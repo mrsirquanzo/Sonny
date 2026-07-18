@@ -11,6 +11,7 @@ import { weighAcrossThreads } from './weighing.js';
 import { assessDevelopability } from './critique/developability.js';
 import { detectContradictions } from './critique/consistency.js';
 import { mapSpecialtyLabs } from './kolDetector.js';
+import { createSourceIdentityResolver } from './rag.js';
 
 export interface DeepResearchResult {
   target: string;
@@ -22,7 +23,7 @@ export interface DeepResearchResult {
 }
 
 function placeholderSection(brief: ThreadBrief, reason: string): Section {
-  return { id: brief.id, title: brief.title, takeaway: `Research could not complete: ${reason}`, claims: [], sources: [], rag: 'red' };
+  return { kind: 'research', id: brief.id, title: brief.title, takeaway: `Research could not complete: ${reason}`, claims: [], sources: [], rag: 'red' };
 }
 
 export async function runDeepResearch(opts: {
@@ -68,7 +69,8 @@ export async function runDeepResearch(opts: {
       if (idx === -1) continue;
       try {
         const claims = await fillGap({ gap, target, tools: literatureTools, store, specialistModel, verifierModel, emit });
-        finalSections = finalSections.map((s, i) => (i === idx ? mergeGapClaims(s, claims) : s));
+        const resolveSourceIdentity = createSourceIdentityResolver(store.all());
+        finalSections = finalSections.map((s, i) => (i === idx ? mergeGapClaims(s, claims, resolveSourceIdentity) : s));
       } catch (err) {
         emit({ type: 'error', message: `gap-fill ${gap.specialistId} failed: ${String(err)}` });
       }

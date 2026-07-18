@@ -11,7 +11,7 @@ function storeWith(id: string): EvidenceStore {
 }
 
 const section: Section = {
-  id: 'modality_developability', title: 'Modality & Developability', takeaway: 't',
+  kind: 'research', id: 'modality_developability', title: 'Modality & Developability', takeaway: 't',
   claims: [{ id: 'c1', text: 'High ADA incidence reported.', citations: ['PMID:9'], confidence: 0.8 }],
   sources: ['PMID:9'], rag: 'red',
 };

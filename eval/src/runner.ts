@@ -15,6 +15,7 @@ import {
   verdictStability,
   costLatency,
   figureGrounding,
+  computationGrounding,
   type RunArtifacts,
   type StructuredModelLike,
   type MetricResult,
@@ -78,6 +79,7 @@ async function scoreTarget(g: GoldenTarget, deps: EngineDeps): Promise<TargetSco
 
   const metrics: MetricResult[] = [
     groundingIntegrity(a),
+    computationGrounding(a),
     retrievalRecall(a, g),
     kolPrecisionAtK(a, g),
     developabilityCatchRate(a, g),

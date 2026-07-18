@@ -1,5 +1,8 @@
 import { z } from "zod";
 import type { GoldenTarget } from "./goldenSet.js";
+import {
+  AnalysisResultsSchema, resolveResultBinding, sha256CanonicalJson,
+} from '@mrsirquanzo/sonny-shared';
 
 /**
  * Metrics for scoring one Sonny run against one golden target.
@@ -23,12 +26,29 @@ export interface EvidenceLike {
   passage?: string;
   snippet?: string;
   title?: string;
+  kind?: string;
+  computationId?: string;
+  resultKeys?: string[];
+  resultsJsonHash?: string;
+  raw?: unknown;
+  exitStatus?: { exitCode: number | null; timedOut: boolean; signal: string | null };
 }
 export interface ClaimLike {
   id?: string;
   text: string;
   citations: string[]; // evidence ids
   confidence?: number;
+  computedBinding?: {
+    computationId: string;
+    resultKey: string;
+    assertedValue: number;
+    assertedUnit: string;
+  };
+  executionMode?: 'live' | 'cached';
+  replayVerification?: 'verified' | 'not_run';
+  originVerification?: 'verified' | 'none';
+  llmVerdict?: 'supported' | 'unsupported' | 'overreach';
+  verifierDecorrelated?: boolean;
 }
 export interface DevelopabilityRiskLike {
   category: string;
@@ -110,6 +130,58 @@ export function groundingIntegrity(a: RunArtifacts): MetricResult {
     score,
     pass: score >= 0.99,
     detail: { total: claims.length, offenders: offenders.map((c) => c.text) },
+  };
+}
+
+/**
+ * Mandatory computed-claim grounding: every shipped binding must resolve to a
+ * successful computation evidence record, an untampered typed result, a value
+ * and unit match, and an allowed live/cached verification state.
+ */
+export function computationGrounding(a: RunArtifacts): MetricResult {
+  const computed = allClaims(a.briefing).filter((claim) =>
+    claim.computedBinding
+    || claim.citations.some((citation) => a.evidenceById.get(citation)?.kind === 'computation'));
+  const offenders: { claim: string; reason: string }[] = [];
+  for (const claim of computed) {
+    const binding = claim.computedBinding;
+    if (!binding) {
+      offenders.push({ claim: claim.text, reason: 'computation citation lacks a structured binding' });
+      continue;
+    }
+    const evidence = claim.citations
+      .map((id) => a.evidenceById.get(id))
+      .find((candidate) => candidate?.kind === 'computation' && candidate.computationId === binding.computationId);
+    let reason: string | undefined;
+    if (!evidence) reason = 'missing matching computation evidence';
+    else if (evidence.exitStatus?.exitCode !== 0 || evidence.exitStatus.timedOut || evidence.exitStatus.signal !== null) {
+      reason = 'computation exit was not successful';
+    } else if (!evidence.resultKeys?.includes(binding.resultKey)) reason = 'result key absent from evidence';
+    else {
+      const results = AnalysisResultsSchema.safeParse(evidence.raw);
+      if (!results.success || sha256CanonicalJson(results.data) !== evidence.resultsJsonHash) {
+        reason = 'results schema or content hash mismatch';
+      } else {
+        const result = resolveResultBinding(results.data, binding.resultKey);
+        if (!result || result.value === null) reason = 'bound typed result is missing or null';
+        else if (result.unit !== binding.assertedUnit) reason = 'asserted unit mismatch';
+        else if (Math.abs(result.value - binding.assertedValue) > result.tolerance) reason = 'asserted value mismatch';
+      }
+    }
+    const trustedLive = claim.executionMode === 'live' && claim.replayVerification === 'verified'
+      && claim.originVerification === 'none';
+    const trustedCached = claim.executionMode === 'cached' && claim.replayVerification === 'not_run'
+      && claim.originVerification === 'verified';
+    if (!reason && !trustedLive && !trustedCached) reason = 'verification state is not trusted';
+    if (!reason && (claim.llmVerdict !== 'supported' || claim.verifierDecorrelated !== true)) {
+      reason = 'decorrelated LLM verification is absent or not supported';
+    }
+    if (reason) offenders.push({ claim: claim.text, reason });
+  }
+  const score = computed.length ? 1 - offenders.length / computed.length : 1;
+  return {
+    name: 'computation_grounding', score, pass: score === 1,
+    detail: { total: computed.length, offenders },
   };
 }
 

@@ -43,4 +43,20 @@ describe('verifyClaims', () => {
     expect(seenPrompt).toContain('CDCP1 promotes EMT in nasopharyngeal carcinoma cells.');
     expect(seenPrompt).toContain('Results');
   });
+
+  it('shows typed computation raw results to the semantic verifier', async () => {
+    const store = new EvidenceStore();
+    store.register({
+      id: 'COMP:1', kind: 'computation', title: 'Analysis', source: 'Sonny', snippet: '', url: '',
+      raw: { schemaVersion: '1.0.0', results: { x: { value: 7.5, unit: 'TPM' } } }, retrievedAt: 'now',
+    } as unknown as Evidence);
+    let prompt = '';
+    const model: StructuredModel = { async generateStructured(args) {
+      prompt = args.prompt;
+      return { claimId: 'c', status: 'supported', rationale: '' } as never;
+    } };
+    await verifyClaims([{ id: 'c', text: 'Value was 7.5 TPM.', citations: ['COMP:1'], confidence: 1 }], store, model);
+    expect(prompt).toContain('"value":7.5');
+    expect(prompt).toContain('"unit":"TPM"');
+  });
 });

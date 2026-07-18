@@ -27,7 +27,7 @@ const model: StructuredModel = {
   },
 };
 
-function ev(raw: Record<string, unknown>, kind: Evidence['kind']): Evidence {
+function ev(raw: Record<string, unknown>, kind: Exclude<Evidence['kind'], 'computation'>): Evidence {
   return { id: `BLAST:${raw.accession}`, kind, source: 'blast', title: 'hit', snippet: '', url: '', raw, retrievedAt: '' };
 }
 

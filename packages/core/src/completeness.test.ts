@@ -9,8 +9,8 @@ import type { Claim } from '@mrsirquanzo/sonny-shared';
 import { buildSearchQuery } from './searchQuery.js';
 
 const sections: Section[] = [
-  { id: 'target_biology', title: 'Target Biology', takeaway: 'Solid.', claims: [], sources: ['ENSG1', 'PMID:1'], rag: 'green' },
-  { id: 'clinical_landscape', title: 'Clinical Landscape', takeaway: 'Thin.', claims: [], sources: [], rag: 'red' },
+  { kind: 'research', id: 'target_biology', title: 'Target Biology', takeaway: 'Solid.', claims: [], sources: ['ENSG1', 'PMID:1'], rag: 'green' },
+  { kind: 'research', id: 'clinical_landscape', title: 'Clinical Landscape', takeaway: 'Thin.', claims: [], sources: [], rag: 'red' },
 ];
 
 describe('assessCompleteness', () => {
@@ -117,10 +117,14 @@ describe('fillGap query', () => {
 
 describe('mergeGapClaims', () => {
   it('appends claims, unions sources, and recomputes RAG to green at two distinct sources', () => {
-    const section = { id: 'x', title: 'X', takeaway: 't', claims: [
+    const section = { kind: 'research' as const, id: 'x', title: 'X', takeaway: 't', claims: [
       { id: 'c1', text: 'a', citations: ['PMID:1'], confidence: 0.8 } as Claim,
     ], sources: ['PMID:1'], rag: 'amber' as const };
-    const merged = mergeGapClaims(section, [{ id: 'c2', text: 'b', citations: ['PMID:2'], confidence: 0.7 }]);
+    const merged = mergeGapClaims(
+      section,
+      [{ id: 'c2', text: 'b', citations: ['PMID:2'], confidence: 0.7 }],
+      (id) => id,
+    );
     expect(merged.claims.map((c) => c.id)).toEqual(['c1', 'c2']);
     expect(merged.sources.sort()).toEqual(['PMID:1', 'PMID:2']);
     expect(merged.rag).toBe('green');

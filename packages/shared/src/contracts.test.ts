@@ -131,8 +131,22 @@ describe('Claim and Section carry optional audit data', () => {
     expect(ClaimSchema.parse({ id: 'c1', text: 't', citations: [], confidence: 0.5 }).redFlags).toBeUndefined();
   });
 
+  it('Claim accepts a structured computed binding and separate verification states', () => {
+    const claim = ClaimSchema.parse({
+      id: 'computed', text: 'Median was 1.2 TPM.', citations: ['COMP:1'], confidence: 0.9,
+      computedBinding: {
+        computationId: 'a'.repeat(64), resultKey: 'expression.median', assertedValue: 1.2, assertedUnit: 'TPM',
+      },
+      executionMode: 'live', replayVerification: 'verified', originVerification: 'none',
+      llmVerdict: 'supported', verifierDecorrelated: true,
+    });
+    expect(claim.computedBinding?.resultKey).toBe('expression.median');
+    expect(claim.replayVerification).toBe('verified');
+    expect(claim.verifierDecorrelated).toBe(true);
+  });
+
   it('Section accepts optional critiques', () => {
-    const s = { id: 'a', title: 'A', takeaway: 't', claims: [], sources: [], rag: 'green',
+    const s = { kind: 'research', id: 'a', title: 'A', takeaway: 't', claims: [], sources: [], rag: 'green',
       critiques: [{ evidenceId: 'PMID:1', studyDesign: 'in_vitro', sampleSize: null, redFlags: [] }] };
     expect(SectionSchema.parse(s).critiques?.[0].studyDesign).toBe('in_vitro');
   });
@@ -159,7 +173,7 @@ describe('DevelopabilityRisk schema', () => {
   });
 
   it('Section accepts optional developabilityRisks', () => {
-    const s = { id: 'm', title: 'M', takeaway: 't', claims: [], sources: [], rag: 'red',
+    const s = { kind: 'research', id: 'm', title: 'M', takeaway: 't', claims: [], sources: [], rag: 'red',
       developabilityRisks: [valid] };
     expect(SectionSchema.parse(s).developabilityRisks?.[0].severity).toBe('severe');
   });

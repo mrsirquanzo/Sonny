@@ -9,6 +9,12 @@ const SYSTEM = `You are an adversarial scientific reviewer. Decide whether the c
 - "overreach": the claim asserts more than the evidence shows (e.g. "all patients", "cures").
 Judge ONLY from the provided evidence. Be strict.`;
 
+function verificationText(evidence: ReturnType<EvidenceStore['get']>): string {
+  if (!evidence) return '';
+  if (evidence.kind === 'computation') return JSON.stringify(evidence.raw);
+  return evidence.passage ?? evidence.snippet;
+}
+
 export async function verifyClaims(
   claims: Claim[],
   store: EvidenceStore,
@@ -20,7 +26,7 @@ export async function verifyClaims(
     const evidenceText = c.citations
       .map((id) => store.get(id))
       .filter((e): e is NonNullable<typeof e> => Boolean(e))
-      .map((e) => `[${e.id}]${e.locator ? ` (${e.locator})` : ''} ${e.title} - ${e.passage ?? e.snippet}`)
+      .map((e) => `[${e.id}]${e.locator ? ` (${e.locator})` : ''} ${e.title} - ${verificationText(e)}`)
       .join('\n');
     const prompt = `CLAIM:\n${c.text}\n\nEVIDENCE:\n${evidenceText}`;
     const raw = await model.generateStructured({ system: SYSTEM, prompt, schema: VerdictSchema, model: modelId });

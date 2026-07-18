@@ -4,7 +4,7 @@ import type { Tool } from '@mrsirquanzo/sonny-mcp-gateway';
 import type { EvidenceStore } from './evidenceStore.js';
 import { groundClaims } from './grounding.js';
 import { verifyClaims } from './verifier.js';
-import { computeRag } from './rag.js';
+import { computeRag, createSourceIdentityResolver } from './rag.js';
 import type { StructuredModel } from './model.js';
 import { MODEL_ROUTER } from './model.js';
 import type { Specialist } from './specialists.js';
@@ -66,12 +66,13 @@ export async function produceSection(opts: {
   const supported: Claim[] = shippable.filter((c) => verdicts.find((v) => v.claimId === c.id)?.status === 'supported');
   const sources = [...new Set(supported.flatMap((c) => c.citations))];
   const section: Section = {
+    kind: 'research',
     id: spec.id,
     title: spec.title,
     takeaway: draft.takeaway,
     claims: supported,
     sources,
-    rag: computeRag(shippable, verdicts),
+    rag: computeRag(shippable, verdicts, createSourceIdentityResolver(store.all())),
   };
   emit({ type: 'section_complete', section });
   return section;
