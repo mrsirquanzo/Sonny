@@ -4,7 +4,7 @@ import type { StructuredModel } from './model.js';
 import { MODEL_ROUTER } from './model.js';
 import { targetTerms, relevanceGate, titleMentionsTarget } from './relevance.js';
 import { snowballCitations } from './snowball.js';
-import { buildSearchQuery } from './searchQuery.js';
+import { retrieveResearchHits } from './hybridRetrieval.js';
 
 export interface ThreadBrief { id: string; title: string; objective: string; promptHint: string }
 
@@ -47,7 +47,6 @@ import type { Tool } from '@mrsirquanzo/sonny-mcp-gateway';
 import { safeToolCall } from './safeToolCall.js';
 import { runSkepticAudit } from './critique/skepticAudit.js';
 import { researchFigures } from './figureStep.js';
-import { rerankResearchHits } from './rerankStep.js';
 
 export interface ResearchBudget { maxRounds: number }
 export interface ThreadFindings { takeaway: string; claims: Claim[]; openQuestions: string[]; critiques: MethodologicalCritique[] }
@@ -99,16 +98,16 @@ export async function runResearcher(opts: {
   for (let round = 0; round < budget.maxRounds && openQuestions.length > 0; round++) {
     const item = openQuestions[0];
 
-    const query = buildSearchQuery(target, item.concept);
-    // Rerank only when enabled AND a key is configured; otherwise pure citation order.
-    const rerankOn = process.env.SONNY_RERANK !== 'off' && !!process.env.SONNY_RERANK_API_KEY;
-    emit({ type: 'tool_call', tool: search.name, args: { query } });
-    const raw = await safeToolCall({ tool: search, args: { query, pageSize: rerankOn ? 25 : 8 }, emit });
-    const gated = relevanceGate(raw, terms);
-    const ranked = rerankOn
-      ? await rerankResearchHits({ specialist: brief.id, question: item.question, hits: gated, emit })
-      : gated;
-    const hits = ranked.slice(0, 8);
+    const hits = await retrieveResearchHits({
+      specialist: brief.id,
+      target,
+      question: item.question,
+      concept: item.concept,
+      terms,
+      search,
+      model,
+      emit,
+    });
     emit({ type: 'tool_result', tool: search.name, count: hits.length });
     for (const h of hits) { store.register(h); emit({ type: 'evidence_registered', id: h.id, title: h.title }); }
 
