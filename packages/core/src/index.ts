@@ -3,7 +3,6 @@ export { MODEL_ROUTER, AnthropicModel, makeModel, currentBackend, routerFor, mod
 export { OllamaModel } from './ollamaModel.js';
 export { groundClaims } from './grounding.js';
 export { verifyClaims } from './verifier.js';
-export { runOrchestration } from './orchestrator.js';
 export { computeRag, createSourceIdentityResolver, type SourceIdentityResolver } from './rag.js';
 export {
   reproducibilityGate,
