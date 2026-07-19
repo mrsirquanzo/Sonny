@@ -11,9 +11,6 @@ export {
   type ReproducibilityDrop,
 } from './reproducibilityGate.js';
 export { SPECIALISTS, type Specialist } from './specialists.js';
-export { selectSpecialists } from './planner.js';
-export { produceSection } from './produceSection.js';
-export { runDossier } from './runDossier.js';
 export { planResearchQuestions, extractClaims, reflectOnGaps, runResearcher,
   type ThreadBrief, type ThreadFindings, type ResearchBudget } from './researcher.js';
 export { produceResearchSection } from './produceResearchSection.js';
