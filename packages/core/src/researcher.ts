@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ClaimsSchema, type Claim } from '@mrsirquanzo/sonny-shared';
+import { type Claim } from '@mrsirquanzo/sonny-shared';
 import type { StructuredModel } from './model.js';
 import { MODEL_ROUTER } from './model.js';
 import { targetTerms, relevanceGate, titleMentionsTarget } from './relevance.js';
@@ -43,16 +43,34 @@ export async function planResearchQuestions(
   return questions;
 }
 
+// Lenient extraction schema: the writer only supplies text/citations/confidence.
+// The claim `id` is assigned deterministically below rather than required from
+// the model - small open models (e.g. gpt-oss) frequently omit `id` (or emit it
+// where a strict schema forbids extras), which 400s the whole section. Not
+// requiring it removes that failure mode entirely.
+const ExtractedClaimsSchema = z.object({
+  claims: z.array(z.object({
+    text: z.string().min(1),
+    citations: z.array(z.string()).default([]),
+    confidence: z.number().default(0.7),
+  })).default([]),
+});
+
 export async function extractClaims(
   question: string, evidenceList: string, model: StructuredModel, context?: ResearchContext,
 ): Promise<Claim[]> {
   const { claims } = await model.generateStructured({
     system: withResearchScope(`You are a rigorous biomedical research specialist. Answer the research question using ONLY the provided evidence passages. Every claim MUST cite the evidence id(s) it rests on, copied verbatim. When the evidence includes CURATED DATABASE records (Open Targets, UniProt) that bear on the question - cell-surface localisation, normal-tissue expression and selectivity, tractability, or safety liabilities - you MUST use and cite them by their id, not only the literature. If the evidence conflicts, write a reconciliation claim that names the tension and states which way it leans and why. Do not state anything the evidence does not support.`, 'this target', context),
-    prompt: `RESEARCH QUESTION: ${question}\n\nEVIDENCE:\n${evidenceList}\n\nReturn claims c1, c2, ... each with citations and a confidence in [0,1].`,
-    schema: ClaimsSchema,
+    prompt: `RESEARCH QUESTION: ${question}\n\nEVIDENCE:\n${evidenceList}\n\nReturn a list of claims. Each claim has: text, citations (evidence ids, copied verbatim), and a confidence in [0,1]. Do not include an id field.`,
+    schema: ExtractedClaimsSchema,
     model: MODEL_ROUTER.specialist,
   });
-  return claims;
+  return (claims ?? []).map((c, i) => ({
+    id: `c${i + 1}`,
+    text: c.text,
+    citations: c.citations ?? [],
+    confidence: Math.max(0, Math.min(1, c.confidence ?? 0.7)),
+  }));
 }
 
 import type { Evidence, TraceEvent, MethodologicalCritique } from '@mrsirquanzo/sonny-shared';
