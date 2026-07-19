@@ -47,7 +47,7 @@ export async function extractClaims(
   question: string, evidenceList: string, model: StructuredModel, context?: ResearchContext,
 ): Promise<Claim[]> {
   const { claims } = await model.generateStructured({
-    system: withResearchScope(`You are a rigorous biomedical research specialist. Answer the research question using ONLY the provided evidence passages. Every claim MUST cite the evidence id(s) it rests on, copied verbatim. If the evidence conflicts, write a reconciliation claim that names the tension and states which way it leans and why. Do not state anything the evidence does not support.`, 'this target', context),
+    system: withResearchScope(`You are a rigorous biomedical research specialist. Answer the research question using ONLY the provided evidence passages. Every claim MUST cite the evidence id(s) it rests on, copied verbatim. When the evidence includes CURATED DATABASE records (Open Targets, UniProt) that bear on the question - cell-surface localisation, normal-tissue expression and selectivity, tractability, or safety liabilities - you MUST use and cite them by their id, not only the literature. If the evidence conflicts, write a reconciliation claim that names the tension and states which way it leans and why. Do not state anything the evidence does not support.`, 'this target', context),
     prompt: `RESEARCH QUESTION: ${question}\n\nEVIDENCE:\n${evidenceList}\n\nReturn claims c1, c2, ... each with citations and a confidence in [0,1].`,
     schema: ClaimsSchema,
     model: MODEL_ROUTER.specialist,
@@ -167,7 +167,20 @@ export async function runResearcher(opts: {
       }
     }
 
-    const evidenceList = store.all().map(evidenceLine).join('\n');
+    // Surface curated database records (Open Targets, UniProt) at the top under
+    // their own header so claim extraction actually uses the expression /
+    // localisation / tractability / safety signals instead of drowning them in
+    // literature passages.
+    const all = store.all();
+    const isCurated = (e: Evidence) => e.source === 'Open Targets' || e.source === 'UniProt';
+    const curated = all.filter(isCurated);
+    const literature = all.filter((e) => !isCurated(e));
+    const evidenceList = [
+      curated.length ? 'CURATED DATABASE EVIDENCE (authoritative for cell-surface localisation, normal-tissue expression, tractability, and safety - cite these ids where relevant):' : '',
+      ...curated.map(evidenceLine),
+      curated.length ? '\nLITERATURE EVIDENCE:' : '',
+      ...literature.map(evidenceLine),
+    ].filter(Boolean).join('\n');
     const drafted = await extractClaims(item.question, evidenceList, model, context);
     for (const c of drafted) {
       const flags = audited.filter((a) => c.citations.some((id) => a.ids.has(id))).flatMap((a) => a.redFlags);
