@@ -6,7 +6,7 @@ import { MODEL_ROUTER } from './model.js';
 import type { EvidenceStore } from './evidenceStore.js';
 import { groundClaims } from './grounding.js';
 import { verifyClaims } from './verifier.js';
-import { computeRag } from './rag.js';
+import { computeRag, type SourceIdentityResolver } from './rag.js';
 import { extractClaims } from './researcher.js';
 import { safeToolCall } from './safeToolCall.js';
 import { targetTerms, relevanceGate, titleMentionsTarget } from './relevance.js';
@@ -81,10 +81,14 @@ export async function fillGap(opts: {
   return shippable.filter((c) => verdicts.find((vd) => vd.claimId === c.id)?.status === 'supported');
 }
 
-export function mergeGapClaims(section: Section, newClaims: Claim[]): Section {
+export function mergeGapClaims(
+  section: Section,
+  newClaims: Claim[],
+  resolveSourceIdentity: SourceIdentityResolver,
+): Section {
   if (newClaims.length === 0) return section;
   const claims = [...section.claims, ...newClaims];
   const sources = [...new Set(claims.flatMap((c) => c.citations))];
   const verdicts: Verdict[] = claims.map((c) => ({ claimId: c.id, status: 'supported', rationale: '' }));
-  return { ...section, claims, sources, rag: computeRag(claims, verdicts) };
+  return { ...section, claims, sources, rag: computeRag(claims, verdicts, resolveSourceIdentity) };
 }

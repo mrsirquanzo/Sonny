@@ -1,0 +1,267 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sonny.local/schemas/analysis-results/1.0.0",
+  "title": "Sonny reviewed-analysis results",
+  "description": "Bounded, typed results emitted by reviewed analysis templates. Null numeric values are allowed only when nullable=true and sampleN=0.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "templateId",
+    "templateVersion",
+    "target",
+    "lockedAnalysis",
+    "results",
+    "artifacts",
+    "warnings"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0.0"
+    },
+    "templateId": {
+      "const": "trop2_analysis"
+    },
+    "templateVersion": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["symbol", "name", "entrezGeneId", "gencodeId"],
+      "properties": {
+        "symbol": { "const": "TACSTD2" },
+        "name": { "const": "TROP2" },
+        "entrezGeneId": { "const": 4070 },
+        "gencodeId": { "const": "ENSG00000184292.7" }
+      }
+    },
+    "lockedAnalysis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dependencyCutoff",
+        "dependencyCutoffComparator",
+        "lineageMinimumN",
+        "tumorStatistic",
+        "normalTissueStatistic",
+        "exclusionRules",
+        "statisticalTests"
+      ],
+      "properties": {
+        "dependencyCutoff": { "const": -0.5 },
+        "dependencyCutoffComparator": { "const": "lte" },
+        "lineageMinimumN": { "const": 5 },
+        "tumorStatistic": { "const": "median and interquartile range, tumor and normal separately" },
+        "normalTissueStatistic": { "const": "GTEx V8 tissue median TPM; descriptive screening flag only" },
+        "exclusionRules": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "statisticalTests": {
+          "const": "none; preregistered descriptive analysis only"
+        }
+      }
+    },
+    "results": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "$ref": "#/$defs/result"
+      },
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9_.-]*$"
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "path", "mediaType", "description"],
+        "properties": {
+          "kind": { "enum": ["figure"] },
+          "path": { "type": "string", "pattern": "^[A-Za-z0-9._-]+\\.png$" },
+          "mediaType": { "const": "image/png" },
+          "description": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    }
+  },
+  "$defs": {
+    "comparator": {
+      "enum": ["lt", "lte", "eq", "gte", "gt", "none"]
+    },
+    "direction": {
+      "enum": ["lower", "higher", "neutral", "not_applicable"]
+    },
+    "missingness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["missingN", "observedN", "totalN", "fraction"],
+      "properties": {
+        "missingN": { "type": "integer", "minimum": 0 },
+        "observedN": { "type": "integer", "minimum": 0 },
+        "totalN": { "type": "integer", "minimum": 0 },
+        "fraction": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "resultFields": {
+      "type": "object",
+      "required": [
+        "type",
+        "value",
+        "unit",
+        "comparator",
+        "threshold",
+        "direction",
+        "precision",
+        "tolerance",
+        "missingness",
+        "sampleN",
+        "nullable",
+        "note"
+      ],
+      "properties": {
+        "type": { "type": "string" },
+        "value": { "type": ["number", "null"] },
+        "unit": { "type": "string", "minLength": 1 },
+        "comparator": { "$ref": "#/$defs/comparator" },
+        "threshold": { "type": ["number", "null"] },
+        "direction": { "$ref": "#/$defs/direction" },
+        "precision": { "type": "integer", "minimum": 0, "maximum": 12 },
+        "tolerance": { "type": "number", "minimum": 0 },
+        "missingness": { "$ref": "#/$defs/missingness" },
+        "sampleN": { "type": "integer", "minimum": 0 },
+        "nullable": { "type": "boolean" },
+        "note": { "type": ["string", "null"] }
+      }
+    },
+    "scalar": {
+      "allOf": [
+        { "$ref": "#/$defs/resultFields" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "type": { "const": "scalar" },
+            "value": { "type": ["number", "null"] },
+            "unit": { "type": "string", "minLength": 1 },
+            "comparator": { "$ref": "#/$defs/comparator" },
+            "threshold": { "type": ["number", "null"] },
+            "direction": { "$ref": "#/$defs/direction" },
+            "precision": { "type": "integer", "minimum": 0, "maximum": 12 },
+            "tolerance": { "type": "number", "minimum": 0 },
+            "missingness": { "$ref": "#/$defs/missingness" },
+            "sampleN": { "type": "integer", "minimum": 0 },
+            "nullable": { "type": "boolean" },
+            "note": { "type": ["string", "null"] }
+          }
+        },
+        {
+          "if": {
+            "properties": { "value": { "type": "null" } },
+            "required": ["value"]
+          },
+          "then": {
+            "properties": {
+              "nullable": { "const": true },
+              "sampleN": { "const": 0 }
+            }
+          }
+        }
+      ]
+    },
+    "groupPoint": {
+      "allOf": [
+        { "$ref": "#/$defs/resultFields" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["key", "label"],
+          "properties": {
+            "key": { "type": "string", "minLength": 1 },
+            "label": { "type": "string", "minLength": 1 },
+            "type": { "const": "scalar" },
+            "value": { "type": ["number", "null"] },
+            "unit": { "type": "string", "minLength": 1 },
+            "comparator": { "$ref": "#/$defs/comparator" },
+            "threshold": { "type": ["number", "null"] },
+            "direction": { "$ref": "#/$defs/direction" },
+            "precision": { "type": "integer", "minimum": 0, "maximum": 12 },
+            "tolerance": { "type": "number", "minimum": 0 },
+            "missingness": { "$ref": "#/$defs/missingness" },
+            "sampleN": { "type": "integer", "minimum": 0 },
+            "nullable": { "type": "boolean" },
+            "note": { "type": ["string", "null"] }
+          }
+        },
+        {
+          "if": {
+            "properties": { "value": { "type": "null" } },
+            "required": ["value"]
+          },
+          "then": {
+            "properties": {
+              "nullable": { "const": true },
+              "sampleN": { "const": 0 }
+            }
+          }
+        }
+      ]
+    },
+    "groupedSeries": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "value",
+        "unit",
+        "comparator",
+        "threshold",
+        "direction",
+        "precision",
+        "tolerance",
+        "missingness",
+        "sampleN",
+        "nullable",
+        "note",
+        "groups"
+      ],
+      "properties": {
+        "type": { "const": "grouped-series" },
+        "value": { "type": "null" },
+        "unit": { "type": "string", "minLength": 1 },
+        "comparator": { "$ref": "#/$defs/comparator" },
+        "threshold": { "type": ["number", "null"] },
+        "direction": { "$ref": "#/$defs/direction" },
+        "precision": { "type": "integer", "minimum": 0, "maximum": 12 },
+        "tolerance": { "type": "number", "minimum": 0 },
+        "missingness": { "$ref": "#/$defs/missingness" },
+        "sampleN": { "type": "integer", "minimum": 0 },
+        "nullable": { "const": false },
+        "note": { "type": ["string", "null"] },
+        "groups": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/groupPoint" },
+          "minItems": 1
+        }
+      }
+    },
+    "result": {
+      "oneOf": [
+        { "$ref": "#/$defs/scalar" },
+        { "$ref": "#/$defs/groupedSeries" }
+      ]
+    }
+  }
+}

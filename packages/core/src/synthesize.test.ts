@@ -4,7 +4,7 @@ import type { StructuredModel } from './model.js';
 import { synthesizeRecommendation } from './synthesize.js';
 
 const sections: Section[] = [
-  { id: 'moa_pathway', title: 'MOA & Pathway', takeaway: 'Strong mechanism.',
+  { kind: 'research', id: 'moa_pathway', title: 'MOA & Pathway', takeaway: 'Strong mechanism.',
     claims: [
       { id: 'c1', text: 'Drives EMT.', citations: ['PMID:1'], confidence: 0.8 },
       { id: 'c2', text: 'Promotes invasion.', citations: ['PMID:1'], confidence: 0.8 },
@@ -52,7 +52,7 @@ describe('synthesizeRecommendation', () => {
       },
     };
     const sections = [{
-      id: 'a', title: 'A', takeaway: 'tk', rag: 'amber', sources: ['PMID:1'],
+      kind: 'research', id: 'a', title: 'A', takeaway: 'tk', rag: 'amber', sources: ['PMID:1'],
       claims: [
         { id: 'c1', text: 'eGFR improved.', citations: ['PMID:1'], confidence: 0.9,
           redFlags: [{ category: 'surrogate_endpoint', biasRisk: 'high', explanation: 'unpowered post-hoc subgroup' }] },
@@ -77,11 +77,11 @@ describe('synthesizeRecommendation', () => {
         return { verdict: 'go', thesis: 'strong biology', bull: [], bear: [], conditions: [], executiveRead: 'er' } as never; },
     };
     const sections = [
-      { id: 'target_biology', title: 'Target Biology', takeaway: 'great', rag: 'green', sources: ['PMID:1'], claims: [
+      { kind: 'research', id: 'target_biology', title: 'Target Biology', takeaway: 'great', rag: 'green', sources: ['PMID:1'], claims: [
         { id: 'b1', text: 'Expressed in tumor.', citations: ['PMID:1'], confidence: 0.9 },
         { id: 'b2', text: 'Correlates with stage.', citations: ['PMID:1'], confidence: 0.9 },
       ] },
-      { id: 'modality_developability', title: 'Modality & Developability', takeaway: 'tough', rag: 'red', sources: ['PMID:9'], claims: [],
+      { kind: 'research', id: 'modality_developability', title: 'Modality & Developability', takeaway: 'tough', rag: 'red', sources: ['PMID:9'], claims: [],
         developabilityRisks: [{ evidenceId: 'PMID:9', category: 'immunogenicity', severity: 'severe', explanation: 'High ADA incidence.' }] },
     ];
     const { recommendation } = await synthesizeRecommendation({
@@ -98,7 +98,7 @@ describe('synthesizeRecommendation', () => {
       async generateStructured() { return { verdict: 'go', thesis: 't', bull: [], bear: [], conditions: [], executiveRead: 'er' } as never; },
     };
     const sections = [
-      { id: 'modality_developability', title: 'M', takeaway: 't', rag: 'amber', sources: ['PMID:9'], claims: [
+      { kind: 'research', id: 'modality_developability', title: 'M', takeaway: 't', rag: 'amber', sources: ['PMID:9'], claims: [
         { id: 'm1', text: 'Feasible format.', citations: ['PMID:9'], confidence: 0.8 },
         { id: 'm2', text: 'Manufacturable.', citations: ['PMID:9'], confidence: 0.8 },
       ], developabilityRisks: [{ evidenceId: 'PMID:9', category: 'half_life', severity: 'significant', explanation: 'Short half-life.' }] },
@@ -114,7 +114,7 @@ describe('synthesizeRecommendation', () => {
 
 function section(id: string, claimCount: number): Section {
   return {
-    id, title: id, takeaway: 't',
+    kind: 'research', id, title: id, takeaway: 't',
     claims: Array.from({ length: claimCount }, (_, i) => ({
       id: `${id}-c${i}`, text: 'a finding', citations: ['PMID:1'], confidence: 0.9,
     })),
@@ -180,7 +180,7 @@ describe('synthesizeRecommendation contradictions', () => {
     const contradictions: ContradictionFlag[] = [{ evidenceIdA: 'PMID:1', evidenceIdB: 'PMID:2', endpoint: 'OS', explanation: 'opposite OS effect' }];
     await synthesizeRecommendation({
       target: 'EGFR',
-      sections: [{ id: 'a', title: 'A', takeaway: 't', rag: 'green', sources: ['PMID:1'],
+      sections: [{ kind: 'research', id: 'a', title: 'A', takeaway: 't', rag: 'green', sources: ['PMID:1'],
         claims: [
           { id: 'c1', text: 'x', citations: ['PMID:1'], confidence: 0.9 },
           { id: 'c2', text: 'y', citations: ['PMID:2'], confidence: 0.9 },

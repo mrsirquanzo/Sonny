@@ -1,9 +1,16 @@
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import {
   groundingIntegrity, retrievalRecall, verdictInBand, verdictStability,
-  makeJudge, figureGrounding, type RunArtifacts, type StructuredModelLike,
+  makeJudge, figureGrounding, computationGrounding, type RunArtifacts, type StructuredModelLike,
 } from './metrics.js';
 import { GoldenTarget } from './goldenSet.js';
+import {
+  AnalysisResultsSchema, computationId, sha256CanonicalJson, sha256Text,
+  type ComputationEvidence,
+} from '@mrsirquanzo/sonny-shared';
+import { reproducibilityGate } from '@mrsirquanzo/sonny-core';
 
 const target = GoldenTarget.parse({
   target: 'CDCP1', label: 'watch', allowedVerdicts: ['watch', 'go'], rationale: 'r',
@@ -87,6 +94,100 @@ describe('figureGrounding', () => {
   it('ignores non-figure claims (returns 1.0 when no figure claims)', () => {
     const a = figArtifacts([{ text: 'x', citations: ['PMID:1'] }], []);
     expect(figureGrounding(a).score).toBe(1);
+  });
+});
+
+describe('computationGrounding', () => {
+  it('returns the mandatory perfect score when no computed claim bypasses the gate', () => {
+    expect(computationGrounding(artifacts())).toMatchObject({ score: 1, pass: true });
+  });
+
+  it('fails a computation citation that omits the structured binding', () => {
+    const a = artifacts({
+      briefing: { verdict: 'watch', sections: [{ id: 's', claims: [{ text: 'Unbound computation', citations: ['COMP:1'] }] }] } as never,
+      evidenceById: new Map([['COMP:1', { id: 'COMP:1', kind: 'computation' }]]),
+    });
+    expect(computationGrounding(a)).toMatchObject({ score: 0, pass: false });
+  });
+
+  it('fails a shipped fabricated computed value', () => {
+    const raw = {
+      schemaVersion: '1.0.0', templateId: 't', templateVersion: '1.0.0',
+      target: { symbol: 'X', name: 'X', entrezGeneId: 1, gencodeId: null },
+      lockedAnalysis: { method: 'reviewed' },
+      results: { x: {
+        type: 'scalar', value: 1, unit: 'TPM', comparator: 'none', threshold: null,
+        direction: 'not_applicable', precision: 2, tolerance: 0.01,
+        missingness: { missingN: 0, observedN: 1, totalN: 1, fraction: 0 },
+        sampleN: 1, nullable: false, note: null,
+      } },
+      artifacts: [{ kind: 'figure', path: 'x.png', mediaType: 'image/png', description: 'x' }], warnings: [],
+    };
+    const a = artifacts({
+      briefing: { verdict: 'watch', sections: [{ id: 's', claims: [{
+        text: 'Fabricated 42 TPM', citations: ['COMP:1'],
+        computedBinding: { computationId: 'a'.repeat(64), resultKey: 'x', assertedValue: 42, assertedUnit: 'TPM' },
+        executionMode: 'live', replayVerification: 'verified', originVerification: 'none',
+        llmVerdict: 'supported', verifierDecorrelated: true,
+      }] }] } as never,
+      evidenceById: new Map([['COMP:1', {
+        id: 'COMP:1', kind: 'computation', computationId: 'a'.repeat(64), resultKeys: ['x'],
+        resultsJsonHash: sha256CanonicalJson(raw), raw,
+        exitStatus: { exitCode: 0, timedOut: false, signal: null },
+      }]]),
+    });
+    expect(computationGrounding(a)).toMatchObject({ score: 0, pass: false });
+  });
+
+  it('loads the adversarial fixture and proves the gate drops it against the Slice 1 golden results', () => {
+    const fixturePath = fileURLToPath(new URL('../golden/computation/fabricated-output.json', import.meta.url));
+    const goldenPath = fileURLToPath(new URL('../../packages/mcp-gateway/src/dataLake/golden/trop2_results.json', import.meta.url));
+    const fixture = JSON.parse(readFileSync(fixturePath, 'utf8')) as {
+      claim: {
+        id: string; text: string; citations: string[]; confidence: number;
+        computedBinding: { computationId: string; resultKey: string; assertedValue: number; assertedUnit: string };
+      };
+      expectedGateOutcome: string;
+    };
+    const results = AnalysisResultsSchema.parse(JSON.parse(readFileSync(goldenPath, 'utf8')));
+    const codeBytes = 'print("reviewed")\n';
+    const lineageManifest = { id: 'depmap.crispr_gene_effect', release: '24Q4' };
+    const dataset = {
+      datasetId: 'depmap.crispr_gene_effect', logicalSourceId: 'depmap:public-24q4',
+      contentSha256: '53ada942b62a3d78b1784b04599e1b64f4cbe29367224dc9ef055b77b1d43948',
+      acquisitionQuery: { gene: 'TACSTD2' }, retrievedAt: '2026-07-17T20:58:39Z',
+      lineageManifestHash: sha256CanonicalJson(lineageManifest), lineageManifest,
+    };
+    const manifest = {
+      manifestVersion: '1.0.0' as const, templateId: results.templateId, templateVersion: results.templateVersion,
+      datasets: [{
+        datasetId: dataset.datasetId, logicalSourceId: dataset.logicalSourceId,
+        contentSha256: dataset.contentSha256, acquisitionQuery: dataset.acquisitionQuery,
+        retrievedAt: dataset.retrievedAt, lineageManifestHash: dataset.lineageManifestHash,
+      }],
+      imageDigest: `sha256:${'2'.repeat(64)}`, codeHash: sha256Text(codeBytes), params: { target: 'TACSTD2' }, seed: 1729,
+    };
+    const id = computationId(manifest);
+    const evidence: ComputationEvidence = {
+      id: 'COMP:trop2', kind: 'computation', source: 'Sonny analysis', title: 'TROP2', snippet: '', url: '',
+      raw: results, retrievedAt: '2026-07-17T20:58:39Z', computationId: id,
+      templateId: results.templateId, templateVersion: results.templateVersion, datasetInputs: [dataset],
+      imageDigest: manifest.imageDigest, codeBytes, codeHash: manifest.codeHash, params: manifest.params, seed: manifest.seed,
+      exitStatus: { exitCode: 0, timedOut: false, signal: null }, resultKeys: [fixture.claim.computedBinding.resultKey],
+      resultsJsonHash: sha256CanonicalJson(results),
+    };
+    const adversarialClaim = {
+      ...fixture.claim,
+      citations: fixture.claim.citations.map((citation) => citation === '$COMPUTATION_EVIDENCE' ? evidence.id : citation),
+      computedBinding: { ...fixture.claim.computedBinding, computationId: id },
+    };
+    const gated = reproducibilityGate({
+      claims: [adversarialClaim], evidence: [evidence], primaryResults: { [id]: results },
+      replayResults: { [id]: results }, executionMode: 'live',
+    });
+    expect(fixture.expectedGateOutcome).toBe('dropped');
+    expect(gated.shippable).toEqual([]);
+    expect(gated.dropped[0].reason).toContain('asserted value');
   });
 });
 

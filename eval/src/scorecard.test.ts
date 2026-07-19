@@ -32,4 +32,12 @@ describe('scorecard', () => {
     const reg = await checkRegression(card([target('a', 0.5, 0.95)]), '/nonexistent/_baseline.json');
     expect(reg.hardFailures).toContain('a');
   });
+
+  it('hard-fails mandatory computation grounding independently of a baseline', async () => {
+    const score = target('a', 1, 0.95);
+    score.metrics.push({ name: 'computation_grounding', score: 0, pass: false });
+    const reg = await checkRegression(card([score]), '/nonexistent/_baseline.json');
+    expect(reg.hardFailures).toContain('a');
+    expect(reg.belowFloor).toContainEqual({ metric: 'computation_grounding', floor: 1, current: 0 });
+  });
 });

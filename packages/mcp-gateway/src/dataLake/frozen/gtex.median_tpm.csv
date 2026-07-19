@@ -1,0 +1,55 @@
+tissue_id,tissue_name,median_tpm
+Adipose_Subcutaneous,Adipose Subcutaneous,6.28041
+Adipose_Visceral_Omentum,Adipose Visceral Omentum,2.22728
+Adrenal_Gland,Adrenal Gland,0.9582120000000001
+Artery_Aorta,Artery Aorta,6.0362800000000005
+Artery_Coronary,Artery Coronary,3.9773099999999997
+Artery_Tibial,Artery Tibial,5.05856
+Bladder,Bladder,38.3948
+Brain_Amygdala,Brain Amygdala,0.224546
+Brain_Anterior_cingulate_cortex_BA24,Brain Anterior cingulate cortex BA24,0.17240999999999998
+Brain_Caudate_basal_ganglia,Brain Caudate basal ganglia,0.318668
+Brain_Cerebellar_Hemisphere,Brain Cerebellar Hemisphere,0.249971
+Brain_Cerebellum,Brain Cerebellum,0.41358999999999996
+Brain_Cortex,Brain Cortex,0.326926
+Brain_Frontal_Cortex_BA9,Brain Frontal Cortex BA9,0.275464
+Brain_Hippocampus,Brain Hippocampus,0.35291100000000003
+Brain_Hypothalamus,Brain Hypothalamus,0.296769
+Brain_Nucleus_accumbens_basal_ganglia,Brain Nucleus accumbens basal ganglia,0.27318899999999996
+Brain_Putamen_basal_ganglia,Brain Putamen basal ganglia,0.319373
+Brain_Spinal_cord_cervical_c-1,Brain Spinal cord cervical c-1,0.393818
+Brain_Substantia_nigra,Brain Substantia nigra,0.37601799999999996
+Breast_Mammary_Tissue,Breast Mammary Tissue,131.47299999999998
+Cells_Cultured_fibroblasts,Cells Cultured fibroblasts,2.92849
+Cells_EBV-transformed_lymphocytes,Cells EBV-transformed lymphocytes,0.407871
+Cervix_Ectocervix,Cervix Ectocervix,5.053380000000001
+Cervix_Endocervix,Cervix Endocervix,4.14939
+Colon_Sigmoid,Colon Sigmoid,1.30056
+Colon_Transverse,Colon Transverse,1.27255
+Esophagus_Gastroesophageal_Junction,Esophagus Gastroesophageal Junction,1.9694599999999998
+Esophagus_Mucosa,Esophagus Mucosa,1419.1
+Esophagus_Muscularis,Esophagus Muscularis,2.21152
+Fallopian_Tube,Fallopian Tube,18.2242
+Heart_Atrial_Appendage,Heart Atrial Appendage,0.5411239999999999
+Heart_Left_Ventricle,Heart Left Ventricle,0.2353
+Kidney_Cortex,Kidney Cortex,59.2196
+Kidney_Medulla,Kidney Medulla,218.479
+Liver,Liver,1.42747
+Lung,Lung,118.689
+Minor_Salivary_Gland,Minor Salivary Gland,680.7510000000001
+Muscle_Skeletal,Muscle Skeletal,0.47883400000000004
+Nerve_Tibial,Nerve Tibial,11.6504
+Ovary,Ovary,1.87339
+Pancreas,Pancreas,46.4737
+Pituitary,Pituitary,2.11829
+Prostate,Prostate,154.071
+Skin_Not_Sun_Exposed_Suprapubic,Skin Not Sun Exposed Suprapubic,708.696
+Skin_Sun_Exposed_Lower_leg,Skin Sun Exposed Lower leg,683.9169999999999
+Small_Intestine_Terminal_Ileum,Small Intestine Terminal Ileum,2.0288
+Spleen,Spleen,1.3617299999999999
+Stomach,Stomach,9.71524
+Testis,Testis,1.04044
+Thyroid,Thyroid,8.103069999999999
+Uterus,Uterus,4.842219999999999
+Vagina,Vagina,655.9839999999999
+Whole_Blood,Whole Blood,1.43515

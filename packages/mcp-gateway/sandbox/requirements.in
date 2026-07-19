@@ -1,0 +1,8 @@
+# Direct analysis dependencies. Regenerate requirements.txt for CPython 3.11
+# Linux only, then review and commit the resulting hashes.
+biopython==1.87
+matplotlib==3.10.9
+numpy==2.4.6
+pandas==3.0.3
+pyarrow==24.0.0
+scipy==1.17.1

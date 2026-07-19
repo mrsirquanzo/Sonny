@@ -27,9 +27,16 @@ export function toRunArtifacts(
       ? { labs: briefing.kolCluster.labs.map((l) => ({ investigator: l.investigator, institution: l.institution })) }
       : undefined,
   };
-  const evidenceById = new Map<string, EvidenceLike>(
-    evidence.map((e) => [e.id, { id: e.id, passage: e.passage, snippet: e.snippet, title: e.title }]),
-  );
+  const evidenceById = new Map<string, EvidenceLike>(evidence.map((e) => {
+    if (e.kind !== 'computation') {
+      return [e.id, { id: e.id, kind: e.kind, passage: e.passage, snippet: e.snippet, title: e.title }];
+    }
+    return [e.id, {
+      id: e.id, kind: e.kind, passage: e.passage, snippet: e.snippet, title: e.title,
+      computationId: e.computationId, resultKeys: e.resultKeys,
+      resultsJsonHash: e.resultsJsonHash, raw: e.raw, exitStatus: e.exitStatus,
+    }];
+  }));
   const figureReadings = events.flatMap((e) => (e.type === 'figure_read' ? e.readings : []));
   return { briefing: briefingLike, evidenceById, elapsedMs, figureReadings };
 }

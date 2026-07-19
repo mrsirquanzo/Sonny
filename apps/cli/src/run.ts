@@ -49,6 +49,13 @@ export function formatTrace(events: TraceEvent[]): string {
 }
 
 export async function main(argv: string[]): Promise<void> {
+  if (argv[2] === 'analyze') {
+    const target = argv.slice(3).join(' ').trim();
+    if (!target) { console.error('usage: sonny analyze <TARGET>'); process.exit(1); return; }
+    const { runAnalyze } = await import('./analyze.js');
+    await runAnalyze(target);
+    return;
+  }
   if (argv[2] === 'extract-patent') {
     const file = argv[3];
     if (!file) { console.error('usage: extract-patent <file>'); process.exit(1); return; }

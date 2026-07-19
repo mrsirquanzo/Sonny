@@ -1,0 +1,17 @@
+{
+  "fixtureVersion": "1.0.0",
+  "description": "Adversarial claim asserts a value absent from the schema-validated Slice 1 TROP2 results.json.",
+  "claim": {
+    "id": "fabricated-output",
+    "text": "The median TACSTD2 gene effect was 42 Chronos gene effect.",
+    "citations": ["$COMPUTATION_EVIDENCE"],
+    "confidence": 1,
+    "computedBinding": {
+      "computationId": "$COMPUTATION_ID",
+      "resultKey": "dependency.median_gene_effect",
+      "assertedValue": 42,
+      "assertedUnit": "Chronos gene effect"
+    }
+  },
+  "expectedGateOutcome": "dropped"
+}

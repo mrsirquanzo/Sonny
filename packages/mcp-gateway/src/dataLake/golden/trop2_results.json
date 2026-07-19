@@ -1,0 +1,2027 @@
+{
+  "artifacts": [
+    {
+      "description": "Three-panel descriptive view of DepMap dependency, same-source cBioPortal tumor/normal expression, and GTEx normal-tissue median TPM.",
+      "kind": "figure",
+      "mediaType": "image/png",
+      "path": "trop2_analysis.png"
+    }
+  ],
+  "lockedAnalysis": {
+    "dependencyCutoff": -0.5,
+    "dependencyCutoffComparator": "lte",
+    "exclusionRules": [
+      "Duplicate model_id, sample_id, or tissue_id values are fatal input errors.",
+      "Non-numeric non-empty measurement values are fatal input errors.",
+      "Missing measurements are retained in denominators and reported as missingness.",
+      "Missing DepMap lineage is labeled Unknown; lineage series require at least 5 observed gene-effect values.",
+      "Unrecognized cBioPortal sample types remain unknown and are excluded from tumor and normal summaries.",
+      "No inferential statistical test and no cross-source tumor-versus-normal comparison is performed."
+    ],
+    "lineageMinimumN": 5,
+    "normalTissueStatistic": "GTEx V8 tissue median TPM; descriptive screening flag only",
+    "statisticalTests": "none; preregistered descriptive analysis only",
+    "tumorStatistic": "median and interquartile range, tumor and normal separately"
+  },
+  "results": {
+    "dependency.fraction_at_or_below_locked_cutoff": {
+      "comparator": "lte",
+      "direction": "lower",
+      "missingness": {
+        "fraction": 0.0,
+        "missingN": 0,
+        "observedN": 1183,
+        "totalN": 1183
+      },
+      "note": "Descriptive selectivity readout only; not evidence that an essential target should be drugged.",
+      "nullable": false,
+      "precision": 6,
+      "sampleN": 1183,
+      "threshold": -0.5,
+      "tolerance": 1e-08,
+      "type": "scalar",
+      "unit": "fraction of observed models",
+      "value": 0.000845
+    },
+    "dependency.median_by_lineage": {
+      "comparator": "none",
+      "direction": "lower",
+      "groups": [
+        {
+          "comparator": "none",
+          "direction": "lower",
+          "key": "Ampulla of Vater",
+          "label": "Ampulla of Vater",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 5,
+            "totalN": 5
+          },
+          "note": "Descriptive lineage median; not an ADC suitability criterion.",
+          "nullable": false,
+          "precision": 4,
+          "sampleN": 5,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "Chronos gene effect",
+          "value": 0.0125
+        },
+        {
+          "comparator": "none",
+          "direction": "lower",
+          "key": "Biliary Tract",
+          "label": "Biliary Tract",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 34,
+            "totalN": 34
+          },
+          "note": "Descriptive lineage median; not an ADC suitability criterion.",
+          "nullable": false,
+          "precision": 4,
+          "sampleN": 34,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "Chronos gene effect",
+          "value": 0.0035
+        },
+        {
+          "comparator": "none",
+          "direction": "lower",
+          "key": "Bladder/Urinary Tract",
+          "label": "Bladder/Urinary Tract",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 34,
+            "totalN": 34
+          },
+          "note": "Descriptive lineage median; not an ADC suitability criterion.",
+          "nullable": false,
+          "precision": 4,
+          "sampleN": 34,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "Chronos gene effect",
+          "value": -0.0512
+        },
+        {
+          "comparator": "none",
+          "direction": "lower",
+          "key": "Bone",
+          "label": "Bone",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 47,
+            "totalN": 47
+          },
+          "note": "Descriptive lineage median; not an ADC suitability criterion.",
+          "nullable": false,
+          "precision": 4,
+          "sampleN": 47,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "Chronos gene effect",
+          "value": -0.0738
+        },
+        {
+          "comparator": "none",
+          "direction": "lower",
+          "key": "Bowel",
+          "label": "Bowel",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 63,
+            "totalN": 63
+          },
+          "note": "Descriptive lineage median; not an ADC suitability criterion.",
+          "nullable": false,
+          "precision": 4,
+          "sampleN": 63,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "Chronos gene effect",
+          "value": -0.0205
+        },
+        {
+          "comparator": "none",
+          "direction": "lower",
+          "key": "Breast",
+          "label": "Breast",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 53,
+            "totalN": 53
+          },
+          "note": "Descriptive lineage median; not an ADC suitability criterion.",
+          "nullable": false,
+          "precision": 4,
+          "sampleN": 53,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "Chronos gene effect",
+          "value": -0.0382
+        },
+        {
+          "comparator": "none",
+          "direction": "lower",
+          "key": "CNS/Brain",
+          "label": "CNS/Brain",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 89,
+            "totalN": 89
+          },
+          "note": "Descriptive lineage median; not an ADC suitability criterion.",
+          "nullable": false,
+          "precision": 4,
+          "sampleN": 89,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "Chronos gene effect",
+          "value": -0.0833
+        },
+        {
+          "comparator": "none",
+          "direction": "lower",
+          "key": "Cervix",
+          "label": "Cervix",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 18,
+            "totalN": 18
+          },
+          "note": "Descriptive lineage median; not an ADC suitability criterion.",
+          "nullable": false,
+          "precision": 4,
+          "sampleN": 18,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "Chronos gene effect",
+          "value": 0.0015
+        },
+        {
+          "comparator": "none",
+          "direction": "lower",
+          "key": "Esophagus/Stomach",
+          "label": "Esophagus/Stomach",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 69,
+            "totalN": 69
+          },
+          "note": "Descriptive lineage median; not an ADC suitability criterion.",
+          "nullable": false,
+          "precision": 4,
+          "sampleN": 69,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "Chronos gene effect",
+          "value": -0.0087
+        },
+        {
+          "comparator": "none",
+          "direction": "lower",
+          "key": "Eye",
+          "label": "Eye",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 15,
+            "totalN": 15
+          },
+          "note": "Descriptive lineage median; not an ADC suitability criterion.",
+          "nullable": false,
+          "precision": 4,
+          "sampleN": 15,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "Chronos gene effect",
+          "value": 0.06
+        },
+        {
+          "comparator": "none",
+          "direction": "lower",
+          "key": "Head and Neck",
+          "label": "Head and Neck",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 77,
+            "totalN": 77
+          },
+          "note": "Descriptive lineage median; not an ADC suitability criterion.",
+          "nullable": false,
+          "precision": 4,
+          "sampleN": 77,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "Chronos gene effect",
+          "value": -0.0004
+        },
+        {
+          "comparator": "none",
+          "direction": "lower",
+          "key": "Kidney",
+          "label": "Kidney",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 35,
+            "totalN": 35
+          },
+          "note": "Descriptive lineage median; not an ADC suitability criterion.",
+          "nullable": false,
+          "precision": 4,
+          "sampleN": 35,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "Chronos gene effect",
+          "value": -0.0319
+        },
+        {
+          "comparator": "none",
+          "direction": "lower",
+          "key": "Liver",
+          "label": "Liver",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 24,
+            "totalN": 24
+          },
+          "note": "Descriptive lineage median; not an ADC suitability criterion.",
+          "nullable": false,
+          "precision": 4,
+          "sampleN": 24,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "Chronos gene effect",
+          "value": -0.0155
+        },
+        {
+          "comparator": "none",
+          "direction": "lower",
+          "key": "Lung",
+          "label": "Lung",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 126,
+            "totalN": 126
+          },
+          "note": "Descriptive lineage median; not an ADC suitability criterion.",
+          "nullable": false,
+          "precision": 4,
+          "sampleN": 126,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "Chronos gene effect",
+          "value": -0.0354
+        },
+        {
+          "comparator": "none",
+          "direction": "lower",
+          "key": "Lymphoid",
+          "label": "Lymphoid",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 93,
+            "totalN": 93
+          },
+          "note": "Descriptive lineage median; not an ADC suitability criterion.",
+          "nullable": false,
+          "precision": 4,
+          "sampleN": 93,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "Chronos gene effect",
+          "value": -0.0042
+        },
+        {
+          "comparator": "none",
+          "direction": "lower",
+          "key": "Myeloid",
+          "label": "Myeloid",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 43,
+            "totalN": 43
+          },
+          "note": "Descriptive lineage median; not an ADC suitability criterion.",
+          "nullable": false,
+          "precision": 4,
+          "sampleN": 43,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "Chronos gene effect",
+          "value": 0.0228
+        },
+        {
+          "comparator": "none",
+          "direction": "lower",
+          "key": "Ovary/Fallopian Tube",
+          "label": "Ovary/Fallopian Tube",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 59,
+            "totalN": 59
+          },
+          "note": "Descriptive lineage median; not an ADC suitability criterion.",
+          "nullable": false,
+          "precision": 4,
+          "sampleN": 59,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "Chronos gene effect",
+          "value": -0.0607
+        },
+        {
+          "comparator": "none",
+          "direction": "lower",
+          "key": "Pancreas",
+          "label": "Pancreas",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 47,
+            "totalN": 47
+          },
+          "note": "Descriptive lineage median; not an ADC suitability criterion.",
+          "nullable": false,
+          "precision": 4,
+          "sampleN": 47,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "Chronos gene effect",
+          "value": -0.0229
+        },
+        {
+          "comparator": "none",
+          "direction": "lower",
+          "key": "Peripheral Nervous System",
+          "label": "Peripheral Nervous System",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 45,
+            "totalN": 45
+          },
+          "note": "Descriptive lineage median; not an ADC suitability criterion.",
+          "nullable": false,
+          "precision": 4,
+          "sampleN": 45,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "Chronos gene effect",
+          "value": -0.0414
+        },
+        {
+          "comparator": "none",
+          "direction": "lower",
+          "key": "Pleura",
+          "label": "Pleura",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 21,
+            "totalN": 21
+          },
+          "note": "Descriptive lineage median; not an ADC suitability criterion.",
+          "nullable": false,
+          "precision": 4,
+          "sampleN": 21,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "Chronos gene effect",
+          "value": -0.0137
+        },
+        {
+          "comparator": "none",
+          "direction": "lower",
+          "key": "Prostate",
+          "label": "Prostate",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 10,
+            "totalN": 10
+          },
+          "note": "Descriptive lineage median; not an ADC suitability criterion.",
+          "nullable": false,
+          "precision": 4,
+          "sampleN": 10,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "Chronos gene effect",
+          "value": -0.0216
+        },
+        {
+          "comparator": "none",
+          "direction": "lower",
+          "key": "Skin",
+          "label": "Skin",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 75,
+            "totalN": 75
+          },
+          "note": "Descriptive lineage median; not an ADC suitability criterion.",
+          "nullable": false,
+          "precision": 4,
+          "sampleN": 75,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "Chronos gene effect",
+          "value": 0.0127
+        },
+        {
+          "comparator": "none",
+          "direction": "lower",
+          "key": "Soft Tissue",
+          "label": "Soft Tissue",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 46,
+            "totalN": 46
+          },
+          "note": "Descriptive lineage median; not an ADC suitability criterion.",
+          "nullable": false,
+          "precision": 4,
+          "sampleN": 46,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "Chronos gene effect",
+          "value": -0.0306
+        },
+        {
+          "comparator": "none",
+          "direction": "lower",
+          "key": "Testis",
+          "label": "Testis",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 5,
+            "totalN": 5
+          },
+          "note": "Descriptive lineage median; not an ADC suitability criterion.",
+          "nullable": false,
+          "precision": 4,
+          "sampleN": 5,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "Chronos gene effect",
+          "value": 0.0268
+        },
+        {
+          "comparator": "none",
+          "direction": "lower",
+          "key": "Thyroid",
+          "label": "Thyroid",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 11,
+            "totalN": 11
+          },
+          "note": "Descriptive lineage median; not an ADC suitability criterion.",
+          "nullable": false,
+          "precision": 4,
+          "sampleN": 11,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "Chronos gene effect",
+          "value": -0.064
+        },
+        {
+          "comparator": "none",
+          "direction": "lower",
+          "key": "Uterus",
+          "label": "Uterus",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 34,
+            "totalN": 34
+          },
+          "note": "Descriptive lineage median; not an ADC suitability criterion.",
+          "nullable": false,
+          "precision": 4,
+          "sampleN": 34,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "Chronos gene effect",
+          "value": -0.0196
+        }
+      ],
+      "missingness": {
+        "fraction": 0.0,
+        "missingN": 0,
+        "observedN": 1183,
+        "totalN": 1183
+      },
+      "note": "Lineages shown only when observed N >= 5.",
+      "nullable": false,
+      "precision": 4,
+      "sampleN": 1183,
+      "threshold": null,
+      "tolerance": 1e-06,
+      "type": "grouped-series",
+      "unit": "Chronos gene effect",
+      "value": null
+    },
+    "dependency.median_gene_effect": {
+      "comparator": "none",
+      "direction": "lower",
+      "missingness": {
+        "fraction": 0.0,
+        "missingN": 0,
+        "observedN": 1183,
+        "totalN": 1183
+      },
+      "note": "Orthogonal tumor-biology context; dependency alone does not establish ADC suitability.",
+      "nullable": false,
+      "precision": 4,
+      "sampleN": 1183,
+      "threshold": null,
+      "tolerance": 1e-06,
+      "type": "scalar",
+      "unit": "Chronos gene effect",
+      "value": -0.0234
+    },
+    "dependency.models_at_or_below_locked_cutoff_n": {
+      "comparator": "lte",
+      "direction": "lower",
+      "missingness": {
+        "fraction": 0.0,
+        "missingN": 0,
+        "observedN": 1183,
+        "totalN": 1183
+      },
+      "note": "Count uses the reviewed cutoff and includes no model-selected threshold.",
+      "nullable": false,
+      "precision": 0,
+      "sampleN": 1183,
+      "threshold": -0.5,
+      "tolerance": 0.0,
+      "type": "scalar",
+      "unit": "models",
+      "value": 1.0
+    },
+    "normal_tissue.maximum_tissue_median_tpm": {
+      "comparator": "none",
+      "direction": "higher",
+      "missingness": {
+        "fraction": 0.0,
+        "missingN": 0,
+        "observedN": 54,
+        "totalN": 54
+      },
+      "note": "Descriptive screening maximum only; flags potential normal-tissue exposure risk requiring protein-level and clinical confirmation.",
+      "nullable": false,
+      "precision": 3,
+      "sampleN": 54,
+      "threshold": null,
+      "tolerance": 1e-06,
+      "type": "scalar",
+      "unit": "TPM",
+      "value": 1419.1
+    },
+    "normal_tissue.median_tpm_by_tissue": {
+      "comparator": "none",
+      "direction": "not_applicable",
+      "groups": [
+        {
+          "comparator": "none",
+          "direction": "not_applicable",
+          "key": "Adipose_Subcutaneous",
+          "label": "Adipose Subcutaneous",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 1,
+            "totalN": 1
+          },
+          "note": "Bulk normal-tissue RNA screening value; does not establish epithelial localization, surface protein abundance, or toxicity.",
+          "nullable": false,
+          "precision": 3,
+          "sampleN": 1,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "TPM",
+          "value": 6.28
+        },
+        {
+          "comparator": "none",
+          "direction": "not_applicable",
+          "key": "Adipose_Visceral_Omentum",
+          "label": "Adipose Visceral Omentum",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 1,
+            "totalN": 1
+          },
+          "note": "Bulk normal-tissue RNA screening value; does not establish epithelial localization, surface protein abundance, or toxicity.",
+          "nullable": false,
+          "precision": 3,
+          "sampleN": 1,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "TPM",
+          "value": 2.227
+        },
+        {
+          "comparator": "none",
+          "direction": "not_applicable",
+          "key": "Adrenal_Gland",
+          "label": "Adrenal Gland",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 1,
+            "totalN": 1
+          },
+          "note": "Bulk normal-tissue RNA screening value; does not establish epithelial localization, surface protein abundance, or toxicity.",
+          "nullable": false,
+          "precision": 3,
+          "sampleN": 1,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "TPM",
+          "value": 0.958
+        },
+        {
+          "comparator": "none",
+          "direction": "not_applicable",
+          "key": "Artery_Aorta",
+          "label": "Artery Aorta",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 1,
+            "totalN": 1
+          },
+          "note": "Bulk normal-tissue RNA screening value; does not establish epithelial localization, surface protein abundance, or toxicity.",
+          "nullable": false,
+          "precision": 3,
+          "sampleN": 1,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "TPM",
+          "value": 6.036
+        },
+        {
+          "comparator": "none",
+          "direction": "not_applicable",
+          "key": "Artery_Coronary",
+          "label": "Artery Coronary",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 1,
+            "totalN": 1
+          },
+          "note": "Bulk normal-tissue RNA screening value; does not establish epithelial localization, surface protein abundance, or toxicity.",
+          "nullable": false,
+          "precision": 3,
+          "sampleN": 1,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "TPM",
+          "value": 3.977
+        },
+        {
+          "comparator": "none",
+          "direction": "not_applicable",
+          "key": "Artery_Tibial",
+          "label": "Artery Tibial",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 1,
+            "totalN": 1
+          },
+          "note": "Bulk normal-tissue RNA screening value; does not establish epithelial localization, surface protein abundance, or toxicity.",
+          "nullable": false,
+          "precision": 3,
+          "sampleN": 1,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "TPM",
+          "value": 5.059
+        },
+        {
+          "comparator": "none",
+          "direction": "not_applicable",
+          "key": "Bladder",
+          "label": "Bladder",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 1,
+            "totalN": 1
+          },
+          "note": "Bulk normal-tissue RNA screening value; does not establish epithelial localization, surface protein abundance, or toxicity.",
+          "nullable": false,
+          "precision": 3,
+          "sampleN": 1,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "TPM",
+          "value": 38.395
+        },
+        {
+          "comparator": "none",
+          "direction": "not_applicable",
+          "key": "Brain_Amygdala",
+          "label": "Brain Amygdala",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 1,
+            "totalN": 1
+          },
+          "note": "Bulk normal-tissue RNA screening value; does not establish epithelial localization, surface protein abundance, or toxicity.",
+          "nullable": false,
+          "precision": 3,
+          "sampleN": 1,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "TPM",
+          "value": 0.225
+        },
+        {
+          "comparator": "none",
+          "direction": "not_applicable",
+          "key": "Brain_Anterior_cingulate_cortex_BA24",
+          "label": "Brain Anterior cingulate cortex BA24",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 1,
+            "totalN": 1
+          },
+          "note": "Bulk normal-tissue RNA screening value; does not establish epithelial localization, surface protein abundance, or toxicity.",
+          "nullable": false,
+          "precision": 3,
+          "sampleN": 1,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "TPM",
+          "value": 0.172
+        },
+        {
+          "comparator": "none",
+          "direction": "not_applicable",
+          "key": "Brain_Caudate_basal_ganglia",
+          "label": "Brain Caudate basal ganglia",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 1,
+            "totalN": 1
+          },
+          "note": "Bulk normal-tissue RNA screening value; does not establish epithelial localization, surface protein abundance, or toxicity.",
+          "nullable": false,
+          "precision": 3,
+          "sampleN": 1,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "TPM",
+          "value": 0.319
+        },
+        {
+          "comparator": "none",
+          "direction": "not_applicable",
+          "key": "Brain_Cerebellar_Hemisphere",
+          "label": "Brain Cerebellar Hemisphere",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 1,
+            "totalN": 1
+          },
+          "note": "Bulk normal-tissue RNA screening value; does not establish epithelial localization, surface protein abundance, or toxicity.",
+          "nullable": false,
+          "precision": 3,
+          "sampleN": 1,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "TPM",
+          "value": 0.25
+        },
+        {
+          "comparator": "none",
+          "direction": "not_applicable",
+          "key": "Brain_Cerebellum",
+          "label": "Brain Cerebellum",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 1,
+            "totalN": 1
+          },
+          "note": "Bulk normal-tissue RNA screening value; does not establish epithelial localization, surface protein abundance, or toxicity.",
+          "nullable": false,
+          "precision": 3,
+          "sampleN": 1,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "TPM",
+          "value": 0.414
+        },
+        {
+          "comparator": "none",
+          "direction": "not_applicable",
+          "key": "Brain_Cortex",
+          "label": "Brain Cortex",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 1,
+            "totalN": 1
+          },
+          "note": "Bulk normal-tissue RNA screening value; does not establish epithelial localization, surface protein abundance, or toxicity.",
+          "nullable": false,
+          "precision": 3,
+          "sampleN": 1,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "TPM",
+          "value": 0.327
+        },
+        {
+          "comparator": "none",
+          "direction": "not_applicable",
+          "key": "Brain_Frontal_Cortex_BA9",
+          "label": "Brain Frontal Cortex BA9",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 1,
+            "totalN": 1
+          },
+          "note": "Bulk normal-tissue RNA screening value; does not establish epithelial localization, surface protein abundance, or toxicity.",
+          "nullable": false,
+          "precision": 3,
+          "sampleN": 1,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "TPM",
+          "value": 0.275
+        },
+        {
+          "comparator": "none",
+          "direction": "not_applicable",
+          "key": "Brain_Hippocampus",
+          "label": "Brain Hippocampus",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 1,
+            "totalN": 1
+          },
+          "note": "Bulk normal-tissue RNA screening value; does not establish epithelial localization, surface protein abundance, or toxicity.",
+          "nullable": false,
+          "precision": 3,
+          "sampleN": 1,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "TPM",
+          "value": 0.353
+        },
+        {
+          "comparator": "none",
+          "direction": "not_applicable",
+          "key": "Brain_Hypothalamus",
+          "label": "Brain Hypothalamus",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 1,
+            "totalN": 1
+          },
+          "note": "Bulk normal-tissue RNA screening value; does not establish epithelial localization, surface protein abundance, or toxicity.",
+          "nullable": false,
+          "precision": 3,
+          "sampleN": 1,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "TPM",
+          "value": 0.297
+        },
+        {
+          "comparator": "none",
+          "direction": "not_applicable",
+          "key": "Brain_Nucleus_accumbens_basal_ganglia",
+          "label": "Brain Nucleus accumbens basal ganglia",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 1,
+            "totalN": 1
+          },
+          "note": "Bulk normal-tissue RNA screening value; does not establish epithelial localization, surface protein abundance, or toxicity.",
+          "nullable": false,
+          "precision": 3,
+          "sampleN": 1,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "TPM",
+          "value": 0.273
+        },
+        {
+          "comparator": "none",
+          "direction": "not_applicable",
+          "key": "Brain_Putamen_basal_ganglia",
+          "label": "Brain Putamen basal ganglia",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 1,
+            "totalN": 1
+          },
+          "note": "Bulk normal-tissue RNA screening value; does not establish epithelial localization, surface protein abundance, or toxicity.",
+          "nullable": false,
+          "precision": 3,
+          "sampleN": 1,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "TPM",
+          "value": 0.319
+        },
+        {
+          "comparator": "none",
+          "direction": "not_applicable",
+          "key": "Brain_Spinal_cord_cervical_c-1",
+          "label": "Brain Spinal cord cervical c-1",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 1,
+            "totalN": 1
+          },
+          "note": "Bulk normal-tissue RNA screening value; does not establish epithelial localization, surface protein abundance, or toxicity.",
+          "nullable": false,
+          "precision": 3,
+          "sampleN": 1,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "TPM",
+          "value": 0.394
+        },
+        {
+          "comparator": "none",
+          "direction": "not_applicable",
+          "key": "Brain_Substantia_nigra",
+          "label": "Brain Substantia nigra",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 1,
+            "totalN": 1
+          },
+          "note": "Bulk normal-tissue RNA screening value; does not establish epithelial localization, surface protein abundance, or toxicity.",
+          "nullable": false,
+          "precision": 3,
+          "sampleN": 1,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "TPM",
+          "value": 0.376
+        },
+        {
+          "comparator": "none",
+          "direction": "not_applicable",
+          "key": "Breast_Mammary_Tissue",
+          "label": "Breast Mammary Tissue",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 1,
+            "totalN": 1
+          },
+          "note": "Bulk normal-tissue RNA screening value; does not establish epithelial localization, surface protein abundance, or toxicity.",
+          "nullable": false,
+          "precision": 3,
+          "sampleN": 1,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "TPM",
+          "value": 131.473
+        },
+        {
+          "comparator": "none",
+          "direction": "not_applicable",
+          "key": "Cells_Cultured_fibroblasts",
+          "label": "Cells Cultured fibroblasts",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 1,
+            "totalN": 1
+          },
+          "note": "Bulk normal-tissue RNA screening value; does not establish epithelial localization, surface protein abundance, or toxicity.",
+          "nullable": false,
+          "precision": 3,
+          "sampleN": 1,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "TPM",
+          "value": 2.928
+        },
+        {
+          "comparator": "none",
+          "direction": "not_applicable",
+          "key": "Cells_EBV-transformed_lymphocytes",
+          "label": "Cells EBV-transformed lymphocytes",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 1,
+            "totalN": 1
+          },
+          "note": "Bulk normal-tissue RNA screening value; does not establish epithelial localization, surface protein abundance, or toxicity.",
+          "nullable": false,
+          "precision": 3,
+          "sampleN": 1,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "TPM",
+          "value": 0.408
+        },
+        {
+          "comparator": "none",
+          "direction": "not_applicable",
+          "key": "Cervix_Ectocervix",
+          "label": "Cervix Ectocervix",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 1,
+            "totalN": 1
+          },
+          "note": "Bulk normal-tissue RNA screening value; does not establish epithelial localization, surface protein abundance, or toxicity.",
+          "nullable": false,
+          "precision": 3,
+          "sampleN": 1,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "TPM",
+          "value": 5.053
+        },
+        {
+          "comparator": "none",
+          "direction": "not_applicable",
+          "key": "Cervix_Endocervix",
+          "label": "Cervix Endocervix",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 1,
+            "totalN": 1
+          },
+          "note": "Bulk normal-tissue RNA screening value; does not establish epithelial localization, surface protein abundance, or toxicity.",
+          "nullable": false,
+          "precision": 3,
+          "sampleN": 1,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "TPM",
+          "value": 4.149
+        },
+        {
+          "comparator": "none",
+          "direction": "not_applicable",
+          "key": "Colon_Sigmoid",
+          "label": "Colon Sigmoid",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 1,
+            "totalN": 1
+          },
+          "note": "Bulk normal-tissue RNA screening value; does not establish epithelial localization, surface protein abundance, or toxicity.",
+          "nullable": false,
+          "precision": 3,
+          "sampleN": 1,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "TPM",
+          "value": 1.301
+        },
+        {
+          "comparator": "none",
+          "direction": "not_applicable",
+          "key": "Colon_Transverse",
+          "label": "Colon Transverse",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 1,
+            "totalN": 1
+          },
+          "note": "Bulk normal-tissue RNA screening value; does not establish epithelial localization, surface protein abundance, or toxicity.",
+          "nullable": false,
+          "precision": 3,
+          "sampleN": 1,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "TPM",
+          "value": 1.273
+        },
+        {
+          "comparator": "none",
+          "direction": "not_applicable",
+          "key": "Esophagus_Gastroesophageal_Junction",
+          "label": "Esophagus Gastroesophageal Junction",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 1,
+            "totalN": 1
+          },
+          "note": "Bulk normal-tissue RNA screening value; does not establish epithelial localization, surface protein abundance, or toxicity.",
+          "nullable": false,
+          "precision": 3,
+          "sampleN": 1,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "TPM",
+          "value": 1.969
+        },
+        {
+          "comparator": "none",
+          "direction": "not_applicable",
+          "key": "Esophagus_Mucosa",
+          "label": "Esophagus Mucosa",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 1,
+            "totalN": 1
+          },
+          "note": "Bulk normal-tissue RNA screening value; does not establish epithelial localization, surface protein abundance, or toxicity.",
+          "nullable": false,
+          "precision": 3,
+          "sampleN": 1,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "TPM",
+          "value": 1419.1
+        },
+        {
+          "comparator": "none",
+          "direction": "not_applicable",
+          "key": "Esophagus_Muscularis",
+          "label": "Esophagus Muscularis",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 1,
+            "totalN": 1
+          },
+          "note": "Bulk normal-tissue RNA screening value; does not establish epithelial localization, surface protein abundance, or toxicity.",
+          "nullable": false,
+          "precision": 3,
+          "sampleN": 1,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "TPM",
+          "value": 2.212
+        },
+        {
+          "comparator": "none",
+          "direction": "not_applicable",
+          "key": "Fallopian_Tube",
+          "label": "Fallopian Tube",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 1,
+            "totalN": 1
+          },
+          "note": "Bulk normal-tissue RNA screening value; does not establish epithelial localization, surface protein abundance, or toxicity.",
+          "nullable": false,
+          "precision": 3,
+          "sampleN": 1,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "TPM",
+          "value": 18.224
+        },
+        {
+          "comparator": "none",
+          "direction": "not_applicable",
+          "key": "Heart_Atrial_Appendage",
+          "label": "Heart Atrial Appendage",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 1,
+            "totalN": 1
+          },
+          "note": "Bulk normal-tissue RNA screening value; does not establish epithelial localization, surface protein abundance, or toxicity.",
+          "nullable": false,
+          "precision": 3,
+          "sampleN": 1,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "TPM",
+          "value": 0.541
+        },
+        {
+          "comparator": "none",
+          "direction": "not_applicable",
+          "key": "Heart_Left_Ventricle",
+          "label": "Heart Left Ventricle",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 1,
+            "totalN": 1
+          },
+          "note": "Bulk normal-tissue RNA screening value; does not establish epithelial localization, surface protein abundance, or toxicity.",
+          "nullable": false,
+          "precision": 3,
+          "sampleN": 1,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "TPM",
+          "value": 0.235
+        },
+        {
+          "comparator": "none",
+          "direction": "not_applicable",
+          "key": "Kidney_Cortex",
+          "label": "Kidney Cortex",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 1,
+            "totalN": 1
+          },
+          "note": "Bulk normal-tissue RNA screening value; does not establish epithelial localization, surface protein abundance, or toxicity.",
+          "nullable": false,
+          "precision": 3,
+          "sampleN": 1,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "TPM",
+          "value": 59.22
+        },
+        {
+          "comparator": "none",
+          "direction": "not_applicable",
+          "key": "Kidney_Medulla",
+          "label": "Kidney Medulla",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 1,
+            "totalN": 1
+          },
+          "note": "Bulk normal-tissue RNA screening value; does not establish epithelial localization, surface protein abundance, or toxicity.",
+          "nullable": false,
+          "precision": 3,
+          "sampleN": 1,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "TPM",
+          "value": 218.479
+        },
+        {
+          "comparator": "none",
+          "direction": "not_applicable",
+          "key": "Liver",
+          "label": "Liver",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 1,
+            "totalN": 1
+          },
+          "note": "Bulk normal-tissue RNA screening value; does not establish epithelial localization, surface protein abundance, or toxicity.",
+          "nullable": false,
+          "precision": 3,
+          "sampleN": 1,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "TPM",
+          "value": 1.427
+        },
+        {
+          "comparator": "none",
+          "direction": "not_applicable",
+          "key": "Lung",
+          "label": "Lung",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 1,
+            "totalN": 1
+          },
+          "note": "Bulk normal-tissue RNA screening value; does not establish epithelial localization, surface protein abundance, or toxicity.",
+          "nullable": false,
+          "precision": 3,
+          "sampleN": 1,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "TPM",
+          "value": 118.689
+        },
+        {
+          "comparator": "none",
+          "direction": "not_applicable",
+          "key": "Minor_Salivary_Gland",
+          "label": "Minor Salivary Gland",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 1,
+            "totalN": 1
+          },
+          "note": "Bulk normal-tissue RNA screening value; does not establish epithelial localization, surface protein abundance, or toxicity.",
+          "nullable": false,
+          "precision": 3,
+          "sampleN": 1,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "TPM",
+          "value": 680.751
+        },
+        {
+          "comparator": "none",
+          "direction": "not_applicable",
+          "key": "Muscle_Skeletal",
+          "label": "Muscle Skeletal",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 1,
+            "totalN": 1
+          },
+          "note": "Bulk normal-tissue RNA screening value; does not establish epithelial localization, surface protein abundance, or toxicity.",
+          "nullable": false,
+          "precision": 3,
+          "sampleN": 1,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "TPM",
+          "value": 0.479
+        },
+        {
+          "comparator": "none",
+          "direction": "not_applicable",
+          "key": "Nerve_Tibial",
+          "label": "Nerve Tibial",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 1,
+            "totalN": 1
+          },
+          "note": "Bulk normal-tissue RNA screening value; does not establish epithelial localization, surface protein abundance, or toxicity.",
+          "nullable": false,
+          "precision": 3,
+          "sampleN": 1,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "TPM",
+          "value": 11.65
+        },
+        {
+          "comparator": "none",
+          "direction": "not_applicable",
+          "key": "Ovary",
+          "label": "Ovary",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 1,
+            "totalN": 1
+          },
+          "note": "Bulk normal-tissue RNA screening value; does not establish epithelial localization, surface protein abundance, or toxicity.",
+          "nullable": false,
+          "precision": 3,
+          "sampleN": 1,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "TPM",
+          "value": 1.873
+        },
+        {
+          "comparator": "none",
+          "direction": "not_applicable",
+          "key": "Pancreas",
+          "label": "Pancreas",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 1,
+            "totalN": 1
+          },
+          "note": "Bulk normal-tissue RNA screening value; does not establish epithelial localization, surface protein abundance, or toxicity.",
+          "nullable": false,
+          "precision": 3,
+          "sampleN": 1,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "TPM",
+          "value": 46.474
+        },
+        {
+          "comparator": "none",
+          "direction": "not_applicable",
+          "key": "Pituitary",
+          "label": "Pituitary",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 1,
+            "totalN": 1
+          },
+          "note": "Bulk normal-tissue RNA screening value; does not establish epithelial localization, surface protein abundance, or toxicity.",
+          "nullable": false,
+          "precision": 3,
+          "sampleN": 1,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "TPM",
+          "value": 2.118
+        },
+        {
+          "comparator": "none",
+          "direction": "not_applicable",
+          "key": "Prostate",
+          "label": "Prostate",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 1,
+            "totalN": 1
+          },
+          "note": "Bulk normal-tissue RNA screening value; does not establish epithelial localization, surface protein abundance, or toxicity.",
+          "nullable": false,
+          "precision": 3,
+          "sampleN": 1,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "TPM",
+          "value": 154.071
+        },
+        {
+          "comparator": "none",
+          "direction": "not_applicable",
+          "key": "Skin_Not_Sun_Exposed_Suprapubic",
+          "label": "Skin Not Sun Exposed Suprapubic",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 1,
+            "totalN": 1
+          },
+          "note": "Bulk normal-tissue RNA screening value; does not establish epithelial localization, surface protein abundance, or toxicity.",
+          "nullable": false,
+          "precision": 3,
+          "sampleN": 1,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "TPM",
+          "value": 708.696
+        },
+        {
+          "comparator": "none",
+          "direction": "not_applicable",
+          "key": "Skin_Sun_Exposed_Lower_leg",
+          "label": "Skin Sun Exposed Lower leg",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 1,
+            "totalN": 1
+          },
+          "note": "Bulk normal-tissue RNA screening value; does not establish epithelial localization, surface protein abundance, or toxicity.",
+          "nullable": false,
+          "precision": 3,
+          "sampleN": 1,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "TPM",
+          "value": 683.917
+        },
+        {
+          "comparator": "none",
+          "direction": "not_applicable",
+          "key": "Small_Intestine_Terminal_Ileum",
+          "label": "Small Intestine Terminal Ileum",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 1,
+            "totalN": 1
+          },
+          "note": "Bulk normal-tissue RNA screening value; does not establish epithelial localization, surface protein abundance, or toxicity.",
+          "nullable": false,
+          "precision": 3,
+          "sampleN": 1,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "TPM",
+          "value": 2.029
+        },
+        {
+          "comparator": "none",
+          "direction": "not_applicable",
+          "key": "Spleen",
+          "label": "Spleen",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 1,
+            "totalN": 1
+          },
+          "note": "Bulk normal-tissue RNA screening value; does not establish epithelial localization, surface protein abundance, or toxicity.",
+          "nullable": false,
+          "precision": 3,
+          "sampleN": 1,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "TPM",
+          "value": 1.362
+        },
+        {
+          "comparator": "none",
+          "direction": "not_applicable",
+          "key": "Stomach",
+          "label": "Stomach",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 1,
+            "totalN": 1
+          },
+          "note": "Bulk normal-tissue RNA screening value; does not establish epithelial localization, surface protein abundance, or toxicity.",
+          "nullable": false,
+          "precision": 3,
+          "sampleN": 1,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "TPM",
+          "value": 9.715
+        },
+        {
+          "comparator": "none",
+          "direction": "not_applicable",
+          "key": "Testis",
+          "label": "Testis",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 1,
+            "totalN": 1
+          },
+          "note": "Bulk normal-tissue RNA screening value; does not establish epithelial localization, surface protein abundance, or toxicity.",
+          "nullable": false,
+          "precision": 3,
+          "sampleN": 1,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "TPM",
+          "value": 1.04
+        },
+        {
+          "comparator": "none",
+          "direction": "not_applicable",
+          "key": "Thyroid",
+          "label": "Thyroid",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 1,
+            "totalN": 1
+          },
+          "note": "Bulk normal-tissue RNA screening value; does not establish epithelial localization, surface protein abundance, or toxicity.",
+          "nullable": false,
+          "precision": 3,
+          "sampleN": 1,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "TPM",
+          "value": 8.103
+        },
+        {
+          "comparator": "none",
+          "direction": "not_applicable",
+          "key": "Uterus",
+          "label": "Uterus",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 1,
+            "totalN": 1
+          },
+          "note": "Bulk normal-tissue RNA screening value; does not establish epithelial localization, surface protein abundance, or toxicity.",
+          "nullable": false,
+          "precision": 3,
+          "sampleN": 1,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "TPM",
+          "value": 4.842
+        },
+        {
+          "comparator": "none",
+          "direction": "not_applicable",
+          "key": "Vagina",
+          "label": "Vagina",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 1,
+            "totalN": 1
+          },
+          "note": "Bulk normal-tissue RNA screening value; does not establish epithelial localization, surface protein abundance, or toxicity.",
+          "nullable": false,
+          "precision": 3,
+          "sampleN": 1,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "TPM",
+          "value": 655.984
+        },
+        {
+          "comparator": "none",
+          "direction": "not_applicable",
+          "key": "Whole_Blood",
+          "label": "Whole Blood",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 1,
+            "totalN": 1
+          },
+          "note": "Bulk normal-tissue RNA screening value; does not establish epithelial localization, surface protein abundance, or toxicity.",
+          "nullable": false,
+          "precision": 3,
+          "sampleN": 1,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "TPM",
+          "value": 1.435
+        }
+      ],
+      "missingness": {
+        "fraction": 0.0,
+        "missingN": 0,
+        "observedN": 54,
+        "totalN": 54
+      },
+      "note": "Flags potential normal-tissue exposure risk requiring protein-level and clinical confirmation. This result is not quantitatively compared with the cBioPortal cohort.",
+      "nullable": false,
+      "precision": 3,
+      "sampleN": 54,
+      "threshold": null,
+      "tolerance": 1e-06,
+      "type": "grouped-series",
+      "unit": "TPM",
+      "value": null
+    },
+    "tumor_expression.median_by_sample_class": {
+      "comparator": "none",
+      "direction": "not_applicable",
+      "groups": [
+        {
+          "comparator": "none",
+          "direction": "not_applicable",
+          "key": "tumor",
+          "label": "Tumor",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 1082,
+            "totalN": 1082
+          },
+          "note": null,
+          "nullable": false,
+          "precision": 3,
+          "sampleN": 1082,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "RSEM",
+          "value": 5924.585
+        },
+        {
+          "comparator": "none",
+          "direction": "not_applicable",
+          "key": "normal",
+          "label": "Normal",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 0,
+            "totalN": 0
+          },
+          "note": "No observed normal expression values were present in this cBioPortal slice.",
+          "nullable": true,
+          "precision": 3,
+          "sampleN": 0,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "RSEM",
+          "value": null
+        }
+      ],
+      "missingness": {
+        "fraction": 0.0,
+        "missingN": 0,
+        "observedN": 1082,
+        "totalN": 1082
+      },
+      "note": "Tumor and normal are same-study, same-profile summaries. No quantitative comparison to GTEx is made. Null normal values mean the selected cBioPortal slice contains no normal observations.",
+      "nullable": false,
+      "precision": 3,
+      "sampleN": 1082,
+      "threshold": null,
+      "tolerance": 1e-06,
+      "type": "grouped-series",
+      "unit": "RSEM",
+      "value": null
+    },
+    "tumor_expression.q1_by_sample_class": {
+      "comparator": "none",
+      "direction": "not_applicable",
+      "groups": [
+        {
+          "comparator": "none",
+          "direction": "not_applicable",
+          "key": "tumor",
+          "label": "Tumor",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 1082,
+            "totalN": 1082
+          },
+          "note": null,
+          "nullable": false,
+          "precision": 3,
+          "sampleN": 1082,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "RSEM",
+          "value": 3739.18
+        },
+        {
+          "comparator": "none",
+          "direction": "not_applicable",
+          "key": "normal",
+          "label": "Normal",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 0,
+            "totalN": 0
+          },
+          "note": "No observed normal expression values were present in this cBioPortal slice.",
+          "nullable": true,
+          "precision": 3,
+          "sampleN": 0,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "RSEM",
+          "value": null
+        }
+      ],
+      "missingness": {
+        "fraction": 0.0,
+        "missingN": 0,
+        "observedN": 1082,
+        "totalN": 1082
+      },
+      "note": "Tumor and normal are same-study, same-profile summaries. No quantitative comparison to GTEx is made. Null normal values mean the selected cBioPortal slice contains no normal observations.",
+      "nullable": false,
+      "precision": 3,
+      "sampleN": 1082,
+      "threshold": null,
+      "tolerance": 1e-06,
+      "type": "grouped-series",
+      "unit": "RSEM",
+      "value": null
+    },
+    "tumor_expression.q3_by_sample_class": {
+      "comparator": "none",
+      "direction": "not_applicable",
+      "groups": [
+        {
+          "comparator": "none",
+          "direction": "not_applicable",
+          "key": "tumor",
+          "label": "Tumor",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 1082,
+            "totalN": 1082
+          },
+          "note": null,
+          "nullable": false,
+          "precision": 3,
+          "sampleN": 1082,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "RSEM",
+          "value": 9008.033
+        },
+        {
+          "comparator": "none",
+          "direction": "not_applicable",
+          "key": "normal",
+          "label": "Normal",
+          "missingness": {
+            "fraction": 0.0,
+            "missingN": 0,
+            "observedN": 0,
+            "totalN": 0
+          },
+          "note": "No observed normal expression values were present in this cBioPortal slice.",
+          "nullable": true,
+          "precision": 3,
+          "sampleN": 0,
+          "threshold": null,
+          "tolerance": 1e-06,
+          "type": "scalar",
+          "unit": "RSEM",
+          "value": null
+        }
+      ],
+      "missingness": {
+        "fraction": 0.0,
+        "missingN": 0,
+        "observedN": 1082,
+        "totalN": 1082
+      },
+      "note": "Tumor and normal are same-study, same-profile summaries. No quantitative comparison to GTEx is made. Null normal values mean the selected cBioPortal slice contains no normal observations.",
+      "nullable": false,
+      "precision": 3,
+      "sampleN": 1082,
+      "threshold": null,
+      "tolerance": 1e-06,
+      "type": "grouped-series",
+      "unit": "RSEM",
+      "value": null
+    }
+  },
+  "schemaVersion": "1.0.0",
+  "target": {
+    "entrezGeneId": 4070,
+    "gencodeId": "ENSG00000184292.7",
+    "name": "TROP2",
+    "symbol": "TACSTD2"
+  },
+  "templateId": "trop2_analysis",
+  "templateVersion": "1.0.0",
+  "warnings": [
+    "No observed normal expression values were present in this cBioPortal slice."
+  ]
+}

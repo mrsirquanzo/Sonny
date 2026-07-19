@@ -17,7 +17,7 @@ describe('formatTrace', () => {
 
   it('renders skipped specialists and completed sections with RAG + takeaway + cited claims', () => {
     const section: Section = {
-      id: 'target_biology', title: 'Target Biology', takeaway: 'EGFR is a tractable kinase.',
+      kind: 'research', id: 'target_biology', title: 'Target Biology', takeaway: 'EGFR is a tractable kinase.',
       claims: [{ id: 'c1', text: 'EGFR is a receptor tyrosine kinase.', citations: ['ENSG00000146648'], confidence: 0.95 }],
       sources: ['ENSG00000146648'], rag: 'green',
     };

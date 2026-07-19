@@ -16,7 +16,7 @@ const briefing: Briefing = {
     conditions: ['c'],
   },
   executiveRead: 'exec',
-  sections: [{ id: 'sec', title: 'Sec', takeaway: 't', claims: [{ id: 'c1', text: 'x', citations: ['PMID:1'], confidence: 0.9 }], sources: ['PMID:1'], rag: 'amber' }],
+  sections: [{ kind: 'research', id: 'sec', title: 'Sec', takeaway: 't', claims: [{ id: 'c1', text: 'x', citations: ['PMID:1'], confidence: 0.9 }], sources: ['PMID:1'], rag: 'amber' }],
   weighing: { takeaway: 'w', claims: [] },
   references: [],
   kolCluster: { target: 'CDCP1', labs: [{ investigator: 'Hooper JD', institution: 'UQ', paperCount: 3, weight: 1, evidenceIds: ['PMID:1'] }] },

@@ -1,6 +1,13 @@
 import { z } from 'zod';
+import {
+  AnalysisResultsSchema, JsonValueSchema, resolveResultBinding,
+} from './results.js';
+import {
+  CanonicalDatasetInputSchema, ImageDigestSchema, Sha256Schema, computationId,
+  sha256CanonicalJson, sha256Text,
+} from './computationManifest.js';
 
-export const EvidenceKindSchema = z.enum(['target', 'publication', 'trial', 'patent', 'dataset', 'disease', 'drug', 'figure']);
+export const EvidenceKindSchema = z.enum(['target', 'publication', 'trial', 'patent', 'dataset', 'disease', 'drug', 'figure', 'computation']);
 export type EvidenceKind = z.infer<typeof EvidenceKindSchema>;
 
 export const AuthorSchema = z.object({
@@ -18,9 +25,8 @@ export const EvidenceMetadataSchema = z.object({
 });
 export type EvidenceMetadata = z.infer<typeof EvidenceMetadataSchema>;
 
-export const EvidenceSchema = z.object({
+const EvidenceCommonSchema = z.object({
   id: z.string().min(1),
-  kind: EvidenceKindSchema,
   source: z.string().min(1),
   title: z.string(),
   snippet: z.string(),
@@ -31,7 +37,79 @@ export const EvidenceSchema = z.object({
   retrievedAt: z.string(),
   metadata: EvidenceMetadataSchema.optional(),
 });
+
+export const LiteratureEvidenceSchema = EvidenceCommonSchema.extend({
+  kind: z.enum(['target', 'publication', 'trial', 'patent', 'dataset', 'disease', 'drug', 'figure']),
+});
+
+export const ComputationDatasetInputSchema = CanonicalDatasetInputSchema.extend({
+  lineageManifest: z.record(JsonValueSchema),
+}).strict();
+
+export const ComputationExitStatusSchema = z.object({
+  exitCode: z.number().int().nullable(),
+  timedOut: z.boolean(),
+  signal: z.string().min(1).nullable(),
+}).strict();
+
+export const ComputationEvidenceObjectSchema = EvidenceCommonSchema.extend({
+  kind: z.literal('computation'),
+  computationId: Sha256Schema,
+  templateId: z.string().min(1),
+  templateVersion: z.string().regex(/^\d+\.\d+\.\d+$/),
+  datasetInputs: z.array(ComputationDatasetInputSchema).min(1),
+  imageDigest: ImageDigestSchema,
+  codeBytes: z.string().min(1),
+  codeHash: Sha256Schema,
+  params: z.record(JsonValueSchema),
+  seed: z.number().int().nonnegative(),
+  exitStatus: ComputationExitStatusSchema,
+  resultKeys: z.array(z.string().min(1)).min(1),
+  resultsJsonHash: Sha256Schema,
+  raw: AnalysisResultsSchema,
+});
+
+function validateComputationEvidence(value: z.infer<typeof ComputationEvidenceObjectSchema>, ctx: z.RefinementCtx): void {
+  const manifest = {
+    manifestVersion: '1.0.0' as const,
+    templateId: value.templateId,
+    templateVersion: value.templateVersion,
+    datasets: value.datasetInputs.map(({ lineageManifest: _lineageManifest, ...dataset }) => dataset),
+    imageDigest: value.imageDigest,
+    codeHash: value.codeHash,
+    params: value.params,
+    seed: value.seed,
+  };
+  if (computationId(manifest) !== value.computationId) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['computationId'], message: 'does not match the canonical computation manifest' });
+  }
+  if (sha256Text(value.codeBytes) !== value.codeHash) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['codeHash'], message: 'does not match codeBytes' });
+  }
+  if (sha256CanonicalJson(value.raw) !== value.resultsJsonHash) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['resultsJsonHash'], message: 'does not match canonical results.json' });
+  }
+  for (const dataset of value.datasetInputs) {
+    if (sha256CanonicalJson(dataset.lineageManifest) !== dataset.lineageManifestHash) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['datasetInputs'], message: `lineage manifest hash mismatch for ${dataset.datasetId}` });
+    }
+  }
+  for (const resultKey of value.resultKeys) {
+    if (!resolveResultBinding(value.raw, resultKey)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['resultKeys'], message: `unknown scalar result binding: ${resultKey}` });
+    }
+  }
+}
+
+export const ComputationEvidenceSchema = ComputationEvidenceObjectSchema.superRefine(validateComputationEvidence);
+export const EvidenceSchema = z.discriminatedUnion('kind', [
+  LiteratureEvidenceSchema,
+  ComputationEvidenceObjectSchema,
+]).superRefine((value, ctx) => {
+  if (value.kind === 'computation') validateComputationEvidence(value, ctx);
+});
 export type Evidence = z.infer<typeof EvidenceSchema>;
+export type ComputationEvidence = z.infer<typeof ComputationEvidenceSchema>;
 
 export const BiasRiskSchema = z.enum(['low', 'moderate', 'high']);
 export type BiasRisk = z.infer<typeof BiasRiskSchema>;
@@ -89,18 +167,39 @@ export const DevelopabilityRiskSchema = z.object({
 });
 export type DevelopabilityRisk = z.infer<typeof DevelopabilityRiskSchema>;
 
+export const ExecutionModeSchema = z.enum(['live', 'cached']);
+export const ReplayVerificationSchema = z.enum(['verified', 'not_run']);
+export const OriginVerificationSchema = z.enum(['verified', 'none']);
+export const VerdictStatusSchema = z.enum(['supported', 'unsupported', 'overreach']);
+export type ExecutionMode = z.infer<typeof ExecutionModeSchema>;
+export type ReplayVerification = z.infer<typeof ReplayVerificationSchema>;
+export type OriginVerification = z.infer<typeof OriginVerificationSchema>;
+
+export const ComputedBindingSchema = z.object({
+  computationId: Sha256Schema,
+  resultKey: z.string().min(1),
+  assertedValue: z.number().finite(),
+  assertedUnit: z.string().min(1),
+}).strict();
+export type ComputedBinding = z.infer<typeof ComputedBindingSchema>;
+
 export const ClaimSchema = z.object({
   id: z.string().min(1),
   text: z.string().min(1),
   citations: z.array(z.string()),
   confidence: z.number().transform((n) => Math.max(0, Math.min(1, n))),
   redFlags: z.array(RedFlagSchema).optional(),
+  computedBinding: ComputedBindingSchema.optional(),
+  executionMode: ExecutionModeSchema.optional(),
+  replayVerification: ReplayVerificationSchema.optional(),
+  originVerification: OriginVerificationSchema.optional(),
+  llmVerdict: VerdictStatusSchema.optional(),
+  verifierDecorrelated: z.boolean().optional(),
 });
 export type Claim = z.infer<typeof ClaimSchema>;
 
 export const ClaimsSchema = z.object({ claims: z.array(ClaimSchema) });
 
-export const VerdictStatusSchema = z.enum(['supported', 'unsupported', 'overreach']);
 export type VerdictStatus = z.infer<typeof VerdictStatusSchema>;
 
 export const VerdictSchema = z.object({
@@ -212,7 +311,7 @@ export type TraceEvent =
 export const RagRatingSchema = z.enum(['green', 'amber', 'red']);
 export type RagRating = z.infer<typeof RagRatingSchema>;
 
-export const SectionSchema = z.object({
+const SectionBaseSchema = z.object({
   id: z.string().min(1),
   title: z.string().min(1),
   takeaway: z.string(),
@@ -222,7 +321,26 @@ export const SectionSchema = z.object({
   critiques: z.array(MethodologicalCritiqueSchema).optional(),
   developabilityRisks: z.array(DevelopabilityRiskSchema).optional(),
 });
+
+export const ResearchSectionSchema = SectionBaseSchema.extend({ kind: z.literal('research') });
+export const AnalysisSectionSchema = SectionBaseSchema.extend({
+  kind: z.literal('analysis'),
+  computationIds: z.array(Sha256Schema).min(1),
+  figurePaths: z.array(z.string().min(1)),
+});
+export const SectionSchema = z.discriminatedUnion('kind', [ResearchSectionSchema, AnalysisSectionSchema]);
 export type Section = z.infer<typeof SectionSchema>;
+
+/** One-way migration for pre-Slice-2 serialized sections. */
+export function migrateSectionsToV1(sections: readonly unknown[]): Section[] {
+  return sections.map((section) => {
+    if (typeof section !== 'object' || section === null || Array.isArray(section)) {
+      return SectionSchema.parse(section);
+    }
+    const record = section as Record<string, unknown>;
+    return SectionSchema.parse(record.kind === undefined ? { ...record, kind: 'research' } : record);
+  });
+}
 
 export const VerdictLabelSchema = z.enum(['go', 'watch', 'no-go', 'insufficient-evidence']);
 export type VerdictLabel = z.infer<typeof VerdictLabelSchema>;
@@ -242,13 +360,22 @@ export const RecommendationSchema = z.object({
 });
 export type Recommendation = z.infer<typeof RecommendationSchema>;
 
-export const ReferenceSchema = z.object({
+export const LiteratureReferenceSchema = z.object({
   id: z.string().min(1),
-  kind: EvidenceKindSchema,
+  kind: z.enum(['target', 'publication', 'trial', 'patent', 'dataset', 'disease', 'drug', 'figure']),
   source: z.string(),
   title: z.string(),
   url: z.string(),
 });
+
+export const ComputationReferenceSchema = ComputationEvidenceObjectSchema.omit({
+  snippet: true,
+  passage: true,
+  locator: true,
+  raw: true,
+  metadata: true,
+});
+export const ReferenceSchema = z.discriminatedUnion('kind', [LiteratureReferenceSchema, ComputationReferenceSchema]);
 export type Reference = z.infer<typeof ReferenceSchema>;
 
 export interface Briefing {

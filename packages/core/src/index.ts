@@ -4,7 +4,13 @@ export { OllamaModel } from './ollamaModel.js';
 export { groundClaims } from './grounding.js';
 export { verifyClaims } from './verifier.js';
 export { runOrchestration } from './orchestrator.js';
-export { computeRag } from './rag.js';
+export { computeRag, createSourceIdentityResolver, type SourceIdentityResolver } from './rag.js';
+export {
+  reproducibilityGate,
+  type ReproducibilityGateInput,
+  type ReproducibilityGateResult,
+  type ReproducibilityDrop,
+} from './reproducibilityGate.js';
 export { SPECIALISTS, type Specialist } from './specialists.js';
 export { selectSpecialists } from './planner.js';
 export { produceSection } from './produceSection.js';
@@ -19,6 +25,30 @@ export { assessCompleteness, fillGap, mergeGapClaims, type ResearchGap } from '.
 export { weighAcrossThreads } from './weighing.js';
 export { synthesizeRecommendation } from './synthesize.js';
 export { assembleReferences, produceBriefing } from './briefing.js';
+export {
+  ANALYSIS_SPECIALIST,
+  TROP2_DATASET_IDS,
+  TROP2_RESULT_KEYS,
+  attachAnalysisToDeepResearch,
+  mapTrop2ResultsToClaims,
+  runAnalysisSpecialist,
+  selectAnalysisPlan,
+  type AnalysisExecutor,
+  type AnalysisPlan,
+  type AnalysisQuestion,
+  type AnalysisSection,
+  type AnalysisSpecialistResult,
+  type VerifiedAnalysisRun,
+  type RunAnalysisSpecialistInput,
+} from './analysisSpecialist.js';
+export {
+  CachedAnalysisBundleError,
+  createSignedCachedAnalysisBundle,
+  loadSignedCachedAnalysisBundle,
+  type CreateSignedCachedAnalysisBundleInput,
+  type LoadSignedCachedAnalysisBundleInput,
+} from './cachedAnalysis.js';
+export { ANALYSIS_RELEASE_PUBLIC_KEY_PEM } from './releasePublicKey.js';
 export { safeToolCall, isTransient } from './safeToolCall.js';
 export { targetTerms, relevanceGate } from './relevance.js';
 export { extractPatentData, extractAssociations, type ExtractedPatent, type RegionAssociation, type ExtractionCompleteness } from './patentData.js';

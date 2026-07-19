@@ -12,7 +12,13 @@ export function assembleReferences(result: DeepResearchResult): Reference[] {
   return result.evidence
     .filter((e) => cited.has(e.id))
     .sort((a, b) => a.id.localeCompare(b.id))
-    .map((e) => ({ id: e.id, kind: e.kind, source: e.source, title: e.title, url: e.url }));
+    .map((e) => {
+      if (e.kind !== 'computation') {
+        return { id: e.id, kind: e.kind, source: e.source, title: e.title, url: e.url };
+      }
+      const { snippet: _snippet, passage: _passage, locator: _locator, raw: _raw, metadata: _metadata, ...reference } = e;
+      return reference;
+    });
 }
 
 export async function produceBriefing(opts: {
