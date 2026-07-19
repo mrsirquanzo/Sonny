@@ -41,51 +41,52 @@ export class OpenAICompatModel implements StructuredModel {
     const parameters = zodToJsonSchema(opts.schema as ZodType<unknown>, { $refStrategy: 'none' }) as Record<string, unknown>;
     delete (parameters as { $schema?: unknown }).$schema;
 
-    const body = {
-      model: opts.model,
-      max_tokens: 4096,
-      messages: [
-        { role: 'system', content: opts.system },
-        { role: 'user', content: opts.prompt },
-      ],
-      tools: [
-        {
-          type: 'function',
-          function: { name: 'emit', description: 'Return the structured result.', parameters },
-        },
-      ],
-      tool_choice: { type: 'function', function: { name: 'emit' } },
-    };
+    const baseMessages = [
+      { role: 'system', content: opts.system },
+      { role: 'user', content: opts.prompt },
+    ];
+    // Some open models (e.g. gpt-oss on Groq) intermittently answer with prose
+    // instead of calling the forced `emit` tool; strict providers then 400 with
+    // `tool_use_failed`. Retry with an escalating reminder - it is stochastic and
+    // usually succeeds on a second attempt - before giving up.
+    const ATTEMPTS = 3;
+    let lastErr = '';
+    for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
+      const messages = attempt === 0
+        ? baseMessages
+        : [...baseMessages, { role: 'system', content: 'You MUST respond by calling the `emit` function with the structured arguments. Do not write any prose. Call the tool.' }];
+      const body = {
+        model: opts.model,
+        max_tokens: 4096,
+        messages,
+        tools: [{ type: 'function', function: { name: 'emit', description: 'Return the structured result.', parameters } }],
+        tool_choice: { type: 'function', function: { name: 'emit' } },
+      };
 
-    const res = await fetch(`${this.baseUrl}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${this.apiKey}`,
-      },
-      body: JSON.stringify(body),
-    });
+      const res = await fetch(`${this.baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${this.apiKey}` },
+        body: JSON.stringify(body),
+      });
 
-    if (!res.ok) {
-      const detail = await res.text().catch(() => '');
-      throw new Error(`openai-compat request failed (${res.status}): ${detail.slice(0, 300)}`);
+      if (!res.ok) {
+        const detail = await res.text().catch(() => '');
+        lastErr = `openai-compat request failed (${res.status}): ${detail.slice(0, 300)}`;
+        // `tool_use_failed` (model returned prose) is retryable; other errors are not.
+        if (res.status === 400 && /tool_use_failed|did not call a tool/i.test(detail)) continue;
+        throw new Error(lastErr);
+      }
+
+      const data = (await res.json()) as {
+        choices?: Array<{ message?: { tool_calls?: Array<{ function?: { arguments?: string } }> } }>;
+      };
+      const args = data.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
+      if (typeof args !== 'string') { lastErr = 'model did not return a structured tool call'; continue; }
+
+      let parsed: unknown;
+      try { parsed = JSON.parse(args); } catch { lastErr = 'model returned invalid JSON in the structured tool call'; continue; }
+      return opts.schema.parse(parsed);
     }
-
-    const data = (await res.json()) as {
-      choices?: Array<{ message?: { tool_calls?: Array<{ function?: { arguments?: string } }> } }>;
-    };
-
-    const args = data.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
-    if (typeof args !== 'string') {
-      throw new Error('model did not return a structured tool call');
-    }
-
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(args);
-    } catch {
-      throw new Error('model returned invalid JSON in the structured tool call');
-    }
-    return opts.schema.parse(parsed);
+    throw new Error(lastErr || 'openai-compat structured call failed after retries');
   }
 }
