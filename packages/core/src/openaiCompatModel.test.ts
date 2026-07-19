@@ -55,7 +55,7 @@ describe('OpenAICompatModel', () => {
     vi.stubGlobal('fetch', fetchMock);
     const m = new OpenAICompatModel('http://x/v1', 'k');
     await expect(m.generateStructured({ system: 's', prompt: 'p', schema, model: 'm' })).rejects.toThrow(/400/);
-    expect(fetchMock).toHaveBeenCalledTimes(3); // retried up to ATTEMPTS
+    expect(fetchMock).toHaveBeenCalledTimes(4); // retried up to ATTEMPTS
   });
 
   it('throws when the model returns no tool call', async () => {

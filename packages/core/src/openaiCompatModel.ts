@@ -49,7 +49,7 @@ export class OpenAICompatModel implements StructuredModel {
     // instead of calling the forced `emit` tool; strict providers then 400 with
     // `tool_use_failed`. Retry with an escalating reminder - it is stochastic and
     // usually succeeds on a second attempt - before giving up.
-    const ATTEMPTS = 3;
+    const ATTEMPTS = 4;
     let lastErr = '';
     for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
       const messages = attempt === 0
@@ -75,7 +75,7 @@ export class OpenAICompatModel implements StructuredModel {
         // Flaky tool-callers (e.g. gpt-oss) intermittently answer with prose,
         // emit the wrong tool name, or return arguments that miss the schema.
         // All are stochastic and usually pass on a retry with a firmer reminder.
-        const retryable400 = /tool_use_failed|did not call a tool|did not match schema|tool call validation failed|not in request\.tools/i.test(detail);
+        const retryable400 = /tool_use_failed|did not call a tool|did not match schema|tool call validation failed|not in request\.tools|output_parse_failed|parsing failed/i.test(detail);
         // Token-per-minute rate limits are transient: back off and retry.
         const rateLimited = res.status === 429;
         if ((res.status === 400 && retryable400) || rateLimited) {
