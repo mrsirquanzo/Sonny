@@ -9,9 +9,9 @@ const TARGET = `query Target($id: String!) {
     symbolSynonyms { label }
     nameSynonyms { label }
     tractability { modality label value }
-    safetyLiabilities { event effects { direction dosing } }
+    safetyLiabilities { event }
     subcellularLocations { location termSL }
-    expressions { tissue { label organs } rna { value zscore level } protein { level } }
+    baselineExpression { rows { median specificity_score datatypeId tissueBiosample { biosampleName } } }
     associatedDiseases(page: { index: 0, size: 8 }) { rows { score disease { id name } } }
     drugAndClinicalCandidates { rows { maxClinicalStage drug { id name } } }
   }
@@ -24,10 +24,11 @@ async function gql(fetchImpl: typeof fetch, query: string, variables: Record<str
 }
 
 interface Tractability { modality: string; label: string; value: boolean }
-interface Expression {
-  tissue?: { label?: string; organs?: string[] };
-  rna?: { value?: number; zscore?: number; level?: number };
-  protein?: { level?: number };
+interface BaselineRow {
+  median?: number | null;
+  specificity_score?: number | null;
+  datatypeId?: string | null;
+  tissueBiosample?: { biosampleName?: string | null } | null;
 }
 interface TargetData {
   data?: { target?: {
@@ -36,7 +37,7 @@ interface TargetData {
     nameSynonyms?: Array<{ label: string }>;
     tractability?: Tractability[]; safetyLiabilities?: Array<{ event?: string }>;
     subcellularLocations?: Array<{ location?: string; termSL?: string }>;
-    expressions?: Expression[];
+    baselineExpression?: { rows?: BaselineRow[] };
     associatedDiseases?: { rows?: Array<{ score: number; disease: { id: string; name: string } }> };
     drugAndClinicalCandidates?: { rows?: Array<{ maxClinicalStage?: string | null; drug: { id: string; name: string } | null }> };
   } };
@@ -50,27 +51,23 @@ function antibodyTractability(tractability: Tractability[]): string[] {
 }
 
 /**
- * Summarise baseline normal-tissue expression into the ADC therapeutic-window
- * signal: which non-tumour tissues express the target most highly (on-target /
- * off-tumour risk). Protein level is 0-3 (Human Protein Atlas scale); RNA level
- * is a normalised bin. We surface the highest-expressing normal tissues so a
- * specialist can judge selectivity honestly.
+ * Summarise Open Targets baseline expression into the ADC therapeutic-window
+ * signal: which normal tissues express the target most highly (on-target /
+ * off-tumour risk). `median` is the datatype's expression unit (TPM for RNA,
+ * intensity for proteomics); `specificity_score` (0-1) flags how tissue-restricted
+ * expression is - a higher score across few tissues is a friendlier ADC window.
  */
-function expressionSummary(expressions: Expression[]): { text: string; topTissues: Array<{ tissue: string; protein?: number; rna?: number }> } {
-  const rows = expressions
-    .map((e) => ({
-      tissue: e.tissue?.label ?? 'unknown',
-      protein: e.protein?.level,
-      rna: e.rna?.level ?? (typeof e.rna?.value === 'number' ? e.rna.value : undefined),
-    }))
-    .filter((r) => r.tissue !== 'unknown');
-  const ranked = [...rows].sort((a, b) => (b.protein ?? -1) - (a.protein ?? -1) || (b.rna ?? -1) - (a.rna ?? -1));
+function expressionSummary(rows: BaselineRow[]): { text: string; topTissues: Array<{ tissue: string; median: number; datatype?: string }> } {
+  const clean = rows
+    .filter((r) => typeof r.median === 'number' && r.tissueBiosample?.biosampleName)
+    .map((r) => ({ tissue: r.tissueBiosample!.biosampleName as string, median: r.median as number, datatype: r.datatypeId ?? undefined }));
+  const ranked = [...clean].sort((a, b) => b.median - a.median);
   const top = ranked.slice(0, 8);
-  const highProtein = ranked.filter((r) => (r.protein ?? 0) >= 2).map((r) => r.tissue);
+  const proteinTop = ranked.filter((r) => /proteomics|protein/i.test(r.datatype ?? '')).slice(0, 5).map((r) => r.tissue);
   const text = top.length
-    ? `Baseline expression across ${rows.length} normal tissues. Highest-expressing normal tissues: ` +
-      top.map((r) => `${r.tissue}${r.protein != null ? ` (protein ${r.protein}/3)` : ''}`).join(', ') +
-      (highProtein.length ? `. Elevated normal-tissue protein (>=2/3), an ADC on-target/off-tumour consideration: ${highProtein.join(', ')}.` : '. No normal tissue shows high (>=2/3) protein expression.')
+    ? `Baseline expression across ${clean.length} normal biosamples (Open Targets: GTEx/HPA/single-cell). Highest-expressing normal tissues: ` +
+      top.map((r) => `${r.tissue} (${r.median.toFixed(0)}${r.datatype ? `, ${r.datatype}` : ''})`).join('; ') + '.' +
+      (proteinTop.length ? ` Normal tissues with notable protein-level expression, an ADC on-target/off-tumour consideration: ${proteinTop.join(', ')}.` : '')
     : 'No baseline tissue-expression data available from Open Targets.';
   return { text, topTissues: top };
 }
@@ -79,7 +76,7 @@ export const openTargetsTargetTool: Tool = {
   name: 'open_targets_target',
   description: 'Fetch the Open Targets target dossier for a gene symbol: associations (scored), tractability, known drugs, safety liabilities.',
   async call(args, fetchImpl = fetch) {
-    const symbol = String(args.symbol ?? '').trim();
+    const symbol = String(args.symbol ?? args.query ?? args.target ?? args.gene ?? '').trim();
     if (!symbol) return [];
     const search = (await gql(fetchImpl, SEARCH, { q: symbol })) as { data?: { search?: { hits?: Array<{ id: string; entity: string }> } } };
     const ensg = (search.data?.search?.hits ?? []).find((h) => h.entity === 'target' && h.id.startsWith('ENSG'))?.id;
@@ -120,7 +117,7 @@ export const openTargetsTargetTool: Tool = {
     }
 
     // Baseline normal-tissue expression - the ADC tumour-vs-normal selectivity window.
-    const expressions = t.expressions ?? [];
+    const expressions = t.baselineExpression?.rows ?? [];
     if (expressions.length) {
       const summary = expressionSummary(expressions);
       out.push({

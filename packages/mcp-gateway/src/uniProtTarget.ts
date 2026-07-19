@@ -33,7 +33,7 @@ export const uniProtTargetTool: Tool = {
   name: 'uniprot_target',
   description: 'Fetch UniProt (reviewed/SwissProt) annotation for a human gene symbol: subcellular localisation, transmembrane topology, and domain architecture - the cell-surface bindability signal for an antibody or ADC.',
   async call(args, fetchImpl = fetch) {
-    const symbol = String(args.symbol ?? '').trim();
+    const symbol = String(args.symbol ?? args.query ?? args.target ?? args.gene ?? '').trim();
     if (!symbol) return [];
     const query = `gene_exact:${symbol} AND organism_id:9606 AND reviewed:true`;
     const fields = 'accession,protein_name,cc_subcellular_location,ft_transmem,ft_topo_dom,ft_domain';
