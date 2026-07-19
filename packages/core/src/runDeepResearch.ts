@@ -57,15 +57,34 @@ export async function runDeepResearch(opts: {
   }
 
   emit({ type: 'lead_decompose', specialists: roster.map((b) => b.id) });
-  const settled = await Promise.allSettled(roster.map((brief) =>
-    produceResearchSection({ brief, target, tools: literatureTools, store, specialistModel, verifierModel, emit, budget, context }),
-  ));
-  const sections = settled.map((r, i) => {
-    if (r.status === 'fulfilled') return r.value;
-    const reason = String((r.reason as { message?: string })?.message ?? r.reason);
-    emit({ type: 'error', message: `specialist ${roster[i].id} failed: ${reason}` });
-    return placeholderSection(roster[i], reason);
-  });
+  // Concurrency + per-section retry. Default: full parallelism (unchanged).
+  // On a rate-limited / flaky-tool-caller backend (e.g. Groq gpt-oss), set
+  // SONNY_SPECIALIST_CONCURRENCY=1 to run specialists sequentially (no 429
+  // bursts) and SONNY_SECTION_RETRIES=2 to retry a section that fails outright,
+  // so a stochastic failure doesn't leave a whole thread empty.
+  const concurrency = Math.max(1, Number(process.env.SONNY_SPECIALIST_CONCURRENCY) || roster.length);
+  const sectionRetries = Math.max(0, Number(process.env.SONNY_SECTION_RETRIES) || 0);
+  const produceOne = async (brief: ThreadBrief): Promise<Section> => {
+    let lastReason = 'unknown error';
+    for (let attempt = 0; attempt <= sectionRetries; attempt++) {
+      try {
+        return await produceResearchSection({ brief, target, tools: literatureTools, store, specialistModel, verifierModel, emit, budget, context });
+      } catch (err) {
+        lastReason = String((err as { message?: string })?.message ?? err);
+        emit({ type: 'error', message: `specialist ${brief.id} attempt ${attempt + 1}/${sectionRetries + 1} failed: ${lastReason}` });
+      }
+    }
+    return placeholderSection(brief, lastReason);
+  };
+  const sections: Section[] = new Array(roster.length);
+  let cursor = 0;
+  const worker = async (): Promise<void> => {
+    while (cursor < roster.length) {
+      const i = cursor++;
+      sections[i] = await produceOne(roster[i]);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(concurrency, roster.length) }, worker));
 
   let complete = true;
   let gaps: ResearchGap[] = [];
