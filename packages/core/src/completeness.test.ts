@@ -58,7 +58,9 @@ describe('fillGap', () => {
       gap: { specialistId: 'moa_pathway', question: 'How does resistance arise?', concept: 'resistance', reason: 'gap' },
       target: 'CDCP1', tools: [search, fulltext], store: new EvidenceStore(), specialistModel, verifierModel, emit: () => {},
     });
-    expect(out.map((c) => c.id)).toEqual(['g1']); // only the supported claim survives
+    // extractClaims auto-assigns ids (c1..cN); assert on text - the meaningful invariant is
+    // that only the verifier-supported claim survives.
+    expect(out.map((c) => c.text)).toEqual(['Bypass signaling drives resistance.']);
   });
 });
 
