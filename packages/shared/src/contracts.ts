@@ -355,10 +355,19 @@ export const CasePointSchema = z.object({
 export type CasePoint = z.infer<typeof CasePointSchema>;
 
 export const RecommendationSchema = z.object({
+  // `verdict` is retained as an INTERNAL evidence-posture signal (for the eval
+  // harness and abstention), not a directive shown to the user. The user-facing
+  // memo models a balanced scientist's assessment: a framing that holds the
+  // tension, the case for and against, and a bottom-line positioning - the
+  // decision stays with the team.
   verdict: VerdictLabelSchema,
   thesis: z.string().min(1),
+  /** Balanced 2-3 sentence read: what the target is and the central tension. */
+  framing: z.string().optional(),
   bull: z.array(CasePointSchema),
   bear: z.array(CasePointSchema),
+  /** Where the target is most compelling, the biggest risks, and what would change the read. Not a recommendation. */
+  bottomLine: z.string().optional(),
   conditions: z.array(z.string()),
 });
 export type Recommendation = z.infer<typeof RecommendationSchema>;

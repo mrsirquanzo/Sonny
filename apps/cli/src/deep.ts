@@ -24,8 +24,9 @@ export async function runDeep(target: string, context?: ResearchContext): Promis
   });
 
   const r = briefing.recommendation;
-  process.stdout.write(`\n\n=== ${r.verdict.toUpperCase()}: ${r.thesis} ===\n`);
-  process.stdout.write(`\n${briefing.executiveRead}\n`);
+  const scope = context?.indication ? ` (${context.indication}${context.modality ? `, ${context.modality}` : ''})` : '';
+  process.stdout.write(`\n\n=== TARGET ASSESSMENT: ${t}${scope} ===\n`);
+  process.stdout.write(`\n${r.framing ?? briefing.executiveRead}\n`);
 
   for (const s of briefing.sections) {
     process.stdout.write(`\n[${s.rag.toUpperCase()}] ${s.title}\n  ${s.takeaway}\n`);
@@ -41,14 +42,16 @@ export async function runDeep(target: string, context?: ResearchContext): Promis
     }
   }
 
-  process.stdout.write(`\nBULL CASE\n`);
+  process.stdout.write(`\nCASE FOR\n`);
   for (const p of r.bull) process.stdout.write(`  + ${p.point} ${p.citations.map((id) => `[${id}]`).join(' ')}\n`);
-  process.stdout.write(`\nBEAR CASE\n`);
+  process.stdout.write(`\nCASE AGAINST\n`);
   for (const p of r.bear) process.stdout.write(`  - ${p.point} ${p.citations.map((id) => `[${id}]`).join(' ')}\n`);
+  if (r.bottomLine) process.stdout.write(`\nBOTTOM LINE\n  ${r.bottomLine}\n`);
   if (r.conditions.length) {
-    process.stdout.write(`\nCONDITIONS\n`);
+    process.stdout.write(`\nWHAT WOULD CHANGE THIS READ\n`);
     for (const c of r.conditions) process.stdout.write(`  * ${c}\n`);
   }
+  process.stdout.write(`\n(the decision rests with the team; internal evidence posture: ${r.verdict})\n`);
 
   process.stdout.write(`\nREFERENCES (${briefing.references.length})\n`);
   for (const ref of briefing.references) {
