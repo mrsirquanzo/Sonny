@@ -10,7 +10,7 @@ import { computeRag, type SourceIdentityResolver } from './rag.js';
 import { extractClaims } from './researcher.js';
 import { safeToolCall } from './safeToolCall.js';
 import { targetTerms, relevanceGate, titleMentionsTarget } from './relevance.js';
-import { buildSearchQuery } from './searchQuery.js';
+import { retrieveResearchHits } from './hybridRetrieval.js';
 
 export interface ResearchGap { specialistId: string; question: string; concept: string; reason: string }
 
@@ -49,9 +49,16 @@ export async function fillGap(opts: {
 
   emit({ type: 'gap_filler', specialist: gap.specialistId, question: gap.question });
   const terms = targetTerms(store);
-  const query = buildSearchQuery(target, gap.concept);
-  emit({ type: 'tool_call', tool: search.name, args: { query } });
-  const hits = relevanceGate(await safeToolCall({ tool: search, args: { query }, emit }), terms);
+  const hits = await retrieveResearchHits({
+    specialist: gap.specialistId,
+    target,
+    question: gap.question,
+    concept: gap.concept,
+    terms,
+    search,
+    model: specialistModel,
+    emit,
+  });
   emit({ type: 'tool_result', tool: search.name, count: hits.length });
   for (const h of hits) { store.register(h); emit({ type: 'evidence_registered', id: h.id, title: h.title }); }
 

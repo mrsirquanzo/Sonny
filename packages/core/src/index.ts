@@ -51,6 +51,20 @@ export {
 export { ANALYSIS_RELEASE_PUBLIC_KEY_PEM } from './releasePublicKey.js';
 export { safeToolCall, isTransient } from './safeToolCall.js';
 export { targetTerms, relevanceGate } from './relevance.js';
+export {
+  rewriteResearchQuery,
+  clearQueryRewriteCache,
+  type RewriteQueryOptions,
+  type ResearchQueryVariant,
+} from './queryRewrite.js';
+export { OllamaEmbeddings, cosineSimilarity, type OllamaEmbeddingOptions } from './embeddings.js';
+export {
+  hybridRetrievalEnabled,
+  reciprocalRankFusion,
+  retrieveResearchHits,
+  type RankedList,
+  type RetrieveResearchHitsOptions,
+} from './hybridRetrieval.js';
 export { extractPatentData, extractAssociations, type ExtractedPatent, type RegionAssociation, type ExtractionCompleteness } from './patentData.js';
 export { extractPatentSequences, type ExtractPatentDeps } from './extractPatentSequences.js';
 export { reconcilePatent, type PatentReconciliation, type VerifiedSequence, type BlastHit, type ReconcileDeps } from './patentReconcile.js';

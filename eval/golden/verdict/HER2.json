@@ -1,0 +1,27 @@
+{
+  "target": "HER2",
+  "label": "go",
+  "allowedVerdicts": [
+    "go"
+  ],
+  "seminalPmids": [
+    "3798106",
+    "2470152",
+    "11248153"
+  ],
+  "claimProbes": [
+    {
+      "statement": "HER2/ERBB2 gene amplification occurs in roughly 20-30% of breast cancers and is an independent predictor of worse survival, and anti-HER2 therapy improves outcomes in HER2-overexpressing disease.",
+      "expected": "supported",
+      "note": "Slamon 1987/1989/2001."
+    },
+    {
+      "statement": "HER2 overexpression has no bearing on prognosis or treatment selection in breast cancer and is not a validated therapeutic target.",
+      "expected": "refuted",
+      "note": "Contradicts foundational HER2 literature."
+    }
+  ],
+  "rationale": "Foundational, mature approved franchise; amplification-prognosis link and trastuzumab benefit are definitively established.",
+  "curator": "mrsirquanzo",
+  "curatedAt": "2026-07-18"
+}

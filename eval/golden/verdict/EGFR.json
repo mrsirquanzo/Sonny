@@ -1,0 +1,26 @@
+{
+  "target": "EGFR",
+  "label": "go",
+  "allowedVerdicts": [
+    "go"
+  ],
+  "seminalPmids": [
+    "15118073",
+    "15118125"
+  ],
+  "claimProbes": [
+    {
+      "statement": "Somatic activating mutations in the EGFR tyrosine kinase domain (exon 19 deletions, L858R) in NSCLC confer sensitivity to EGFR tyrosine kinase inhibitors such as gefitinib.",
+      "expected": "supported",
+      "note": "Lynch and Paez 2004."
+    },
+    {
+      "statement": "EGFR kinase-domain mutations in lung cancer confer primary resistance to all EGFR tyrosine kinase inhibitors, so EGFR-mutant patients should not receive TKIs.",
+      "expected": "refuted",
+      "note": "Inverts the actual sensitivity finding."
+    }
+  ],
+  "rationale": "Founding oncogene-addiction target in NSCLC; activating mutations predict TKI response, decades of approved agents.",
+  "curator": "mrsirquanzo",
+  "curatedAt": "2026-07-18"
+}
