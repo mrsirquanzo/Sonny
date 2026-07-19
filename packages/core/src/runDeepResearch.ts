@@ -2,7 +2,7 @@ import type { Claim, Evidence, Section, TraceEvent, KOLCluster, ContradictionFla
 import type { Tool } from '@mrsirquanzo/sonny-mcp-gateway';
 import { EvidenceStore } from './evidenceStore.js';
 import type { StructuredModel } from './model.js';
-import type { ThreadBrief, ResearchBudget } from './researcher.js';
+import type { ThreadBrief, ResearchBudget, ResearchContext } from './researcher.js';
 import { produceResearchSection } from './produceResearchSection.js';
 import { seedStructuredEvidence } from './leadSeed.js';
 import { orientWithReview } from './orientation.js';
@@ -27,13 +27,24 @@ function placeholderSection(brief: ThreadBrief, reason: string): Section {
   return { kind: 'research', id: brief.id, title: brief.title, takeaway: `Research could not complete: ${reason}`, claims: [], sources: [], rag: 'red' };
 }
 
+function scopeGapModel(model: StructuredModel, target: string, context?: ResearchContext): StructuredModel {
+  if (!context) return model;
+  const indication = context.indication ?? 'not specified';
+  const modality = context.modality ?? 'not specified';
+  const scope = `This evaluation is scoped to INDICATION: ${indication} and MODALITY: ${modality}. Prioritise questions and claims that bear on whether ${target} is a viable ${modality} target in ${indication}. Do not drift to other indications except as brief comparison.`;
+  return {
+    generateStructured: (request) => model.generateStructured({ ...request, system: `${request.system}\n${scope}` }),
+  };
+}
+
 export async function runDeepResearch(opts: {
   target: string; roster: ThreadBrief[];
   literatureTools: Tool[]; structuredTools: Tool[];
   specialistModel: StructuredModel; verifierModel: StructuredModel; leadModel: StructuredModel;
   emit: (e: TraceEvent) => void; budget: ResearchBudget;
+  context?: ResearchContext;
 }): Promise<DeepResearchResult> {
-  const { target, roster, literatureTools, structuredTools, specialistModel, verifierModel, emit, budget } = opts;
+  const { target, roster, literatureTools, structuredTools, specialistModel, verifierModel, emit, budget, context } = opts;
   const store = new EvidenceStore();
 
   await seedStructuredEvidence({ target, tools: structuredTools, store, emit });
@@ -46,7 +57,7 @@ export async function runDeepResearch(opts: {
 
   emit({ type: 'lead_decompose', specialists: roster.map((b) => b.id) });
   const settled = await Promise.allSettled(roster.map((brief) =>
-    produceResearchSection({ brief, target, tools: literatureTools, store, specialistModel, verifierModel, emit, budget }),
+    produceResearchSection({ brief, target, tools: literatureTools, store, specialistModel, verifierModel, emit, budget, context }),
   ));
   const sections = settled.map((r, i) => {
     if (r.status === 'fulfilled') return r.value;
@@ -69,7 +80,10 @@ export async function runDeepResearch(opts: {
       const idx = finalSections.findIndex((s) => s.id === gap.specialistId);
       if (idx === -1) continue;
       try {
-        const claims = await fillGap({ gap, target, tools: literatureTools, store, specialistModel, verifierModel, emit });
+        const claims = await fillGap({
+          gap, target, tools: literatureTools, store,
+          specialistModel: scopeGapModel(specialistModel, target, context), verifierModel, emit,
+        });
         const resolveSourceIdentity = createSourceIdentityResolver(store.all());
         finalSections = finalSections.map((s, i) => (i === idx ? mergeGapClaims(s, claims, resolveSourceIdentity) : s));
       } catch (err) {

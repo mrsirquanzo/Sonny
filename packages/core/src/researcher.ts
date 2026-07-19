@@ -10,6 +10,20 @@ export interface ThreadBrief { id: string; title: string; objective: string; pro
 
 export interface ResearchQuestion { question: string; concept: string }
 
+export interface ResearchContext { indication?: string; modality?: string }
+
+function researchScope(target: string, context?: ResearchContext): string {
+  if (!context) return '';
+  const indication = context.indication ?? 'not specified';
+  const modality = context.modality ?? 'not specified';
+  return `This evaluation is scoped to INDICATION: ${indication} and MODALITY: ${modality}. Prioritise questions and claims that bear on whether ${target} is a viable ${modality} target in ${indication}. Do not drift to other indications except as brief comparison.`;
+}
+
+function withResearchScope(text: string, target: string, context?: ResearchContext): string {
+  const scope = researchScope(target, context);
+  return scope ? `${text}\n${scope}` : text;
+}
+
 const QuestionsSchema = z.object({
   questions: z.array(z.object({
     question: z.string().min(1),
@@ -18,10 +32,10 @@ const QuestionsSchema = z.object({
 });
 
 export async function planResearchQuestions(
-  brief: ThreadBrief, target: string, model: StructuredModel,
+  brief: ThreadBrief, target: string, model: StructuredModel, context?: ResearchContext,
 ): Promise<ResearchQuestion[]> {
   const { questions } = await model.generateStructured({
-    system: `You are the ${brief.title} research specialist. ${brief.promptHint}\nPlan the specific, answerable research questions you must investigate to assess this target at expert depth.\nFor each item return:\n- question: a precise, answerable research question\n- concept: ONE short topic facet of 1-2 words that narrows the search (examples: 'ADC', 'oncology', 'signaling', 'metastasis', 'resistance'). Do NOT include the target gene symbol - it is added automatically. Do NOT write a sentence or a list of keywords, just the single concept.`,
+    system: withResearchScope(`You are the ${brief.title} research specialist. ${brief.promptHint}\nPlan the specific, answerable research questions you must investigate to assess this target at expert depth.\nFor each item return:\n- question: a precise, answerable research question\n- concept: ONE short topic facet of 1-2 words that narrows the search (examples: 'ADC', 'oncology', 'signaling', 'metastasis', 'resistance'). Do NOT include the target gene symbol - it is added automatically. Do NOT write a sentence or a list of keywords, just the single concept.`, target, context),
     prompt: `BRIEF: ${brief.title}\nTARGET: ${target}\nOBJECTIVE: ${brief.objective}\nList up to 5 research questions, most important first. Each must have a question and a single short concept.`,
     schema: QuestionsSchema,
     model: MODEL_ROUTER.specialist,
@@ -30,10 +44,10 @@ export async function planResearchQuestions(
 }
 
 export async function extractClaims(
-  question: string, evidenceList: string, model: StructuredModel,
+  question: string, evidenceList: string, model: StructuredModel, context?: ResearchContext,
 ): Promise<Claim[]> {
   const { claims } = await model.generateStructured({
-    system: `You are a rigorous biomedical research specialist. Answer the research question using ONLY the provided evidence passages. Every claim MUST cite the evidence id(s) it rests on, copied verbatim. If the evidence conflicts, write a reconciliation claim that names the tension and states which way it leans and why. Do not state anything the evidence does not support.`,
+    system: withResearchScope(`You are a rigorous biomedical research specialist. Answer the research question using ONLY the provided evidence passages. Every claim MUST cite the evidence id(s) it rests on, copied verbatim. If the evidence conflicts, write a reconciliation claim that names the tension and states which way it leans and why. Do not state anything the evidence does not support.`, 'this target', context),
     prompt: `RESEARCH QUESTION: ${question}\n\nEVIDENCE:\n${evidenceList}\n\nReturn claims c1, c2, ... each with citations and a confidence in [0,1].`,
     schema: ClaimsSchema,
     model: MODEL_ROUTER.specialist,
@@ -61,10 +75,10 @@ const ReflectSchema = z.object({
 });
 
 export async function reflectOnGaps(
-  brief: ThreadBrief, claims: Claim[], model: StructuredModel,
+  brief: ThreadBrief, claims: Claim[], model: StructuredModel, context?: ResearchContext,
 ): Promise<{ done: boolean; followups: ResearchQuestion[]; takeaway: string }> {
   return model.generateStructured({
-    system: `You are the ${brief.title} research lead reviewing your own progress. Decide whether the thread is sufficiently covered for expert-level assessment. If a critical question remains unanswered, or a source raised a new high-value thread (e.g. a resistance mechanism), list up to 3 follow-up questions. Each follow-up needs:\n- question: a precise research question\n- concept: ONE short topic facet of 1-2 words (no sentence, no keyword list) and do NOT include the target gene symbol - it is added automatically\nOtherwise set done=true. Always write a one-line takeaway summarizing the thread so far.`,
+    system: withResearchScope(`You are the ${brief.title} research lead reviewing your own progress. Decide whether the thread is sufficiently covered for expert-level assessment. If a critical question remains unanswered, or a source raised a new high-value thread (e.g. a resistance mechanism), list up to 3 follow-up questions. Each follow-up needs:\n- question: a precise research question\n- concept: ONE short topic facet of 1-2 words (no sentence, no keyword list) and do NOT include the target gene symbol - it is added automatically\nOtherwise set done=true. Always write a one-line takeaway summarizing the thread so far.`, 'this target', context),
     prompt: `OBJECTIVE: ${brief.objective}\n\nCLAIMS SO FAR:\n${claims.map((c) => `- ${c.text}`).join('\n') || '(none yet)'}`,
     schema: ReflectSchema,
     model: MODEL_ROUTER.specialist,
@@ -78,15 +92,16 @@ function evidenceLine(e: Evidence): string {
 export async function runResearcher(opts: {
   brief: ThreadBrief; target: string; tools: Tool[]; store: EvidenceStore;
   model: StructuredModel; verifierModel: StructuredModel; emit: (e: TraceEvent) => void; budget: ResearchBudget;
+  context?: ResearchContext;
 }): Promise<ThreadFindings> {
-  const { brief, target, tools, store, model, verifierModel, emit, budget } = opts;
+  const { brief, target, tools, store, model, verifierModel, emit, budget, context } = opts;
   const search = tools.find((t) => t.name === 'europepmc_search');
   const fulltext = tools.find((t) => t.name === 'pmc_fulltext');
   if (!search || !fulltext) throw new Error('runResearcher requires europepmc_search and pmc_fulltext tools');
 
   emit({ type: 'specialist_start', specialist: brief.id });
   const terms = targetTerms(store, target);
-  let openQuestions: ResearchQuestion[] = await planResearchQuestions(brief, target, model);
+  let openQuestions: ResearchQuestion[] = await planResearchQuestions(brief, target, model, context);
   emit({ type: 'research_plan', specialist: brief.id, questions: openQuestions.map((q) => q.question) });
 
   const claims: Claim[] = [];
@@ -153,7 +168,7 @@ export async function runResearcher(opts: {
     }
 
     const evidenceList = store.all().map(evidenceLine).join('\n');
-    const drafted = await extractClaims(item.question, evidenceList, model);
+    const drafted = await extractClaims(item.question, evidenceList, model, context);
     for (const c of drafted) {
       const flags = audited.filter((a) => c.citations.some((id) => a.ids.has(id))).flatMap((a) => a.redFlags);
       if (flags.length) c.redFlags = flags;
@@ -161,7 +176,7 @@ export async function runResearcher(opts: {
       emit({ type: 'claim_drafted', claim: c });
     }
 
-    const reflection = await reflectOnGaps(brief, claims, model);
+    const reflection = await reflectOnGaps(brief, claims, model, context);
     takeaway = reflection.takeaway;
     emit({ type: 'research_reflect', specialist: brief.id, note: reflection.takeaway, followups: reflection.followups.map((f) => f.question) });
     openQuestions = reflection.done ? [] : reflection.followups;

@@ -12,7 +12,7 @@ export {
 } from './reproducibilityGate.js';
 export { SPECIALISTS, type Specialist } from './specialists.js';
 export { planResearchQuestions, extractClaims, reflectOnGaps, runResearcher,
-  type ThreadBrief, type ThreadFindings, type ResearchBudget } from './researcher.js';
+  type ThreadBrief, type ThreadFindings, type ResearchBudget, type ResearchContext } from './researcher.js';
 export { produceResearchSection } from './produceResearchSection.js';
 export { RESEARCH_ROSTER } from './researchRoster.js';
 export { seedStructuredEvidence } from './leadSeed.js';

@@ -1,7 +1,7 @@
 import type { Briefing, Reference, TraceEvent } from '@mrsirquanzo/sonny-shared';
 import type { Tool } from '@mrsirquanzo/sonny-mcp-gateway';
 import type { StructuredModel } from './model.js';
-import type { ThreadBrief, ResearchBudget } from './researcher.js';
+import type { ThreadBrief, ResearchBudget, ResearchContext } from './researcher.js';
 import { runDeepResearch, type DeepResearchResult } from './runDeepResearch.js';
 import { synthesizeRecommendation } from './synthesize.js';
 
@@ -26,6 +26,7 @@ export async function produceBriefing(opts: {
   literatureTools: Tool[]; structuredTools: Tool[];
   specialistModel: StructuredModel; verifierModel: StructuredModel; leadModel: StructuredModel;
   emit: (e: TraceEvent) => void; budget: ResearchBudget;
+  context?: ResearchContext;
 }): Promise<Briefing> {
   const result = await runDeepResearch(opts);
   const { recommendation, executiveRead } = await synthesizeRecommendation({

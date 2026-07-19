@@ -38,6 +38,21 @@ describe('planResearchQuestions', () => {
     expect(prompt).toContain('CDCP1');
     expect(prompt).toContain('Target Biology');
   });
+
+  it('scopes the planning prompt to the supplied indication and modality', async () => {
+    let system = '';
+    let prompt = '';
+    const model: StructuredModel = {
+      async generateStructured(opts) {
+        system = opts.system;
+        prompt = opts.prompt;
+        return { questions: [{ question: 'Does CDCP1 internalise in NSCLC?', concept: 'internalisation' }] } as never;
+      },
+    };
+    await planResearchQuestions(brief, 'CDCP1', model, { indication: 'NSCLC', modality: 'ADC' });
+    expect(`${system}\n${prompt}`).toContain('INDICATION: NSCLC');
+    expect(`${system}\n${prompt}`).toContain('MODALITY: ADC');
+  });
 });
 
 describe('extractClaims', () => {

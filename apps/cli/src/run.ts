@@ -73,7 +73,15 @@ export async function main(argv: string[]): Promise<void> {
   }
   if (argv[2] === 'deep') {
     const { runDeep } = await import('./deep.js');
-    await runDeep(argv.slice(3).join(' '));
+    const rest = argv.slice(3);
+    const readFlag = (name: string): string | undefined => {
+      const i = rest.indexOf(name);
+      return i >= 0 && i + 1 < rest.length ? rest[i + 1] : undefined;
+    };
+    const indication = readFlag('--indication');
+    const modality = readFlag('--modality');
+    const target = rest.filter((a, i) => !a.startsWith('--') && rest[i - 1] !== '--indication' && rest[i - 1] !== '--modality').join(' ');
+    await runDeep(target, indication || modality ? { indication, modality } : undefined);
     return;
   }
   const query = argv.slice(2).join(' ').trim() || 'CDCP1';

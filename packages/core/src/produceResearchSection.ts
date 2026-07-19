@@ -5,15 +5,16 @@ import type { StructuredModel } from './model.js';
 import { groundClaims } from './grounding.js';
 import { verifyClaims } from './verifier.js';
 import { computeRag, createSourceIdentityResolver } from './rag.js';
-import { runResearcher, type ThreadBrief, type ResearchBudget } from './researcher.js';
+import { runResearcher, type ThreadBrief, type ResearchBudget, type ResearchContext } from './researcher.js';
 
 export async function produceResearchSection(opts: {
   brief: ThreadBrief; target: string; tools: Tool[]; store: EvidenceStore;
   specialistModel: StructuredModel; verifierModel: StructuredModel;
   emit: (e: TraceEvent) => void; budget: ResearchBudget;
+  context?: ResearchContext;
 }): Promise<Section> {
-  const { brief, target, tools, store, specialistModel, verifierModel, emit, budget } = opts;
-  const findings = await runResearcher({ brief, target, tools, store, model: specialistModel, verifierModel, emit, budget });
+  const { brief, target, tools, store, specialistModel, verifierModel, emit, budget, context } = opts;
+  const findings = await runResearcher({ brief, target, tools, store, model: specialistModel, verifierModel, emit, budget, context });
 
   const { shippable } = groundClaims(findings.claims, store);
   const verdicts = await verifyClaims(shippable, store, verifierModel);
