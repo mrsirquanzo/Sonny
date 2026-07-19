@@ -33,10 +33,13 @@ export class OpenAICompatModel implements StructuredModel {
     schema: ZodType<T>;
     model: string;
   }): Promise<T> {
-    const jsonSchema = zodToJsonSchema(opts.schema as ZodType<unknown>, 'Output') as Record<string, unknown>;
-    const parameters = (
-      (jsonSchema.definitions as Record<string, unknown>)?.Output ?? jsonSchema
-    ) as Record<string, unknown>;
+    // Inline every sub-schema ($refStrategy: 'none') so the tool parameters are
+    // fully self-contained. The default emits `$ref: #/definitions/...` for
+    // nested/reused schemas; strict OpenAI-compatible validators (e.g. Groq)
+    // reject those because the referenced definitions aren't included in the
+    // extracted parameters object, failing with "... items not found".
+    const parameters = zodToJsonSchema(opts.schema as ZodType<unknown>, { $refStrategy: 'none' }) as Record<string, unknown>;
+    delete (parameters as { $schema?: unknown }).$schema;
 
     const body = {
       model: opts.model,
