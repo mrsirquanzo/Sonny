@@ -13,6 +13,7 @@ import { detectContradictions } from './critique/consistency.js';
 import { mapSpecialtyLabs } from './kolDetector.js';
 import { createSourceIdentityResolver } from './rag.js';
 import { consolidateSectionClaims } from './consolidateClaims.js';
+import { mergeStructuredClaims } from './structuredClaims.js';
 
 export interface DeepResearchResult {
   target: string;
@@ -99,6 +100,17 @@ export async function runDeepResearch(opts: {
     finalSections = consolidateSectionClaims(finalSections).sections;
   } catch (err) {
     emit({ type: 'error', message: `claim consolidation failed: ${String(err)}` });
+  }
+
+  // Deterministically attach curated-database findings (surface localisation,
+  // normal-tissue expression/selectivity, tractability, safety) as cited claims
+  // in their owning sections. These are the ADC-critical answers a small writer
+  // model tends to leave uncited; asserting them from the card guarantees they
+  // appear, grounded to the source id.
+  try {
+    finalSections = mergeStructuredClaims(finalSections, store);
+  } catch (err) {
+    emit({ type: 'error', message: `structured-claim merge failed: ${String(err)}` });
   }
 
   try {
