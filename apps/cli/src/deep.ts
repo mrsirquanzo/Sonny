@@ -1,15 +1,20 @@
-import { makeModel, currentBackend, produceBriefing, RESEARCH_ROSTER } from '@mrsirquanzo/sonny-core';
+import { makeModel, currentBackend, resolveVerifier, pinVerifierModel, produceBriefing, RESEARCH_ROSTER } from '@mrsirquanzo/sonny-core';
 import { europePmcSearchTool, pmcFullTextTool, openTargetsTargetTool, clinicalTrialsTool, europePmcCitationsTool } from '@mrsirquanzo/sonny-mcp-gateway';
 import { formatTrace } from './run.js';
 
 export async function runDeep(target: string): Promise<void> {
   const t = target.trim() || 'CDCP1';
   process.stdout.write(`backend: ${currentBackend()}\n`);
+  const verifier = resolveVerifier();
+  process.stdout.write(`verifier: ${verifier.modelId} (decorrelated: ${verifier.decorrelated})\n`);
+  if (!verifier.decorrelated) {
+    process.stderr.write(`[sonny] WARNING: verifier shares the writer's model family on backend ${currentBackend()}; verification is not decorrelated.\n`);
+  }
   const briefing = await produceBriefing({
     target: t, roster: RESEARCH_ROSTER,
     literatureTools: [europePmcSearchTool, pmcFullTextTool, europePmcCitationsTool],
     structuredTools: [openTargetsTargetTool, clinicalTrialsTool],
-    specialistModel: makeModel(), verifierModel: makeModel(), leadModel: makeModel(),
+    specialistModel: makeModel(), verifierModel: pinVerifierModel(verifier.model, verifier.modelId), leadModel: makeModel(),
     emit: (e) => process.stdout.write(formatTrace([e]) + '\n'),
     budget: { maxRounds: 4 },
   });

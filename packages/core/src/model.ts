@@ -52,6 +52,59 @@ export function currentBackend(): Backend {
 // Evaluated at module load - reflects the backend the process was launched with.
 export const MODEL_ROUTER: RoleRouter = routerFor(currentBackend());
 
+/**
+ * Coarse model-family label from a model id. Decorrelation is a property of the
+ * FAMILY, not the backend: on ollama, qwen (writer) vs llama (verifier) is already
+ * cross-family, while on anthropic, opus (writer) vs sonnet (verifier) is NOT -
+ * both are Claude. Verification must run on a family different from the writer's.
+ */
+export function modelFamily(id: string): string {
+  const s = id.toLowerCase();
+  if (/(claude|opus|sonnet|haiku)/.test(s)) return 'claude';
+  if (s.includes('qwen')) return 'qwen';
+  if (s.includes('llama')) return 'llama';
+  if (/(gpt|openai)/.test(s)) return 'gpt';
+  if (/(gemini|google)/.test(s)) return 'gemini';
+  if (/(mistral|mixtral)/.test(s)) return 'mistral';
+  return s.split(/[:/]/)[0] || s;
+}
+
+export interface ResolvedVerifier { model: StructuredModel; modelId: string; decorrelated: boolean }
+
+/**
+ * Resolve a verifier that is a different model family from the writer, so
+ * verification is genuinely decorrelated (Sonny's rule: the judge is never the
+ * writer's family). If the backend's own verifier is already cross-family
+ * (ollama, groq), use it as-is. If it shares the writer's family (anthropic:
+ * opus vs sonnet), cross to a different provider - local ollama/llama - so the
+ * check is independent. If nothing decorrelated is reachable, return the
+ * same-family verifier with `decorrelated: false` so callers can flag it
+ * VISIBLY rather than degrade silently.
+ */
+export function resolveVerifier(backend: Backend = currentBackend()): ResolvedVerifier {
+  const router = routerFor(backend);
+  if (modelFamily(router.writer) !== modelFamily(router.verifier)) {
+    return { model: makeModel(), modelId: router.verifier, decorrelated: true };
+  }
+  const crossVerifier = routerFor('ollama').verifier; // local llama, different family from Claude
+  if (modelFamily(crossVerifier) !== modelFamily(router.writer)) {
+    return { model: new OllamaModel(), modelId: crossVerifier, decorrelated: true };
+  }
+  return { model: makeModel(), modelId: router.verifier, decorrelated: false };
+}
+
+/**
+ * Wrap a model so every generateStructured call is pinned to `modelId`,
+ * regardless of the id the caller passes. Lets a decorrelated verifier be
+ * injected as the shared `verifierModel` instance without threading its id
+ * through every verify call site.
+ */
+export function pinVerifierModel(inner: StructuredModel, modelId: string): StructuredModel {
+  return {
+    generateStructured: (opts) => inner.generateStructured({ ...opts, model: modelId }),
+  };
+}
+
 export interface StructuredModel {
   generateStructured<T>(opts: {
     system: string;

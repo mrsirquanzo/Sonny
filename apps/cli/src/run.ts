@@ -1,5 +1,5 @@
 import type { TraceEvent } from '@mrsirquanzo/sonny-shared';
-import { runDossier, makeModel, runPatentWorkup } from '@mrsirquanzo/sonny-core';
+import { runDossier, makeModel, resolveVerifier, pinVerifierModel, runPatentWorkup } from '@mrsirquanzo/sonny-core';
 import { openTargetsTargetTool, pubmedTool, clinicalTrialsTool } from '@mrsirquanzo/sonny-mcp-gateway';
 import { runExtractPatent } from './extractPatent.js';
 
@@ -79,9 +79,13 @@ export async function main(argv: string[]): Promise<void> {
   }
   const query = argv.slice(2).join(' ').trim() || 'CDCP1';
   const symbol = (query.match(/\b[A-Z0-9]{2,7}\b/)?.[0]) ?? query;
+  const verifier = resolveVerifier();
+  if (!verifier.decorrelated) {
+    process.stderr.write(`[sonny] WARNING: verifier shares the writer's model family; verification is not decorrelated.\n`);
+  }
   const { verdict } = await runDossier({
     query, symbol, tools: [openTargetsTargetTool, pubmedTool, clinicalTrialsTool],
-    plannerModel: makeModel(), specialistModel: makeModel(), verifierModel: makeModel(),
+    plannerModel: makeModel(), specialistModel: makeModel(), verifierModel: pinVerifierModel(verifier.model, verifier.modelId),
     emit: (e) => { process.stdout.write(formatTrace([e]) + '\n'); },
   });
   process.stdout.write(`\nVERDICT: ${verdict}\n`);

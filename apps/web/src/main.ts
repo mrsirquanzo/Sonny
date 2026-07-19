@@ -1,6 +1,6 @@
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { runDossier, makeModel } from '@mrsirquanzo/sonny-core';
+import { runDossier, makeModel, resolveVerifier, pinVerifierModel } from '@mrsirquanzo/sonny-core';
 import { openTargetsTargetTool, pubmedTool, clinicalTrialsTool } from '@mrsirquanzo/sonny-mcp-gateway';
 import { createServer, type ServerDeps } from './server.js';
 
@@ -14,7 +14,7 @@ export function buildDeps(publicDir: string): ServerDeps {
         tools: [openTargetsTargetTool, pubmedTool, clinicalTrialsTool],
         plannerModel: makeModel(),
         specialistModel: makeModel(),
-        verifierModel: makeModel(),
+        verifierModel: (() => { const v = resolveVerifier(); return pinVerifierModel(v.model, v.modelId); })(),
         emit,
       });
       return { verdict, sections };
