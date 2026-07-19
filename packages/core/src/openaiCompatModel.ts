@@ -54,7 +54,7 @@ export class OpenAICompatModel implements StructuredModel {
     for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
       const messages = attempt === 0
         ? baseMessages
-        : [...baseMessages, { role: 'system', content: 'You MUST respond by calling the `emit` function with the structured arguments. Do not write any prose. Call the tool.' }];
+        : [...baseMessages, { role: 'system', content: 'You MUST call the function named exactly `emit` (no other tool name) and pass arguments that match its JSON schema exactly - correct property names, no extra properties, all required fields present. Do not write prose.' }];
       const body = {
         model: opts.model,
         max_tokens: 4096,
@@ -72,8 +72,19 @@ export class OpenAICompatModel implements StructuredModel {
       if (!res.ok) {
         const detail = await res.text().catch(() => '');
         lastErr = `openai-compat request failed (${res.status}): ${detail.slice(0, 300)}`;
-        // `tool_use_failed` (model returned prose) is retryable; other errors are not.
-        if (res.status === 400 && /tool_use_failed|did not call a tool/i.test(detail)) continue;
+        // Flaky tool-callers (e.g. gpt-oss) intermittently answer with prose,
+        // emit the wrong tool name, or return arguments that miss the schema.
+        // All are stochastic and usually pass on a retry with a firmer reminder.
+        const retryable400 = /tool_use_failed|did not call a tool|did not match schema|tool call validation failed|not in request\.tools/i.test(detail);
+        // Token-per-minute rate limits are transient: back off and retry.
+        const rateLimited = res.status === 429;
+        if ((res.status === 400 && retryable400) || rateLimited) {
+          if (rateLimited) {
+            const wait = Number(/try again in ([0-9.]+)s/i.exec(detail)?.[1]) || 3;
+            await new Promise((r) => setTimeout(r, Math.min(wait * 1000 + 250, 15000)));
+          }
+          continue;
+        }
         throw new Error(lastErr);
       }
 

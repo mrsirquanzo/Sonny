@@ -42,10 +42,20 @@ describe('OpenAICompatModel', () => {
     expect((init as { headers: Record<string, string> }).headers.Authorization).toBe('Bearer gsk_test');
   });
 
-  it('throws with detail on a non-ok response', async () => {
-    vi.stubGlobal('fetch', mockFetchOnce('rate limited', false, 429));
+  it('throws immediately with detail on a non-retryable error', async () => {
+    const fetchMock = mockFetchOnce('server error', false, 500);
+    vi.stubGlobal('fetch', fetchMock);
     const m = new OpenAICompatModel('http://x/v1', 'k');
-    await expect(m.generateStructured({ system: 's', prompt: 'p', schema, model: 'm' })).rejects.toThrow(/429/);
+    await expect(m.generateStructured({ system: 's', prompt: 'p', schema, model: 'm' })).rejects.toThrow(/500/);
+    expect(fetchMock).toHaveBeenCalledTimes(1); // not retried
+  });
+
+  it('retries a flaky tool_use_failed 400 then throws after exhausting attempts', async () => {
+    const fetchMock = mockFetchOnce(JSON.stringify({ error: { code: 'tool_use_failed', message: 'model did not call a tool' } }), false, 400);
+    vi.stubGlobal('fetch', fetchMock);
+    const m = new OpenAICompatModel('http://x/v1', 'k');
+    await expect(m.generateStructured({ system: 's', prompt: 'p', schema, model: 'm' })).rejects.toThrow(/400/);
+    expect(fetchMock).toHaveBeenCalledTimes(3); // retried up to ATTEMPTS
   });
 
   it('throws when the model returns no tool call', async () => {

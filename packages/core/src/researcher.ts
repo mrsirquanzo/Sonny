@@ -125,6 +125,10 @@ export async function runResearcher(opts: {
     });
     emit({ type: 'tool_result', tool: search.name, count: hits.length });
     for (const h of hits) { store.register(h); emit({ type: 'evidence_registered', id: h.id, title: h.title }); }
+    // This question's own evidence, collected locally (not store.all()) so the
+    // extraction request stays small and relevant. The full store is retained
+    // for citation resolution; we only narrow what the extractor is shown.
+    const roundLiterature: Evidence[] = [...hits];
 
     // Deep-read the top open-access hit whose TITLE names the target. Strict: if none
     // qualifies, read no full text this round rather than deep-read a tangential paper.
@@ -140,6 +144,7 @@ export async function runResearcher(opts: {
       emit({ type: 'tool_result', tool: fulltext.name, count: passages.length });
       for (const p of passages) {
         store.register(p);
+        roundLiterature.push(p);
         emit({ type: 'evidence_registered', id: p.id, title: p.title });
         emit({ type: 'research_read', specialist: brief.id, sourceId: p.id, locator: p.locator ?? p.title });
       }
@@ -167,14 +172,17 @@ export async function runResearcher(opts: {
       }
     }
 
-    // Surface curated database records (Open Targets, UniProt) at the top under
-    // their own header so claim extraction actually uses the expression /
-    // localisation / tractability / safety signals instead of drowning them in
-    // literature passages.
-    const all = store.all();
+    // Build the extraction context from THIS question's evidence only: the small
+    // set of curated database cards (always relevant, seeded once) plus the
+    // literature retrieved for this question. This replaces sending the entire
+    // accumulated store on every call - which made requests balloon to ~130k
+    // tokens, exhausting rate limits and inflating cost. Curated cards are
+    // surfaced first so the localisation / expression / tractability / safety
+    // signals are actually used.
     const isCurated = (e: Evidence) => e.source === 'Open Targets' || e.source === 'UniProt';
-    const curated = all.filter(isCurated);
-    const literature = all.filter((e) => !isCurated(e));
+    const curated = store.all().filter(isCurated);
+    const seen = new Set<string>();
+    const literature = roundLiterature.filter((e) => !isCurated(e) && !seen.has(e.id) && seen.add(e.id));
     const evidenceList = [
       curated.length ? 'CURATED DATABASE EVIDENCE (authoritative for cell-surface localisation, normal-tissue expression, tractability, and safety - cite these ids where relevant):' : '',
       ...curated.map(evidenceLine),
