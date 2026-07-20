@@ -20,7 +20,29 @@ describe('assembleReferences', () => {
     };
     const refs = assembleReferences(result);
     expect(refs.map((r) => r.id)).toEqual(['ENSG1', 'PMID:2']); // sorted, PMID:9 excluded (uncited)
-    expect(refs[0].title).toBe('T');
+    expect(refs[0].title).toBe('Open Targets - target record'); // DB card relabelled, not its facet title
+    expect(refs[1].title).toBe('P'); // a real paper title is preserved
+  });
+
+  it('collapses cited PMC sections and DB-card facets to one reference per source', () => {
+    const sections: Section[] = [
+      { kind: 'research', id: 's1', title: 'S1', takeaway: 't', claims: [
+        { id: 'c1', text: 'a', citations: ['PMCID:PMC7#sec-4', 'PMCID:PMC7#sec-5', 'ENSG1#expression', 'ENSG1#tractability'], confidence: 0.8 },
+      ], sources: [], rag: 'green' },
+    ];
+    const evidence: Evidence[] = [
+      { id: 'PMCID:PMC7#sec-4', kind: 'publication', source: 'PMC full text', title: 'Introduction', snippet: '', url: 'https://x/PMC7#sec-4', raw: {}, retrievedAt: 'now' },
+      { id: 'PMCID:PMC7#sec-5', kind: 'publication', source: 'PMC full text', title: 'Discussion', snippet: '', url: 'https://x/PMC7#sec-5', raw: {}, retrievedAt: 'now' },
+      { id: 'ENSG1#expression', kind: 'target', source: 'Open Targets', title: 'expression', snippet: '', url: 'u', raw: {}, retrievedAt: 'now' },
+      { id: 'ENSG1#tractability', kind: 'target', source: 'Open Targets', title: 'tractability', snippet: '', url: 'u', raw: {}, retrievedAt: 'now' },
+    ];
+    const result: DeepResearchResult = {
+      target: 'X', sections, weighing: { takeaway: '', claims: [] }, evidence, kolCluster: { target: 'X', labs: [] },
+    };
+    const refs = assembleReferences(result);
+    expect(refs.map((r) => r.id)).toEqual(['ENSG1', 'PMCID:PMC7']); // 4 cited locators -> 2 sources
+    expect(refs.find((r) => r.id === 'PMCID:PMC7')!.title).toBe('PubMed Central full text');
+    expect(refs.find((r) => r.id === 'PMCID:PMC7')!.url).toBe('https://x/PMC7'); // anchor stripped
   });
 
   it('preserves computation provenance through analysis-section references', () => {
