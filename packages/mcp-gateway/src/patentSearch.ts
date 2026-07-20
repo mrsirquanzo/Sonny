@@ -126,6 +126,17 @@ function searchHits(json: unknown): unknown[] {
   const biblio = isObject(result) ? result['ops:biblio-search'] : undefined;
   const searchResult = isObject(biblio) ? biblio['ops:search-result'] : undefined;
   if (!isObject(searchResult)) return [];
+  // The /search/biblio constituent returns full exchange-documents (with
+  // bibliographic-data); plain /search returns only ops:publication-reference.
+  // Prefer the biblio documents, fall back to bare references.
+  const exchange = searchResult['exchange-documents'];
+  if (exchange !== undefined) {
+    return asArray(exchange).flatMap((entry) =>
+      isObject(entry) && entry['exchange-document'] !== undefined
+        ? asArray(entry['exchange-document'])
+        : [entry],
+    );
+  }
   return asArray(searchResult['ops:publication-reference']);
 }
 
