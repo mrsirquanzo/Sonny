@@ -4,6 +4,7 @@ export { openTargetsTargetTool } from './openTargetsTarget.js';
 export { uniProtTargetTool } from './uniProtTarget.js';
 export { pubmedTool } from './pubmed.js';
 export { clinicalTrialsTool } from './clinicalTrials.js';
+export { patentSearchTool } from './patentSearch.js';
 export { europePmcSearchTool } from './europePmc.js';
 export { europePmcCitationsTool } from './europePmcCitations.js';
 export { pmcFullTextTool } from './pmcFullText.js';

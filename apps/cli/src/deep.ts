@@ -1,5 +1,5 @@
 import { makeModel, currentBackend, resolveVerifier, pinVerifierModel, produceBriefing, RESEARCH_ROSTER, type ResearchContext } from '@mrsirquanzo/sonny-core';
-import { europePmcSearchTool, pmcFullTextTool, openTargetsTargetTool, uniProtTargetTool, clinicalTrialsTool, europePmcCitationsTool } from '@mrsirquanzo/sonny-mcp-gateway';
+import { europePmcSearchTool, pmcFullTextTool, openTargetsTargetTool, uniProtTargetTool, clinicalTrialsTool, patentSearchTool, europePmcCitationsTool } from '@mrsirquanzo/sonny-mcp-gateway';
 import { formatTrace } from './run.js';
 
 export async function runDeep(target: string, context?: ResearchContext): Promise<void> {
@@ -16,7 +16,7 @@ export async function runDeep(target: string, context?: ResearchContext): Promis
   const briefing = await produceBriefing({
     target: t, roster: RESEARCH_ROSTER,
     literatureTools: [europePmcSearchTool, pmcFullTextTool, europePmcCitationsTool],
-    structuredTools: [openTargetsTargetTool, uniProtTargetTool, clinicalTrialsTool],
+    structuredTools: [openTargetsTargetTool, uniProtTargetTool, clinicalTrialsTool, patentSearchTool],
     specialistModel: makeModel(), verifierModel: pinVerifierModel(verifier.model, verifier.modelId), leadModel: makeModel(),
     emit: (e) => process.stdout.write(formatTrace([e]) + '\n'),
     budget: { maxRounds: 4 },

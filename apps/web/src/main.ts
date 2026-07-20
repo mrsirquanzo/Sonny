@@ -1,7 +1,7 @@
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { produceBriefing, RESEARCH_ROSTER, makeModel, resolveVerifier, pinVerifierModel } from '@mrsirquanzo/sonny-core';
-import { europePmcSearchTool, pmcFullTextTool, openTargetsTargetTool, clinicalTrialsTool, europePmcCitationsTool } from '@mrsirquanzo/sonny-mcp-gateway';
+import { europePmcSearchTool, pmcFullTextTool, openTargetsTargetTool, uniProtTargetTool, clinicalTrialsTool, patentSearchTool, europePmcCitationsTool } from '@mrsirquanzo/sonny-mcp-gateway';
 import { createServer, type ServerDeps } from './server.js';
 
 export function buildDeps(publicDir: string): ServerDeps {
@@ -13,7 +13,7 @@ export function buildDeps(publicDir: string): ServerDeps {
         target: query || symbol,
         roster: RESEARCH_ROSTER,
         literatureTools: [europePmcSearchTool, pmcFullTextTool, europePmcCitationsTool],
-        structuredTools: [openTargetsTargetTool, clinicalTrialsTool],
+        structuredTools: [openTargetsTargetTool, uniProtTargetTool, clinicalTrialsTool, patentSearchTool],
         specialistModel: makeModel(),
         verifierModel: pinVerifierModel(v.model, v.modelId),
         leadModel: makeModel(),

@@ -84,18 +84,21 @@ export type Fetch = typeof fetch;
 
 // ---- Task 3: lookupPatent helpers ----
 
-function asArray<T>(v: T | T[] | undefined | null): T[] {
+export function asArray<T>(v: T | T[] | undefined | null): T[] {
   if (v === undefined || v === null) return [];
   return Array.isArray(v) ? v : [v];
 }
 
-function text(node: unknown): string | undefined {
+export function text(node: unknown): string | undefined {
+  if (typeof node === 'string') return node.length > 0 ? node : undefined;
+  if (typeof node === 'number') return String(node);
   const t = (node as { $?: unknown } | undefined)?.$;
-  return typeof t === 'string' && t.length > 0 ? t : undefined;
+  if (typeof t === 'string') return t.length > 0 ? t : undefined;
+  return typeof t === 'number' ? String(t) : undefined;
 }
 
 // Convert EPO's YYYYMMDD to YYYY-MM-DD.
-function isoDate(raw?: unknown): string | undefined {
+export function isoDate(raw?: unknown): string | undefined {
   const s = String(raw ?? '');
   if (!/^\d{8}$/.test(s)) return undefined;
   return `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}`;

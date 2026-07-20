@@ -21,6 +21,7 @@ export function assembleReferences(result: DeepResearchResult): Reference[] {
     if (baseId.startsWith('PMCID:')) return 'PubMed Central full text';
     if (baseId.startsWith('ENSG')) return 'Open Targets - target record';
     if (baseId.startsWith('UNIPROT:')) return 'UniProt - protein entry';
+    if (baseId.startsWith('PATENT:')) return 'EPO Espacenet - patent record';
     return fallback; // PMID and similar carry a real paper title
   };
   const byBase = new Map<string, Reference>();
