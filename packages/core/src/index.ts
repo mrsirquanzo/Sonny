@@ -16,6 +16,7 @@ export { planResearchQuestions, extractClaims, reflectOnGaps, runResearcher,
 export { produceResearchSection } from './produceResearchSection.js';
 export { RESEARCH_ROSTER } from './researchRoster.js';
 export { seedStructuredEvidence } from './leadSeed.js';
+export { parseResearchQuery, resolveQueryScope, looksLikeFreeText, type ParsedResearchQuery } from './parseQuery.js';
 export { runDeepResearch, type DeepResearchResult } from './runDeepResearch.js';
 export { deriveStructuredClaims, mergeStructuredClaims } from './structuredClaims.js';
 export { assessCompleteness, fillGap, mergeGapClaims, type ResearchGap } from './completeness.js';

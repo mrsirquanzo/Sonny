@@ -5,6 +5,7 @@ import type { StructuredModel } from './model.js';
 import type { ThreadBrief, ResearchBudget, ResearchContext } from './researcher.js';
 import { produceResearchSection } from './produceResearchSection.js';
 import { seedStructuredEvidence } from './leadSeed.js';
+import { resolveQueryScope } from './parseQuery.js';
 import { orientWithReview } from './orientation.js';
 import { assessCompleteness, fillGap, mergeGapClaims, type ResearchGap } from './completeness.js';
 import { weighAcrossThreads } from './weighing.js';
@@ -45,8 +46,21 @@ export async function runDeepResearch(opts: {
   emit: (e: TraceEvent) => void; budget: ResearchBudget;
   context?: ResearchContext;
 }): Promise<DeepResearchResult> {
-  const { target, roster, literatureTools, structuredTools, specialistModel, verifierModel, emit, budget, context } = opts;
+  const { roster, literatureTools, structuredTools, specialistModel, verifierModel, leadModel, emit, budget } = opts;
   const store = new EvidenceStore();
+
+  // Resolve the target symbol and scope from the request. When the caller passes
+  // a free-form prompt (e.g. "assess CDCP1 as an ADC in NSCLC"), Sonny parses out
+  // the bare target plus indication/modality itself, so structured tools key off
+  // the gene symbol and specialists inherit the scope - no separate UI needed.
+  // An explicit context (if supplied) always wins over parsed scope.
+  const parsed = await resolveQueryScope({ rawQuery: opts.target, model: leadModel, emit });
+  const target = parsed.target;
+  const parsedContext: ResearchContext | undefined =
+    parsed.indication || parsed.modality
+      ? { ...(parsed.indication ? { indication: parsed.indication } : {}), ...(parsed.modality ? { modality: parsed.modality } : {}) }
+      : undefined;
+  const context = opts.context ?? parsedContext;
 
   await seedStructuredEvidence({ target, tools: structuredTools, store, emit });
 
