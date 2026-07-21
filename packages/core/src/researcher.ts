@@ -197,12 +197,13 @@ export async function runResearcher(opts: {
     // tokens, exhausting rate limits and inflating cost. Curated cards are
     // surfaced first so the localisation / expression / tractability / safety
     // signals are actually used.
-    const isCurated = (e: Evidence) => e.source === 'Open Targets' || e.source === 'UniProt';
+    const STRUCTURED_KINDS = new Set(['target', 'disease', 'drug', 'trial', 'patent', 'dataset']);
+    const isCurated = (e: Evidence) => STRUCTURED_KINDS.has(e.kind);
     const curated = store.all().filter(isCurated);
     const seen = new Set<string>();
     const literature = roundLiterature.filter((e) => !isCurated(e) && !seen.has(e.id) && seen.add(e.id));
     const evidenceList = [
-      curated.length ? 'CURATED DATABASE EVIDENCE (authoritative for cell-surface localisation, normal-tissue expression, tractability, and safety - cite these ids where relevant):' : '',
+      curated.length ? 'CURATED DATABASE EVIDENCE (authoritative for cell-surface localisation, normal-tissue & tumor expression, tractability, safety, clinical precedent/trials, and patent/IP - cite these ids where relevant):' : '',
       ...curated.map(evidenceLine),
       curated.length ? '\nLITERATURE EVIDENCE:' : '',
       ...literature.map(evidenceLine),
