@@ -297,6 +297,7 @@ export type TraceEvent =
   | { type: 'research_read'; specialist: string; sourceId: string; locator: string }
   | { type: 'rerank'; specialist: string; before: string[]; after: string[] }
   | { type: 'research_reflect'; specialist: string; note: string; followups: string[] }
+  | { type: 'query_parsed'; target: string; indication?: string; modality?: string }
   | { type: 'lead_decompose'; specialists: string[] }
   | { type: 'completeness_verdict'; complete: boolean; gaps: string[] }
   | { type: 'gap_filler'; specialist: string; question: string }
@@ -390,6 +391,31 @@ export const ComputationReferenceSchema = ComputationEvidenceObjectSchema.omit({
 export const ReferenceSchema = z.discriminatedUnion('kind', [LiteratureReferenceSchema, ComputationReferenceSchema]);
 export type Reference = z.infer<typeof ReferenceSchema>;
 
+// Per-run accounting: wall-clock duration plus token/cost usage per model.
+// `pricingKnown` is false when any model that logged calls has no price entry,
+// so a partial cost is never presented as a complete one.
+export const RunMetaSchema = z.object({
+  startedAt: z.string(),
+  completedAt: z.string(),
+  durationMs: z.number(),
+  backend: z.string(),
+  calls: z.number(),
+  models: z.array(z.object({
+    model: z.string(),
+    calls: z.number(),
+    tokensIn: z.number(),
+    tokensOut: z.number(),
+    costUsd: z.number().optional(),
+  })),
+  totals: z.object({
+    tokensIn: z.number(),
+    tokensOut: z.number(),
+    costUsd: z.number().optional(),
+  }),
+  pricingKnown: z.boolean(),
+});
+export type RunMeta = z.infer<typeof RunMetaSchema>;
+
 export interface Briefing {
   target: string;
   recommendation: Recommendation;
@@ -398,4 +424,6 @@ export interface Briefing {
   weighing: { takeaway: string; claims: Claim[] };
   references: Reference[];
   kolCluster?: KOLCluster;
+  /** Optional so run JSON written before metering existed stays valid. */
+  runMeta?: RunMeta;
 }
