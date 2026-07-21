@@ -11,8 +11,8 @@ describe('assembleReferences', () => {
       ], sources: ['PMID:2', 'ENSG1'], rag: 'green' },
     ];
     const evidence: Evidence[] = [
-      { id: 'ENSG1', kind: 'target', source: 'Open Targets', title: 'T', snippet: '', url: 'u1', raw: {}, retrievedAt: 'now' },
-      { id: 'PMID:2', kind: 'publication', source: 'Europe PMC', title: 'P', snippet: '', url: 'u2', raw: {}, retrievedAt: 'now' },
+      { id: 'ENSG1', kind: 'target', source: 'Open Targets', title: 'T', snippet: 'x'.repeat(601), url: 'u1', raw: { tissue: 'liver' }, retrievedAt: 'now' },
+      { id: 'PMID:2', kind: 'publication', source: 'Europe PMC', title: 'P', snippet: 'Paper finding', url: 'u2', raw: { fullText: 'large' }, retrievedAt: 'now' },
       { id: 'PMID:9', kind: 'publication', source: 'Europe PMC', title: 'Uncited', snippet: '', url: 'u9', raw: {}, retrievedAt: 'now' },
     ];
     const result: DeepResearchResult = {
@@ -22,6 +22,9 @@ describe('assembleReferences', () => {
     expect(refs.map((r) => r.id)).toEqual(['ENSG1', 'PMID:2']); // sorted, PMID:9 excluded (uncited)
     expect(refs[0].title).toBe('Open Targets - target record'); // DB card relabelled, not its facet title
     expect(refs[1].title).toBe('P'); // a real paper title is preserved
+    expect(refs[0]).toMatchObject({ snippet: 'x'.repeat(600), raw: { tissue: 'liver' } });
+    expect(refs[1]).toMatchObject({ snippet: 'Paper finding' });
+    expect(refs[1]).not.toHaveProperty('raw');
   });
 
   it('collapses cited PMC sections and DB-card facets to one reference per source', () => {

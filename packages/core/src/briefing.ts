@@ -24,6 +24,7 @@ export function assembleReferences(result: DeepResearchResult): Reference[] {
     if (baseId.startsWith('PATENT:')) return 'EPO Espacenet - patent record';
     return fallback; // PMID and similar carry a real paper title
   };
+  const STRUCTURED_KINDS = new Set(['target', 'disease', 'drug', 'trial', 'patent', 'dataset']);
   const byBase = new Map<string, Reference>();
   for (const e of result.evidence) {
     if (!cited.has(e.id)) continue;
@@ -39,6 +40,8 @@ export function assembleReferences(result: DeepResearchResult): Reference[] {
         source: e.source,
         title: sourceLabel(b, e.title),
         url: e.url ? baseOf(e.url) : e.url,
+        ...(e.snippet ? { snippet: e.snippet.slice(0, 600) } : {}),
+        ...(STRUCTURED_KINDS.has(e.kind) && e.raw !== undefined ? { raw: e.raw } : {}),
       });
     }
   }

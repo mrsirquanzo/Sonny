@@ -378,6 +378,8 @@ export const LiteratureReferenceSchema = z.object({
   source: z.string(),
   title: z.string(),
   url: z.string(),
+  snippet: z.string().optional(),
+  raw: z.unknown().optional(),
 });
 
 export const ComputationReferenceSchema = ComputationEvidenceObjectSchema.omit({
