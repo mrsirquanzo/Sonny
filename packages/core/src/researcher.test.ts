@@ -4,7 +4,7 @@ import { planResearchQuestions, extractClaims, type ThreadBrief, type ResearchQu
 import { EvidenceStore } from './evidenceStore.js';
 import { runResearcher } from './researcher.js';
 import type { Tool } from '@mrsirquanzo/sonny-mcp-gateway';
-import type { TraceEvent } from '@mrsirquanzo/sonny-shared';
+import type { Evidence, TraceEvent } from '@mrsirquanzo/sonny-shared';
 import type { MethodologicalCritique } from '@mrsirquanzo/sonny-shared';
 import { safeToolCall } from './safeToolCall.js'; // ensure import graph is wired
 import { targetTerms } from './relevance.js'; // ensure import graph wired
@@ -71,6 +71,42 @@ function tool(name: string, evidence: object[]): Tool {
 }
 
 describe('runResearcher loop', () => {
+  it('surfaces every structured evidence kind to claim extraction regardless of source', async () => {
+    const store = new EvidenceStore();
+    const structuredEvidence: Evidence[] = [
+      { id: 'TARGET:1', kind: 'target', source: 'Open Targets', title: 'Target', snippet: 'target evidence', url: 'u', raw: {}, retrievedAt: 'now' },
+      { id: 'DISEASE:1', kind: 'disease', source: 'Disease DB', title: 'Disease', snippet: 'disease evidence', url: 'u', raw: {}, retrievedAt: 'now' },
+      { id: 'DRUG:1', kind: 'drug', source: 'Drug DB', title: 'Drug', snippet: 'drug evidence', url: 'u', raw: {}, retrievedAt: 'now' },
+      { id: 'NCT0001', kind: 'trial', source: 'ClinicalTrials.gov', title: 'Trial', snippet: 'trial evidence', url: 'u', raw: {}, retrievedAt: 'now' },
+      { id: 'EP0001', kind: 'patent', source: 'Espacenet', title: 'Patent', snippet: 'patent evidence', url: 'u', raw: {}, retrievedAt: 'now' },
+      { id: 'GTEX:1', kind: 'dataset', source: 'GTEx', title: 'Expression', snippet: 'dataset evidence', url: 'u', raw: {}, retrievedAt: 'now' },
+    ];
+    for (const evidence of structuredEvidence) store.register(evidence);
+    store.register({ id: 'PMID:OLD', kind: 'publication', source: 'Europe PMC', title: 'Old paper', snippet: 'not retrieved for this question', url: 'u', raw: {}, retrievedAt: 'now' });
+
+    const search = tool('europepmc_search', []);
+    const fulltext = tool('pmc_fulltext', []);
+    let extractionPrompt = '';
+    const model: StructuredModel = { async generateStructured(opts) {
+      const system = String(opts.system);
+      if (system.includes('Plan the specific')) return { questions: [{ question: 'q?', concept: 'evidence' }] } as never;
+      if (system.includes('rigorous biomedical')) {
+        extractionPrompt = opts.prompt;
+        return { claims: [] } as never;
+      }
+      return { done: true, followups: [], takeaway: 't' } as never;
+    } };
+
+    await runResearcher({
+      brief: { id: 'x', title: 'X', objective: 'o', promptHint: 'h' },
+      target: 'CDCP1', tools: [search, fulltext], store,
+      model, verifierModel: noFlagAudit, emit: () => {}, budget: { maxRounds: 1 },
+    });
+
+    for (const evidence of structuredEvidence) expect(extractionPrompt).toContain(`[${evidence.id}]`);
+    expect(extractionPrompt).not.toContain('[PMID:OLD]');
+  });
+
   it('plans, reads full text, extracts grounded claims, reflects, and stops when done', async () => {
     const search = tool('europepmc_search', [
       { id: 'PMID:1', kind: 'publication', source: 'Europe PMC', title: 'CDCP1', snippet: '',
