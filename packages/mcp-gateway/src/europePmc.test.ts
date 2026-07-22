@@ -5,6 +5,8 @@ const payload = { resultList: { result: [
   { id: '33611339', source: 'MED', pmid: '33611339', pmcid: 'PMC7897327',
     title: 'CDCP1 review.', abstractText: 'CDCP1 is a transmembrane protein.',
     citedByCount: '1636', isOpenAccess: 'Y', firstPublicationDate: '2021-02-21',
+    doi: '10.1000/cdcp1-review', pubYear: '2021',
+    journalInfo: { journal: { title: 'Cancer Research Reviews' } },
     pubTypeList: { pubType: ['review-article', 'Review', 'Journal Article'] },
     authorList: { author: [
       { fullName: 'Smith J', authorId: { type: 'ORCID', value: '0000-0002-1234-5678' },
@@ -15,6 +17,8 @@ const payload = { resultList: { result: [
   { id: '40000001', source: 'MED', pmid: '40000001', pmcid: '',
     title: 'CDCP1 primary study.', abstractText: 'CDCP1 promotes EMT.',
     citedByCount: '12', isOpenAccess: 'N', firstPublicationDate: '2024-01-01',
+    doi: '10.1000/cdcp1-primary', pubYear: '2024',
+    journalInfo: { journal: { title: 'Oncology Reports' } },
     pubTypeList: { pubType: ['Journal Article'] } },
 ] } };
 
@@ -39,13 +43,18 @@ describe('europePmcSearchTool', () => {
     expect(out).toHaveLength(0);
   });
 
-  it('captures author metadata (names, affiliations, ORCID) when present', async () => {
+  it('captures publication and author metadata when present', async () => {
     const out = await europePmcSearchTool.call({ query: 'CDCP1 cancer' }, fakeFetch);
     expect(out[0].metadata?.authors?.map((a) => a.name)).toEqual(['Smith J', 'Doe A']);
     expect(out[0].metadata?.authors?.[0].affiliation).toBe('MIT, Cambridge, USA');
     expect(out[0].metadata?.authors?.[0].orcid).toBe('0000-0002-1234-5678');
     expect(out[0].metadata?.institutions).toEqual(['MIT, Cambridge, USA']);
-    expect(out[1].metadata).toBeUndefined(); // second hit has no authorList
+    expect(out[0].metadata).toMatchObject({
+      doi: '10.1000/cdcp1-review', journal: 'Cancer Research Reviews', year: '2021',
+    });
+    expect(out[1].metadata).toEqual({
+      doi: '10.1000/cdcp1-primary', journal: 'Oncology Reports', year: '2024',
+    });
   });
 });
 

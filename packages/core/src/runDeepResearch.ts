@@ -1,5 +1,5 @@
 import type { Claim, Evidence, Section, TraceEvent, KOLCluster, ContradictionFlag } from '@mrsirquanzo/sonny-shared';
-import type { Tool } from '@mrsirquanzo/sonny-mcp-gateway';
+import { verifyEvidenceMetadata, type Tool } from '@mrsirquanzo/sonny-mcp-gateway';
 import { EvidenceStore } from './evidenceStore.js';
 import type { StructuredModel } from './model.js';
 import type { ThreadBrief, ResearchBudget, ResearchContext } from './researcher.js';
@@ -169,6 +169,61 @@ export async function runDeepResearch(opts: {
     weighing = await weighAcrossThreads({ sections: finalSections, store, leadModel: opts.leadModel, verifierModel, emit });
   } catch (err) {
     emit({ type: 'error', message: `weighing failed: ${String(err)}` });
+  }
+
+  try {
+    const baseOf = (id: string): string => id.replace(/#.*$/, '');
+    const citedBaseIds = new Set<string>();
+    for (const section of finalSections) {
+      for (const claim of section.claims) {
+        for (const citation of claim.citations) citedBaseIds.add(baseOf(citation));
+      }
+    }
+    for (const claim of weighing.claims) {
+      for (const citation of claim.citations) citedBaseIds.add(baseOf(citation));
+    }
+
+    const citedPublications = new Map<string, Evidence>();
+    for (const evidence of store.all()) {
+      const baseId = baseOf(evidence.id);
+      if (evidence.kind === 'publication' && citedBaseIds.has(baseId) && !citedPublications.has(baseId)) {
+        citedPublications.set(baseId, evidence);
+      }
+    }
+
+    const references = [...citedPublications.entries()];
+    let verificationCursor = 0;
+    const verifyNext = async (): Promise<void> => {
+      while (verificationCursor < references.length) {
+        const [id, evidence] = references[verificationCursor++];
+        const doi = evidence.metadata?.doi;
+        if (!doi) {
+          evidence.metadata = { ...evidence.metadata, crossrefVerified: false };
+          emit({ type: 'reference_check', id, verified: false, note: 'no doi' });
+          continue;
+        }
+
+        try {
+          const result = await verifyEvidenceMetadata({ doi, title: evidence.title });
+          evidence.metadata = {
+            ...evidence.metadata,
+            crossrefVerified: result.verified,
+            ...(result.journal ? { journal: result.journal } : {}),
+            ...(result.year ? { year: result.year } : {}),
+          };
+          emit({
+            type: 'reference_check', id, doi, verified: result.verified,
+            ...(result.note ? { note: result.note } : {}),
+          });
+        } catch {
+          evidence.metadata = { ...evidence.metadata, crossrefVerified: false };
+          emit({ type: 'reference_check', id, doi, verified: false, note: 'crossref verification failed' });
+        }
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(5, references.length) }, verifyNext));
+  } catch (err) {
+    emit({ type: 'error', message: `reference verification pass failed: ${String(err)}` });
   }
 
   const contradictions = await detectContradictions({

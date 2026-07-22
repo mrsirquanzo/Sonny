@@ -7,6 +7,8 @@ interface Hit {
   id: string; source: string; pmid?: string; pmcid?: string;
   title?: string; abstractText?: string; citedByCount?: string;
   isOpenAccess?: string; firstPublicationDate?: string;
+  doi?: string; pubYear?: string;
+  journalInfo?: { journal?: { title?: string } };
   pubTypeList?: { pubType?: string[] };
   authorList?: { author?: Array<{
     fullName?: string;
@@ -17,14 +19,23 @@ interface Hit {
 
 function parseMetadata(h: Hit): EvidenceMetadata | undefined {
   const list = h.authorList?.author ?? [];
-  if (!list.length) return undefined;
   const authors = list.map((a) => {
     const affiliation = a.authorAffiliationDetailsList?.authorAffiliation?.[0]?.affiliation;
     const orcid = a.authorId?.type === 'ORCID' ? a.authorId.value : undefined;
     return { name: a.fullName ?? '(unknown)', ...(affiliation ? { affiliation } : {}), ...(orcid ? { orcid } : {}) };
   });
   const institutions = [...new Set(authors.map((a) => a.affiliation).filter((x): x is string => !!x))];
-  return { authors, ...(institutions.length ? { institutions } : {}) };
+  const doi = h.doi;
+  const journal = h.journalInfo?.journal?.title;
+  const year = h.pubYear;
+  if (!authors.length && !doi && !journal && !year) return undefined;
+  return {
+    ...(authors.length ? { authors } : {}),
+    ...(institutions.length ? { institutions } : {}),
+    ...(doi ? { doi } : {}),
+    ...(journal ? { journal } : {}),
+    ...(year ? { year } : {}),
+  };
 }
 
 export const europePmcSearchTool: Tool = {

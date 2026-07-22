@@ -22,6 +22,10 @@ export const EvidenceMetadataSchema = z.object({
   institutions: z.array(z.string()).optional(),
   figureType: z.string().optional(),
   imageRef: z.string().optional(),
+  doi: z.string().optional(),
+  journal: z.string().optional(),
+  year: z.string().optional(),
+  crossrefVerified: z.boolean().optional(),
 });
 export type EvidenceMetadata = z.infer<typeof EvidenceMetadataSchema>;
 
@@ -310,7 +314,8 @@ export type TraceEvent =
   | { type: 'patent_ingest'; status: 'ok' | 'failed'; format?: string }  // format reserved for a future ingest that reports source format
   | { type: 'patent_extracted'; patentNumber: string | null; sequenceCount: number }
   | { type: 'patent_associations'; associationCount: number; source: 'st26' | 'llm' }
-  | { type: 'patent_complete'; completeness: ExtractionCompletenessLike };
+  | { type: 'patent_complete'; completeness: ExtractionCompletenessLike }
+  | { type: 'reference_check'; id: string; doi?: string; verified: boolean; note?: string };
 
 export const RagRatingSchema = z.enum(['green', 'amber', 'red']);
 export type RagRating = z.infer<typeof RagRatingSchema>;
