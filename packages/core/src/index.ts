@@ -1,5 +1,5 @@
 export { EvidenceStore } from './evidenceStore.js';
-export { MODEL_ROUTER, AnthropicModel, makeModel, currentBackend, routerFor, modelFamily, resolveVerifier, pinVerifierModel, type ResolvedVerifier, type StructuredModel, type Backend } from './model.js';
+export { MODEL_ROUTER, AnthropicModel, makeModel, currentBackend, routerFor, modelFamily, resolveVerifier, pinVerifierModel, type ResolvedVerifier, type StructuredModel, type Backend, type UsageRecorder } from './model.js';
 export { OllamaModel } from './ollamaModel.js';
 export { groundClaims } from './grounding.js';
 export { verifyClaims } from './verifier.js';
@@ -17,6 +17,8 @@ export { produceResearchSection } from './produceResearchSection.js';
 export { RESEARCH_ROSTER } from './researchRoster.js';
 export { seedStructuredEvidence } from './leadSeed.js';
 export { parseResearchQuery, resolveQueryScope, looksLikeFreeText, type ParsedResearchQuery } from './parseQuery.js';
+export { createUsageMeter, type UsageMeter } from './usageMeter.js';
+export { PRICE_PER_MTOK, costFor } from './pricing.js';
 export { runDeepResearch, type DeepResearchResult } from './runDeepResearch.js';
 export { deriveStructuredClaims, mergeStructuredClaims } from './structuredClaims.js';
 export { assessCompleteness, fillGap, mergeGapClaims, type ResearchGap } from './completeness.js';

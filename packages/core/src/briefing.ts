@@ -1,6 +1,7 @@
-import type { Briefing, Reference, TraceEvent } from '@mrsirquanzo/sonny-shared';
+import type { Briefing, Reference, RunMeta, TraceEvent } from '@mrsirquanzo/sonny-shared';
 import type { Tool } from '@mrsirquanzo/sonny-mcp-gateway';
-import type { StructuredModel } from './model.js';
+import { currentBackend, type StructuredModel } from './model.js';
+import type { UsageMeter } from './usageMeter.js';
 import type { ThreadBrief, ResearchBudget, ResearchContext } from './researcher.js';
 import { runDeepResearch, type DeepResearchResult } from './runDeepResearch.js';
 import { synthesizeRecommendation } from './synthesize.js';
@@ -54,16 +55,31 @@ export async function produceBriefing(opts: {
   specialistModel: StructuredModel; verifierModel: StructuredModel; leadModel: StructuredModel;
   emit: (e: TraceEvent) => void; budget: ResearchBudget;
   context?: ResearchContext;
+  /** Optional. Timing is recorded either way; token/cost only with a meter. */
+  meter?: UsageMeter;
 }): Promise<Briefing> {
+  const startedAt = Date.now();
   const result = await runDeepResearch(opts);
   const { recommendation, executiveRead } = await synthesizeRecommendation({
     target: result.target, sections: result.sections, weighing: result.weighing, evidence: result.evidence, model: opts.leadModel,
     contradictions: result.contradictions,
   });
   opts.emit({ type: 'recommendation', verdict: recommendation.verdict });
+  const completedAt = Date.now();
+  const runMeta: RunMeta = opts.meter?.snapshot(startedAt) ?? {
+    startedAt: new Date(startedAt).toISOString(),
+    completedAt: new Date(completedAt).toISOString(),
+    durationMs: completedAt - startedAt,
+    backend: currentBackend(),
+    calls: 0,
+    models: [],
+    totals: { tokensIn: 0, tokensOut: 0 },
+    pricingKnown: false,
+  };
   return {
     target: result.target, recommendation, executiveRead,
     sections: result.sections, weighing: result.weighing, references: assembleReferences(result),
     kolCluster: result.kolCluster,
+    runMeta,
   };
 }

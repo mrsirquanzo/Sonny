@@ -72,6 +72,14 @@ export function modelFamily(id: string): string {
 export interface ResolvedVerifier { model: StructuredModel; modelId: string; decorrelated: boolean }
 
 /**
+ * Structural shape of a usage sink - anything with `record`. Kept structural so
+ * model.ts never has to import usageMeter.ts (which imports contracts).
+ */
+export interface UsageRecorder {
+  record(model: string, u: { tokensIn: number; tokensOut: number }): void;
+}
+
+/**
  * Resolve a verifier that is a different model family from the writer, so
  * verification is genuinely decorrelated (Sonny's rule: the judge is never the
  * writer's family). If the backend's own verifier is already cross-family
@@ -81,16 +89,23 @@ export interface ResolvedVerifier { model: StructuredModel; modelId: string; dec
  * same-family verifier with `decorrelated: false` so callers can flag it
  * VISIBLY rather than degrade silently.
  */
-export function resolveVerifier(backend: Backend = currentBackend()): ResolvedVerifier {
+export function resolveVerifier(
+  backend: Backend = currentBackend(),
+  meter?: UsageRecorder,
+): ResolvedVerifier {
   const router = routerFor(backend);
   if (modelFamily(router.writer) !== modelFamily(router.verifier)) {
-    return { model: makeModel(), modelId: router.verifier, decorrelated: true };
+    return { model: makeModel(meter), modelId: router.verifier, decorrelated: true };
   }
   const crossVerifier = routerFor('ollama').verifier; // local llama, different family from Claude
   if (modelFamily(crossVerifier) !== modelFamily(router.writer)) {
-    return { model: new OllamaModel(), modelId: crossVerifier, decorrelated: true };
+    const onUsage = meter
+      ? (u: { model: string; tokensIn: number; tokensOut: number }) =>
+          meter.record(u.model, { tokensIn: u.tokensIn, tokensOut: u.tokensOut })
+      : undefined;
+    return { model: new OllamaModel({ onUsage }), modelId: crossVerifier, decorrelated: true };
   }
-  return { model: makeModel(), modelId: router.verifier, decorrelated: false };
+  return { model: makeModel(meter), modelId: router.verifier, decorrelated: false };
 }
 
 /**
@@ -116,10 +131,15 @@ export interface StructuredModel {
 
 export class AnthropicModel implements StructuredModel {
   private client: Anthropic;
+  private onUsage?: (u: { tokensIn: number; tokensOut: number; model: string }) => void;
 
-  constructor(apiKey = process.env.ANTHROPIC_API_KEY) {
+  constructor(
+    apiKey = process.env.ANTHROPIC_API_KEY,
+    onUsage?: (u: { tokensIn: number; tokensOut: number; model: string }) => void,
+  ) {
     if (!apiKey) throw new Error('ANTHROPIC_API_KEY is required');
     this.client = new Anthropic({ apiKey });
+    this.onUsage = onUsage;
   }
 
   async generateStructured<T>(opts: {
@@ -148,6 +168,12 @@ export class AnthropicModel implements StructuredModel {
       messages: [{ role: 'user', content: opts.prompt }],
     });
 
+    this.onUsage?.({
+      model: opts.model,
+      tokensIn: res.usage.input_tokens,
+      tokensOut: res.usage.output_tokens,
+    });
+
     const block = res.content.find((b) => b.type === 'tool_use');
     if (!block || block.type !== 'tool_use') {
       throw new Error('model did not return structured output');
@@ -156,10 +182,18 @@ export class AnthropicModel implements StructuredModel {
   }
 }
 
-export function makeModel(): StructuredModel {
+/**
+ * `meter` is optional and structural (anything with `record`) so passing a
+ * UsageMeter needs no import cycle between model.ts and usageMeter.ts. When
+ * omitted, models report no usage and behave exactly as before.
+ */
+export function makeModel(meter?: UsageRecorder): StructuredModel {
+  const onUsage = meter
+    ? (u: { tokensIn: number; tokensOut: number; model: string }) => meter.record(u.model, u)
+    : undefined;
   switch (currentBackend()) {
-    case 'ollama': return new OllamaModel();
-    case 'anthropic': return new AnthropicModel();
-    case 'openai': return new OpenAICompatModel();
+    case 'ollama': return new OllamaModel({ onUsage });
+    case 'anthropic': return new AnthropicModel(undefined, onUsage);
+    case 'openai': return new OpenAICompatModel(undefined, undefined, onUsage);
   }
 }
