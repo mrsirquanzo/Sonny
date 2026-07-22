@@ -19,12 +19,18 @@ import type { StructuredModel } from './model.js';
 export class OpenAICompatModel implements StructuredModel {
   private baseUrl: string;
   private apiKey: string;
+  private onUsage?: (u: { tokensIn: number; tokensOut: number; model: string }) => void;
 
-  constructor(baseUrl = process.env.SONNY_OPENAI_BASE_URL, apiKey = process.env.SONNY_OPENAI_API_KEY) {
+  constructor(
+    baseUrl = process.env.SONNY_OPENAI_BASE_URL,
+    apiKey = process.env.SONNY_OPENAI_API_KEY,
+    onUsage?: (u: { tokensIn: number; tokensOut: number; model: string }) => void,
+  ) {
     if (!baseUrl) throw new Error('SONNY_OPENAI_BASE_URL is required for the openai backend');
     if (!apiKey) throw new Error('SONNY_OPENAI_API_KEY is required for the openai backend');
     this.baseUrl = baseUrl.replace(/\/$/, '');
     this.apiKey = apiKey;
+    this.onUsage = onUsage;
   }
 
   async generateStructured<T>(opts: {
@@ -90,7 +96,15 @@ export class OpenAICompatModel implements StructuredModel {
 
       const data = (await res.json()) as {
         choices?: Array<{ message?: { tool_calls?: Array<{ function?: { arguments?: string } }> } }>;
+        usage?: { prompt_tokens?: number; completion_tokens?: number };
       };
+      if (data.usage) {
+        this.onUsage?.({
+          model: opts.model,
+          tokensIn: data.usage.prompt_tokens ?? 0,
+          tokensOut: data.usage.completion_tokens ?? 0,
+        });
+      }
       const args = data.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
       if (typeof args !== 'string') { lastErr = 'model did not return a structured tool call'; continue; }
 

@@ -1,4 +1,4 @@
-import { makeModel, currentBackend, resolveVerifier, pinVerifierModel, produceBriefing, RESEARCH_ROSTER, type ResearchContext } from '@mrsirquanzo/sonny-core';
+import { makeModel, currentBackend, resolveVerifier, pinVerifierModel, produceBriefing, createUsageMeter, RESEARCH_ROSTER, type ResearchContext } from '@mrsirquanzo/sonny-core';
 import { europePmcSearchTool, pmcFullTextTool, openTargetsTargetTool, uniProtTargetTool, clinicalTrialsTool, patentSearchTool, europePmcCitationsTool } from '@mrsirquanzo/sonny-mcp-gateway';
 import { formatTrace } from './run.js';
 
@@ -8,7 +8,8 @@ export async function runDeep(target: string, context?: ResearchContext): Promis
   if (context?.indication || context?.modality) {
     process.stdout.write(`scope: indication=${context.indication ?? '-'} modality=${context.modality ?? '-'}\n`);
   }
-  const verifier = resolveVerifier();
+  const meter = createUsageMeter();
+  const verifier = resolveVerifier(currentBackend(), meter);
   process.stdout.write(`verifier: ${verifier.modelId} (decorrelated: ${verifier.decorrelated})\n`);
   if (!verifier.decorrelated) {
     process.stderr.write(`[sonny] WARNING: verifier shares the writer's model family on backend ${currentBackend()}; verification is not decorrelated.\n`);
@@ -17,10 +18,11 @@ export async function runDeep(target: string, context?: ResearchContext): Promis
     target: t, roster: RESEARCH_ROSTER,
     literatureTools: [europePmcSearchTool, pmcFullTextTool, europePmcCitationsTool],
     structuredTools: [openTargetsTargetTool, uniProtTargetTool, clinicalTrialsTool, patentSearchTool],
-    specialistModel: makeModel(), verifierModel: pinVerifierModel(verifier.model, verifier.modelId), leadModel: makeModel(),
+    specialistModel: makeModel(meter), verifierModel: pinVerifierModel(verifier.model, verifier.modelId), leadModel: makeModel(meter),
     emit: (e) => process.stdout.write(formatTrace([e]) + '\n'),
     budget: { maxRounds: 4 },
     context,
+    meter,
   });
 
   const r = briefing.recommendation;
@@ -56,6 +58,21 @@ export async function runDeep(target: string, context?: ResearchContext): Promis
   process.stdout.write(`\nREFERENCES (${briefing.references.length})\n`);
   for (const ref of briefing.references) {
     process.stdout.write(`  ${ref.id}  ${ref.title}  ${ref.url}\n`);
+  }
+
+  const m = briefing.runMeta;
+  if (m) {
+    process.stdout.write(`\nRUN COST\n`);
+    process.stdout.write(`  wall clock   ${(m.durationMs / 1000).toFixed(1)}s\n`);
+    process.stdout.write(`  backend      ${m.backend}\n`);
+    process.stdout.write(`  model calls  ${m.calls}\n`);
+    process.stdout.write(`  tokens       ${m.totals.tokensIn.toLocaleString()} in / ${m.totals.tokensOut.toLocaleString()} out\n`);
+    for (const mm of m.models) {
+      process.stdout.write(`    ${mm.model}: ${mm.calls} calls, ${mm.tokensIn.toLocaleString()} in / ${mm.tokensOut.toLocaleString()} out${mm.costUsd !== undefined ? `, $${mm.costUsd.toFixed(4)}` : ''}\n`);
+    }
+    process.stdout.write(m.pricingKnown && m.totals.costUsd !== undefined
+      ? `  cost         $${m.totals.costUsd.toFixed(4)}\n`
+      : `  cost         unpriced - at least one model is missing from the price table\n`);
   }
 
   if (briefing.kolCluster && briefing.kolCluster.labs.length) {
