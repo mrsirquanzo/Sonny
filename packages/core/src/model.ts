@@ -7,7 +7,7 @@ export { OllamaModel, OpenAICompatModel };
 
 export type Backend = 'ollama' | 'anthropic' | 'openai';
 
-export interface RoleRouter { planner: string; specialist: string; verifier: string; writer: string }
+export interface RoleRouter { planner: string; lead: string; specialist: string; verifier: string; writer: string }
 
 // Per-role model ids. Every backend honours the same SONNY_MODEL_* overrides so
 // a role can be pointed at any hosted model (incl. free cloud models via the
@@ -15,6 +15,7 @@ export interface RoleRouter { planner: string; specialist: string; verifier: str
 function routerWithOverrides(defaults: RoleRouter): RoleRouter {
   return {
     planner: process.env.SONNY_MODEL_PLANNER ?? defaults.planner,
+    lead: process.env.SONNY_MODEL_LEAD ?? defaults.lead,
     specialist: process.env.SONNY_MODEL_SPECIALIST ?? defaults.specialist,
     verifier: process.env.SONNY_MODEL_VERIFIER ?? defaults.verifier,
     writer: process.env.SONNY_MODEL_WRITER ?? defaults.writer,
@@ -23,10 +24,10 @@ function routerWithOverrides(defaults: RoleRouter): RoleRouter {
 
 const ROUTERS: Record<Backend, RoleRouter> = {
   anthropic: routerWithOverrides({
-    planner: 'claude-opus-4-8', specialist: 'claude-opus-4-8', verifier: 'claude-sonnet-4-6', writer: 'claude-opus-4-8',
+    planner: 'claude-opus-4-8', lead: 'claude-opus-4-8', specialist: 'claude-opus-4-8', verifier: 'claude-sonnet-4-6', writer: 'claude-opus-4-8',
   }),
   ollama: routerWithOverrides({
-    planner: 'qwen2.5:14b', specialist: 'qwen2.5:14b', verifier: 'llama3.1:8b', writer: 'qwen2.5:14b',
+    planner: 'qwen2.5:14b', lead: 'qwen2.5:14b', specialist: 'qwen2.5:14b', verifier: 'llama3.1:8b', writer: 'qwen2.5:14b',
   }),
   // Decorrelated default for free cloud open models (Groq): synthesize on
   // gpt-oss-120b (OpenAI lineage, strongest reasoning on the free tier), verify
@@ -35,6 +36,7 @@ const ROUTERS: Record<Backend, RoleRouter> = {
   // Override per role via env (e.g. Kimi K2 where the account has access).
   openai: routerWithOverrides({
     planner: 'openai/gpt-oss-120b',
+    lead: 'openai/gpt-oss-120b',
     specialist: 'openai/gpt-oss-120b',
     verifier: 'llama-3.3-70b-versatile',
     writer: 'openai/gpt-oss-120b',

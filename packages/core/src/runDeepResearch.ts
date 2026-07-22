@@ -15,7 +15,7 @@ import { mapSpecialtyLabs } from './kolDetector.js';
 import { createSourceIdentityResolver } from './rag.js';
 import { consolidateSectionClaims } from './consolidateClaims.js';
 import { mergeStructuredClaims } from './structuredClaims.js';
-import { composeRoster, isAntibodyModality } from './planner.js';
+import { composeRoster, inferModality, isAntibodyModality } from './planner.js';
 
 export interface DeepResearchResult {
   target: string;
@@ -62,7 +62,16 @@ export async function runDeepResearch(opts: {
     parsed.indication || parsed.modality
       ? { ...(parsed.indication ? { indication: parsed.indication } : {}), ...(parsed.modality ? { modality: parsed.modality } : {}) }
       : undefined;
-  const context = opts.context ?? parsedContext;
+  let context = opts.context ?? parsedContext;
+  if (!context?.modality) {
+    try {
+      const inf = await inferModality(target, leadModel);
+      context = { ...(context ?? {}), modality: inf.modality };
+      emit({ type: 'modality_inferred', target, modality: inf.modality, rationale: inf.rationale });
+    } catch (err) {
+      emit({ type: 'error', message: `modality inference failed: ${String(err)}` });
+    }
+  }
 
   if (context?.modality && !isAntibodyModality(context.modality)) {
     roster = await composeRoster({ target, context, model: leadModel, emit });

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { TraceEvent } from '@mrsirquanzo/sonny-shared';
 import type { StructuredModel } from './model.js';
-import { composeRoster, isAntibodyModality } from './planner.js';
+import { composeRoster, inferModality, isAntibodyModality } from './planner.js';
 import { RESEARCH_ROSTER } from './researchRoster.js';
 
 function fixedModel(result: unknown): StructuredModel {
@@ -28,6 +28,31 @@ describe('isAntibodyModality', () => {
     'uses the planner for %s',
     (modality) => expect(isAntibodyModality(modality)).toBe(false),
   );
+});
+
+describe('inferModality', () => {
+  it('returns the inferred modality and rationale', async () => {
+    const result = await inferModality('KRAS', fixedModel({
+      modality: 'small molecule',
+      rationale: 'KRAS is an intracellular GTPase with established ligandable pockets.',
+    }));
+
+    expect(result).toEqual({
+      modality: 'small molecule',
+      rationale: 'KRAS is an intracellular GTPase with established ligandable pockets.',
+    });
+  });
+
+  it('falls back to antibody when the model throws', async () => {
+    const model: StructuredModel = {
+      async generateStructured() { throw new Error('model unavailable'); },
+    };
+
+    await expect(inferModality('KRAS', model)).resolves.toEqual({
+      modality: 'antibody',
+      rationale: 'inference failed; defaulted to antibody',
+    });
+  });
 });
 
 describe('composeRoster', () => {

@@ -302,6 +302,7 @@ export type TraceEvent =
   | { type: 'rerank'; specialist: string; before: string[]; after: string[] }
   | { type: 'research_reflect'; specialist: string; note: string; followups: string[] }
   | { type: 'query_parsed'; target: string; indication?: string; modality?: string }
+  | { type: 'modality_inferred'; target: string; modality: string; rationale?: string }
   | { type: 'plan_composed'; modality: string; specialists: Array<{ id: string; title: string; weight?: number }>; rationale?: string }
   | { type: 'lead_decompose'; specialists: string[] }
   | { type: 'completeness_verdict'; complete: boolean; gaps: string[] }
