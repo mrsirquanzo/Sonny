@@ -15,6 +15,7 @@ export { planResearchQuestions, extractClaims, reflectOnGaps, runResearcher,
   type ThreadBrief, type ThreadFindings, type ResearchBudget, type ResearchContext } from './researcher.js';
 export { produceResearchSection } from './produceResearchSection.js';
 export { RESEARCH_ROSTER } from './researchRoster.js';
+export { composeRoster, isAntibodyModality, CANONICAL_CATEGORIES } from './planner.js';
 export { seedStructuredEvidence } from './leadSeed.js';
 export { parseResearchQuery, resolveQueryScope, looksLikeFreeText, type ParsedResearchQuery } from './parseQuery.js';
 export { createUsageMeter, type UsageMeter } from './usageMeter.js';

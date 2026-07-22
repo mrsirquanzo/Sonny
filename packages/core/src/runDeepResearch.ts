@@ -15,6 +15,7 @@ import { mapSpecialtyLabs } from './kolDetector.js';
 import { createSourceIdentityResolver } from './rag.js';
 import { consolidateSectionClaims } from './consolidateClaims.js';
 import { mergeStructuredClaims } from './structuredClaims.js';
+import { composeRoster, isAntibodyModality } from './planner.js';
 
 export interface DeepResearchResult {
   target: string;
@@ -46,7 +47,8 @@ export async function runDeepResearch(opts: {
   emit: (e: TraceEvent) => void; budget: ResearchBudget;
   context?: ResearchContext;
 }): Promise<DeepResearchResult> {
-  const { roster, literatureTools, structuredTools, specialistModel, verifierModel, leadModel, emit, budget } = opts;
+  const { literatureTools, structuredTools, specialistModel, verifierModel, leadModel, emit, budget } = opts;
+  let roster = opts.roster;
   const store = new EvidenceStore();
 
   // Resolve the target symbol and scope from the request. When the caller passes
@@ -61,6 +63,10 @@ export async function runDeepResearch(opts: {
       ? { ...(parsed.indication ? { indication: parsed.indication } : {}), ...(parsed.modality ? { modality: parsed.modality } : {}) }
       : undefined;
   const context = opts.context ?? parsedContext;
+
+  if (context?.modality && !isAntibodyModality(context.modality)) {
+    roster = await composeRoster({ target, context, model: leadModel, emit });
+  }
 
   await seedStructuredEvidence({ target, tools: structuredTools, store, emit });
 
