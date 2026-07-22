@@ -29,6 +29,28 @@ const PlanSchema = z.object({
   rationale: z.string().min(1),
 }).strict();
 
+const InferModalitySchema = z.object({
+  modality: z.string(),
+  rationale: z.string(),
+});
+
+export async function inferModality(
+  target: string,
+  model: StructuredModel,
+): Promise<{ modality: string; rationale: string }> {
+  try {
+    const inferred = await model.generateStructured({
+      system: 'Given a molecular target, name the single MOST plausible therapeutic modality to pursue it, based on target biology - e.g. cell-surface / secreted -> "ADC" or "antibody"; intracellular enzyme / kinase / GTPase -> "small molecule"; E3-recruitable intracellular -> "small molecule degrader (PROTAC)"; RNA-level -> "siRNA/ASO". Return one concise modality phrase plus a one-sentence rationale. Prefer "small molecule" for classic intracellular targets; prefer "ADC"/"antibody" only for accessible cell-surface targets.',
+      prompt: `TARGET: ${target}`,
+      schema: InferModalitySchema,
+      model: MODEL_ROUTER.lead,
+    });
+    return InferModalitySchema.parse(inferred);
+  } catch {
+    return { modality: 'antibody', rationale: 'inference failed; defaulted to antibody' };
+  }
+}
+
 export function isAntibodyModality(modality?: string): boolean {
   const normalized = modality?.trim().toLowerCase();
   if (!normalized) return true;
