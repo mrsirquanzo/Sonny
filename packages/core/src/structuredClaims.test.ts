@@ -48,4 +48,35 @@ describe('deriveStructuredClaims', () => {
     const sections: Section[] = [{ kind: 'research', id: 'target_biology', title: 'T', takeaway: 't', claims: [], sources: [], rag: 'green' } as never];
     expect(mergeStructuredClaims(sections, store)).toEqual(sections);
   });
+
+  it('marks derived claims as deterministic provenance', () => {
+    const store = storeWith([{ id: 'ENSG1#expression', source: 'Open Targets', snippet: 'Highest normal expression in pancreas.' }]);
+    const claims = deriveStructuredClaims(store).get('disease_indications')!;
+    expect(claims[0].provenance).toBe('deterministic');
+  });
+
+  it('adds the merged card ids to section.sources', () => {
+    const store = storeWith([{ id: 'ENSG1#expression', source: 'Open Targets', snippet: 'Highest normal expression in pancreas.' }]);
+    const sections: Section[] = [{
+      kind: 'research', id: 'disease_indications', title: 'D', takeaway: 't',
+      claims: [{ id: 'c1', text: 'existing', citations: ['PMID:9'], confidence: 0.8 }], sources: ['PMID:9'], rag: 'amber',
+    } as never];
+    const merged = mergeStructuredClaims(sections, store);
+    // The curated card is now a shipped source, not an invisible claim citation.
+    expect(merged[0].sources).toContain('ENSG1#expression');
+    expect(merged[0].sources).toContain('PMID:9');
+  });
+
+  it('recomputes rag over the shipped claim set, not the pre-merge one', () => {
+    // One literature claim (PMID:9) and one curated card (ENSG1#expression) =
+    // two independent sources, so the shipped set is green. Pre-merge rag was
+    // amber because it never saw the card.
+    const store = storeWith([{ id: 'ENSG1#expression', source: 'Open Targets', snippet: 'Highest normal expression in pancreas.' }]);
+    const sections: Section[] = [{
+      kind: 'research', id: 'disease_indications', title: 'D', takeaway: 't',
+      claims: [{ id: 'c1', text: 'existing', citations: ['PMID:9'], confidence: 0.8 }], sources: ['PMID:9'], rag: 'amber',
+    } as never];
+    const merged = mergeStructuredClaims(sections, store);
+    expect(merged[0].rag).toBe('green');
+  });
 });

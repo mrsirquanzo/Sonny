@@ -199,6 +199,18 @@ export const ClaimSchema = z.object({
   originVerification: OriginVerificationSchema.optional(),
   llmVerdict: VerdictStatusSchema.optional(),
   verifierDecorrelated: z.boolean().optional(),
+  /**
+   * How this claim earned its place in a section.
+   *
+   * Absent (the default) means a model asserted it and `verifyClaims` passed it.
+   * `deterministic` means it was asserted verbatim from a curated database card
+   * (Open Targets, UniProt) after verification had already run, so its
+   * confidence is an assigned constant rather than a verifier verdict.
+   *
+   * Gates that reason about "verified findings" MUST exclude `deterministic`
+   * claims. They are grounding, not research findings.
+   */
+  provenance: z.enum(['deterministic']).optional(),
 });
 export type Claim = z.infer<typeof ClaimSchema>;
 
