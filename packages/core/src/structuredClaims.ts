@@ -1,5 +1,6 @@
-import type { Claim, Section } from '@mrsirquanzo/sonny-shared';
+import type { Claim, Section, Verdict } from '@mrsirquanzo/sonny-shared';
 import type { EvidenceStore } from './evidenceStore.js';
+import { computeRag, createSourceIdentityResolver, type SourceIdentityResolver } from './rag.js';
 
 /**
  * Deterministically turn curated database evidence (Open Targets, UniProt) into
@@ -43,6 +44,9 @@ export function deriveStructuredClaims(store: EvidenceStore): Map<string, Claim[
       text: `${text} (${e.source})`,
       citations: [e.id],
       confidence: 0.9,
+      // Asserted from the card, not verified by the verifier. Downstream gates
+      // that count verified findings must be able to tell the difference.
+      provenance: 'deterministic',
     };
     const list = bySection.get(route.section) ?? [];
     list.push(claim);
@@ -51,8 +55,21 @@ export function deriveStructuredClaims(store: EvidenceStore): Map<string, Claim[
   return bySection;
 }
 
-/** Prepend the derived structured claims to their target sections (leading, high-confidence). */
-export function mergeStructuredClaims(sections: Section[], store: EvidenceStore): Section[] {
+/**
+ * Prepend the derived structured claims to their target sections (leading,
+ * high-confidence), then bring `sources` and `rag` back in step with what the
+ * section actually ships.
+ *
+ * `rag` is computed in `produceResearchSection` before this merge runs, so
+ * without recomputation it describes a claim set that is not the shipped one
+ * and never sees the curated cards - the highest-confidence evidence present.
+ * Mirrors `mergeGapClaims`, the other post-verification merge.
+ */
+export function mergeStructuredClaims(
+  sections: Section[],
+  store: EvidenceStore,
+  resolveSourceIdentity: SourceIdentityResolver = createSourceIdentityResolver(store.all()),
+): Section[] {
   const bySection = deriveStructuredClaims(store);
   if (bySection.size === 0) return sections;
   return sections.map((s) => {
@@ -60,6 +77,10 @@ export function mergeStructuredClaims(sections: Section[], store: EvidenceStore)
     if (!add || add.length === 0) return s;
     const existing = new Set(s.claims.map((c) => c.text));
     const fresh = add.filter((c) => !existing.has(c.text));
-    return { ...s, claims: [...fresh, ...s.claims] };
+    if (fresh.length === 0) return s;
+    const claims = [...fresh, ...s.claims];
+    const sources = [...new Set([...s.sources, ...fresh.flatMap((c) => c.citations)])];
+    const verdicts: Verdict[] = claims.map((c) => ({ claimId: c.id, status: 'supported', rationale: '' }));
+    return { ...s, claims, sources, rag: computeRag(claims, verdicts, resolveSourceIdentity) };
   });
 }

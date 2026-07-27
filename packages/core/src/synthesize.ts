@@ -46,10 +46,20 @@ export async function synthesizeRecommendation(opts: {
   const { target, sections, weighing, evidence, model } = opts;
   const contradictions = opts.contradictions ?? [];
 
-  // Abstention gate (deterministic, no model call). Section.claims is the
-  // supported-only subset, so this counts grounded findings. Fewer than two
-  // means there is nothing to weigh into a two-sided bull-and-bear.
-  const supportedCount = sections.reduce((n, s) => n + s.claims.length, 0);
+  // Abstention gate (deterministic, no model call). Counts verified research
+  // findings: claims a specialist asserted and `verifyClaims` supported.
+  //
+  // Curated database cards are merged into Section.claims AFTER verification
+  // (`mergeStructuredClaims`), carrying an assigned 0.9 confidence rather than
+  // a verifier verdict, so they are excluded here. Otherwise two Open Targets
+  // cards would clear the gate on a target whose every model-generated claim
+  // failed verification, and the memo would argue a case it cannot support.
+  //
+  // Fewer than two means there is nothing to weigh into a two-sided bull-and-bear.
+  const supportedCount = sections.reduce(
+    (n, s) => n + s.claims.filter((c) => c.provenance !== 'deterministic').length,
+    0,
+  );
   if (supportedCount < 2) {
     const recommendation: Recommendation = {
       verdict: 'insufficient-evidence',

@@ -160,6 +160,49 @@ describe('synthesizeRecommendation abstention gate', () => {
     expect(gen).not.toHaveBeenCalled();
   });
 
+  it('abstains when the only claims are deterministic curated cards', async () => {
+    // Regression: curated Open Targets/UniProt cards are merged into
+    // section.claims AFTER verification, carrying an assigned 0.9 confidence
+    // rather than a verifier verdict. Two of them must not clear the gate on a
+    // target whose model-generated claims all failed verification.
+    const gen = vi.fn();
+    const cardsOnly: Section = {
+      kind: 'research', id: 'target_biology', title: 'T', takeaway: 't',
+      claims: [
+        { id: 's1', text: 'Subcellular location: cell membrane.', citations: ['ENSG1#localization'], confidence: 0.9, provenance: 'deterministic' },
+        { id: 's2', text: 'Highest normal expression in pancreas.', citations: ['ENSG1#expression'], confidence: 0.9, provenance: 'deterministic' },
+      ],
+      sources: ['ENSG1#localization', 'ENSG1#expression'], rag: 'red',
+    } as never;
+    const { recommendation } = await synthesizeRecommendation({
+      target: 'ZXQR7', sections: [cardsOnly],
+      weighing: { takeaway: '', claims: [] }, evidence: abstentionEvidence, model: { generateStructured: gen } as any,
+    });
+    expect(recommendation.verdict).toBe('insufficient-evidence');
+    expect(gen).not.toHaveBeenCalled();
+  });
+
+  it('counts verified model claims alongside deterministic cards', async () => {
+    // One deterministic card plus two verified findings still proceeds: the
+    // gate excludes cards from the count, it does not reject sections holding them.
+    const gen = vi.fn().mockResolvedValue(abstentionDraft);
+    const mixed: Section = {
+      kind: 'research', id: 'target_biology', title: 'T', takeaway: 't',
+      claims: [
+        { id: 's1', text: 'card', citations: ['ENSG1#localization'], confidence: 0.9, provenance: 'deterministic' },
+        { id: 'm1', text: 'a finding', citations: ['PMID:1'], confidence: 0.8 },
+        { id: 'm2', text: 'another finding', citations: ['PMID:1'], confidence: 0.8 },
+      ],
+      sources: ['PMID:1'], rag: 'amber',
+    } as never;
+    const { recommendation } = await synthesizeRecommendation({
+      target: 'EGFR', sections: [mixed],
+      weighing: { takeaway: '', claims: [] }, evidence: abstentionEvidence, model: { generateStructured: gen } as any,
+    });
+    expect(recommendation.verdict).not.toBe('insufficient-evidence');
+    expect(gen).toHaveBeenCalled();
+  });
+
   it('takes the normal path with two or more supported claims', async () => {
     const gen = vi.fn().mockResolvedValue(abstentionDraft);
     const { recommendation } = await synthesizeRecommendation({

@@ -1,5 +1,6 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   GoldenTarget,
   SubsetConfig,
@@ -45,9 +46,13 @@ type EngineDeps = {
 const REPEATS = Number(process.env.SONNY_EVAL_REPEATS ?? 3);
 // Verdict-eval goldens live in golden/verdict/, namespaced apart from the
 // patent-eval goldens (golden/synthetic-antibody.json) that share this package.
-const GOLDEN_DIR = process.env.SONNY_GOLDEN_DIR ?? "golden/verdict";
-const OUT_DIR = process.env.SONNY_EVAL_OUT ?? ".eval-out";
-const BASELINE = process.env.SONNY_EVAL_BASELINE ?? "golden/verdict/_baseline.json";
+// Resolve package-relative so the goldens load from any cwd. `pnpm eval` runs
+// from eval/, but the root vitest config collects these tests from the repo
+// root, where a bare "golden/verdict" does not exist.
+const PKG_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const GOLDEN_DIR = process.env.SONNY_GOLDEN_DIR ?? path.join(PKG_ROOT, "golden/verdict");
+const OUT_DIR = process.env.SONNY_EVAL_OUT ?? path.join(PKG_ROOT, ".eval-out");
+const BASELINE = process.env.SONNY_EVAL_BASELINE ?? path.join(PKG_ROOT, "golden/verdict/_baseline.json");
 
 export async function loadGolden(subset: EvalSubset): Promise<GoldenTarget[]> {
   const files = (await fs.readdir(GOLDEN_DIR)).filter(
