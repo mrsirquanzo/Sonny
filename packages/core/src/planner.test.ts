@@ -43,14 +43,14 @@ describe('inferModality', () => {
     });
   });
 
-  it('falls back to antibody when the model throws', async () => {
+  it('falls back to unknown (never antibody) when the model throws', async () => {
     const model: StructuredModel = {
       async generateStructured() { throw new Error('model unavailable'); },
     };
 
     await expect(inferModality('KRAS', model)).resolves.toEqual({
-      modality: 'antibody',
-      rationale: 'inference failed; defaulted to antibody',
+      modality: 'unknown',
+      rationale: 'inference failed; modality unresolved',
     });
   });
 });

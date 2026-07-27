@@ -133,7 +133,7 @@ describe('runResearcher loop', () => {
     });
 
     expect(findings.takeaway).toBe('CDCP1 is an EMT driver.');
-    expect(findings.claims.map((c) => c.id)).toEqual(['c1']);
+    expect(findings.claims.map((c) => c.id)).toEqual(['target_biology#r0c1']);
     expect(events.map((e) => e.type)).toContain('research_plan');
     expect(events.map((e) => e.type)).toContain('research_read');
     expect(events.map((e) => e.type)).toContain('research_reflect');
@@ -211,7 +211,7 @@ describe('runResearcher loop', () => {
 
     expect(fulltextCalls).toBe(0);                              // title-gate skipped the deep-read
     expect(events.some((e) => e.type === 'research_read')).toBe(false);
-    expect(findings.claims.map((c) => c.id)).toEqual(['c1']);  // claims still drafted from the abstract
+    expect(findings.claims.map((c) => c.id)).toEqual(['x#r0c1']);  // claims still drafted from the abstract
   });
 
   it('deep-reads a title-matching hit and drops its off-topic sections before registering', async () => {
@@ -329,7 +329,7 @@ describe('runResearcher loop', () => {
       model, verifierModel, emit: (e) => events.push(e), budget: { maxRounds: 1 },
     });
 
-    const c1 = findings.claims.find((c) => c.id === 'c1')!;
+    const c1 = findings.claims.find((c) => c.id === 'x#r0c1')!;
     expect(c1.confidence).toBe(0.9);                                  // NOT capped - data preserved
     expect(c1.redFlags?.[0].category).toBe('surrogate_endpoint');    // context attached
     expect(findings.critiques.some((cr) => cr.evidenceId === 'PMID:1')).toBe(true);

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { TraceEvent } from '@mrsirquanzo/sonny-shared';
+import type { TargetIdentity, TraceEvent } from '@mrsirquanzo/sonny-shared';
 import type { StructuredModel } from './model.js';
 import { MODEL_ROUTER } from './model.js';
 
@@ -7,7 +7,14 @@ import { MODEL_ROUTER } from './model.js';
 // molecular symbol the structured tools key off (HPA/GTEx/Open Targets query by
 // gene symbol, not a sentence); indication/modality steer specialist framing.
 export interface ParsedResearchQuery {
+  /** Bare symbol for symbol-keyed tools. Kept a string for back-compat. */
   target: string;
+  /**
+   * Structured identity resolved from the same input. Additive: changing
+   * `target` itself to a TargetIdentity ripples through every specialist and
+   * belongs with scope propagation in slice 3, not the evidence layer.
+   */
+  targetIdentity: TargetIdentity;
   indication?: string;
   modality?: string;
 }
@@ -47,8 +54,10 @@ export async function parseResearchQuery(
     const t = v?.trim();
     return t && t.toLowerCase() !== 'not specified' && t.toLowerCase() !== 'none' ? t : undefined;
   };
+  const identity = resolveTargetIdentity(parsed.target.trim());
   return {
-    target: parsed.target.trim(),
+    target: retrievalSymbolOf(identity, parsed.target.trim()),
+    targetIdentity: identity,
     ...(clean(parsed.indication) ? { indication: clean(parsed.indication) } : {}),
     ...(clean(parsed.modality) ? { modality: clean(parsed.modality) } : {}),
   };
@@ -65,7 +74,10 @@ export async function resolveQueryScope(opts: {
 }): Promise<ParsedResearchQuery> {
   const { rawQuery, model, emit } = opts;
   const query = rawQuery.trim();
-  if (!looksLikeFreeText(query)) return { target: query };
+  if (!looksLikeFreeText(query)) {
+    const identity = resolveTargetIdentity(query);
+    return { target: retrievalSymbolOf(identity, query), targetIdentity: identity };
+  }
   try {
     const parsed = await parseResearchQuery(model, query);
     emit({
@@ -77,6 +89,36 @@ export async function resolveQueryScope(opts: {
     return parsed;
   } catch (err) {
     emit({ type: 'error', message: `query parse failed, using raw text as target: ${String(err)}` });
-    return { target: query };
+    const identity = resolveTargetIdentity(query);
+    return { target: retrievalSymbolOf(identity, query), targetIdentity: identity };
   }
+}
+
+/**
+ * Split a variant-qualified target into a symbol plus target form.
+ *
+ * Structured tools (Open Targets, HPA, GTEx, ClinicalTrials) key off a bare
+ * gene symbol, so passing "KRAS G12C" whole silently degraded every structured
+ * lookup. Deterministic, no model call: a trailing protein-variant or
+ * exon/fusion token is stripped from the symbol and retained as targetForm.
+ */
+const VARIANT_TOKEN = /^(?:[A-Z]\d{1,4}[A-Z*]?|del\w*|ins\w*|fs\*?\d*|ex\d+|[A-Z]\d{1,4}fs)$/;
+
+export function resolveTargetIdentity(raw: string): TargetIdentity {
+  const text = raw.trim();
+  const fusion = text.match(/^([A-Za-z0-9-]+)\s*[-::]\s*([A-Za-z0-9]+)\s+fusion$/i);
+  if (fusion) return { kind: 'fusion', partners: [fusion[1], fusion[2]] };
+  const parts = text.split(/\s+/);
+  if (parts.length === 2 && VARIANT_TOKEN.test(parts[1].toUpperCase())) {
+    return { kind: 'gene_or_protein', symbol: parts[0], targetForm: parts[1] };
+  }
+  return { kind: 'gene_or_protein', symbol: text };
+}
+
+/** The string a symbol-keyed tool should receive for an identity. */
+export function retrievalSymbolOf(identity: TargetIdentity, fallback: string): string {
+  if (identity.kind === 'gene_or_protein') return identity.symbol;
+  if (identity.kind === 'peptide_hla') return identity.sourceGene;
+  if (identity.kind === 'fusion') return identity.partners[0];
+  return fallback;
 }

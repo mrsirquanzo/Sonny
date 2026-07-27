@@ -79,7 +79,7 @@ export async function fillGap(opts: {
   }
 
   const evidenceList = store.all().map((e) => `[${e.id}]${e.locator ? ` (${e.locator})` : ''} ${e.title} - ${e.passage ?? e.snippet}`).join('\n');
-  const drafted = await extractClaims(gap.question, evidenceList, specialistModel);
+  const drafted = await extractClaims(gap.question, evidenceList, specialistModel, undefined, { sectionKey: `${gap.specialistId}#gap`, round: 0 });
   for (const c of drafted) emit({ type: 'claim_drafted', claim: c });
 
   const { shippable } = groundClaims(drafted, store);

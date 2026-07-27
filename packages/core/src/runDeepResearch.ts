@@ -62,7 +62,13 @@ export async function runDeepResearch(opts: {
     parsed.indication || parsed.modality
       ? { ...(parsed.indication ? { indication: parsed.indication } : {}), ...(parsed.modality ? { modality: parsed.modality } : {}) }
       : undefined;
-  let context = opts.context ?? parsedContext;
+  // Per-field merge: whole-object precedence discarded a parsed indication
+  // whenever a caller supplied only a modality.
+  let context: ResearchContext | undefined = (opts.context || parsedContext)
+    ? { ...parsedContext, ...Object.fromEntries(
+        Object.entries(opts.context ?? {}).filter(([, v]) => v !== undefined && v !== ''),
+      ) }
+    : undefined;
   if (!context?.modality) {
     try {
       const inf = await inferModality(target, leadModel);
@@ -73,7 +79,13 @@ export async function runDeepResearch(opts: {
     }
   }
 
-  if (context?.modality && !isAntibodyModality(context.modality)) {
+  // `unknown` means the modality is UNRESOLVED, not that it is exotic. Composing
+  // a modality-specific roster for it would invent specialisation from nothing;
+  // an unresolved modality keeps the fixed roster and (from slice 3) the generic
+  // lens. Without this guard the `unknown` fallback silently routed every failed
+  // inference into the generative planner.
+  const modalityResolved = context?.modality && context.modality !== 'unknown';
+  if (modalityResolved && !isAntibodyModality(context!.modality)) {
     roster = await composeRoster({ target, context, model: leadModel, emit });
   }
 

@@ -1,11 +1,19 @@
 import type { TraceEvent } from '@mrsirquanzo/sonny-shared';
 import type { Tool } from '@mrsirquanzo/sonny-mcp-gateway';
 import type { EvidenceStore } from './evidenceStore.js';
+import { resolveTargetIdentity } from './parseQuery.js';
 
 // Target-level argument for each structured seed tool.
+//
+// Symbol-keyed tools receive the RETRIEVAL SYMBOL, never the raw target string:
+// "KRAS G12C" resolves to symbol KRAS, so the lookup matches instead of
+// silently returning nothing.
 function seedArgs(toolName: string, target: string): Record<string, unknown> {
-  if (toolName === 'open_targets_target') return { symbol: target };
-  return { query: target }; // clinical_trials_search and any other structured lookup
+  const symbol = resolveTargetIdentity(target).kind === 'gene_or_protein'
+    ? (resolveTargetIdentity(target) as { symbol: string }).symbol
+    : target;
+  if (toolName === 'open_targets_target') return { symbol };
+  return { query: symbol }; // clinical_trials_search and any other structured lookup
 }
 
 export async function seedStructuredEvidence(opts: {
