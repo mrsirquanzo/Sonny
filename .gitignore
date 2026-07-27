@@ -13,3 +13,4 @@ coverage
 packages/mcp-gateway/src/.docker-test-runs/
 .docker-test-runs/
 run
+*.tsbuildinfo
