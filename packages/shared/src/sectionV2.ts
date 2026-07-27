@@ -18,6 +18,8 @@ const SectionBaseSchema = z.object({
   // section would silently acquire a property it was never written with.
   visibility: z.enum(['dossier', 'audit']).optional(),
   critiques: z.array(MethodologicalCritiqueSchema).optional(),
+  /** Post-migration home for pre-taxonomy risks. See migrateStoredSections. */
+  legacyDevelopabilityRisks: z.array(LegacyDevelopabilityRiskSchema).optional(),
 });
 
 /**
@@ -103,8 +105,16 @@ export function migrateStoredSections(sections: readonly unknown[]): StoredSecti
     if (typeof section !== 'object' || section === null || Array.isArray(section)) {
       return parseStoredSection(section);
     }
-    const record = section as Record<string, unknown>;
-    return parseStoredSection(record.kind === undefined ? { ...record, kind: 'research' } : record);
+    const record = { ...(section as Record<string, unknown>) };
+    if (record.kind === undefined) record.kind = 'research';
+    // Move pre-taxonomy risks to their migrated home. Parsing alone preserves
+    // `developabilityRisks` under its stored name; migration must also surface
+    // it where the new contract expects it, or the content is present but
+    // invisible to everything reading the V2 shape.
+    if (record.developabilityRisks !== undefined && record.legacyDevelopabilityRisks === undefined) {
+      record.legacyDevelopabilityRisks = record.developabilityRisks;
+    }
+    return parseStoredSection(record);
   });
 }
 

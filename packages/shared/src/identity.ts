@@ -21,19 +21,26 @@ export type Q1HypothesisKey = string;
  */
 export function normalizeTargetIdentity(target: TargetIdentity): TargetIdentity {
   const sym = (s: string): string => s.trim().toUpperCase();
+  // Normalize BEFORE testing presence: a whitespace-only optional field is
+  // semantically an omission, and treating it as present gave two equivalent
+  // identities different fingerprints.
+  const opt = (v: string | undefined): string | undefined => {
+    const n = v === undefined ? undefined : sym(v);
+    return n === undefined || n === '' ? undefined : n;
+  };
   switch (target.kind) {
     case 'gene_or_protein':
       return {
         kind: 'gene_or_protein',
         symbol: sym(target.symbol),
-        ...(target.targetForm ? { targetForm: sym(target.targetForm) } : {}),
+        ...(opt(target.targetForm) ? { targetForm: opt(target.targetForm)! } : {}),
       };
     case 'peptide_hla':
       return {
         kind: 'peptide_hla',
         sourceGene: sym(target.sourceGene),
-        ...(target.variant ? { variant: sym(target.variant) } : {}),
-        ...(target.peptide ? { peptide: sym(target.peptide) } : {}),
+        ...(opt(target.variant) ? { variant: opt(target.variant)! } : {}),
+        ...(opt(target.peptide) ? { peptide: opt(target.peptide)! } : {}),
         hlaAllele: normalizeHlaAllele(target.hlaAllele),
       };
     case 'fusion':

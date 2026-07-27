@@ -111,6 +111,16 @@ export const TargetEngagementSchema = z.object({
 });
 export type TargetEngagement = z.infer<typeof TargetEngagementSchema>;
 
+/**
+ * The only intents `edit` can resolve to. Editing either restores function
+ * (correction) or suppresses it (disruption); it cannot, for example, turn an
+ * inhibitor into an activator.
+ */
+export const EDIT_RESOLVABLE_INTENTS: readonly BiologicalIntent[] = [
+  'restore_function',
+  'suppress_function',
+];
+
 /** Intents implied by an engagement's actions. `edit` contributes nothing. */
 export function derivedIntents(engagement: {
   primaryAction: TherapeuticAction;
@@ -142,12 +152,18 @@ export function resolveTargetEngagement(input: unknown): TargetEngagement {
     );
   }
   if (supplied) {
-    const conflicting = supplied.filter((i) => !derived.includes(i));
-    // Anything not implied by a non-edit action is only legitimate when `edit`
-    // is present, which is the branch that requires explicit intent.
-    if (!needsExplicit && conflicting.length > 0) {
+    // The presence of `edit` exempts ONLY the intents `edit` can plausibly
+    // carry. It must not disable contradiction checking for the other actions:
+    // `primaryAction:'inhibit'` with `secondaryActions:['edit']` previously
+    // accepted `activate_function`, which contradicts `inhibit` outright.
+    const allowed = new Set<BiologicalIntent>([
+      ...derived,
+      ...(needsExplicit ? EDIT_RESOLVABLE_INTENTS : []),
+    ]);
+    const conflicting = supplied.filter((i) => !allowed.has(i));
+    if (conflicting.length > 0) {
       throw new Error(
-        `biologicalIntents [${conflicting.join(', ')}] contradict the actions [${actions.join(', ')}] (implied: [${derived.join(', ')}])`,
+        `biologicalIntents [${conflicting.join(', ')}] contradict the actions [${actions.join(', ')}] (implied: [${derived.join(', ')}]${needsExplicit ? `; 'edit' may add [${EDIT_RESOLVABLE_INTENTS.join(', ')}]` : ''})`,
       );
     }
   }

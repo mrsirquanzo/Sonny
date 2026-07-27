@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { SpecialistAxisIdSchema } from './specialistAxes.js';
+import { SpecialistAxisIdSchema, type SpecialistAxisId } from './specialistAxes.js';
 
 export const RetrievalSourceIdSchema = z.enum([
   'europepmc', 'pubmed', 'clinicaltrials', 'opentargets',
@@ -83,17 +83,30 @@ export type RetrievalCoverageResult = {
 export function evaluateRetrievalCoverage(opts: {
   requirement: RetrievalCoverageRequirement;
   audits: readonly RetrievalAudit[];
+  /** Only audits for THIS section count. Absence is a claim about this
+   *  question, not about whatever else the run happened to search. */
+  sectionKey: string;
+  axis: SpecialistAxisId;
 }): RetrievalCoverageResult {
-  const { requirement, audits } = opts;
-  const failedAuditIds = audits.filter((a) => a.status === 'failed').map((a) => a.id);
-  const partialAuditIds = audits.filter((a) => a.status === 'partial').map((a) => a.id);
-  const usable = audits.filter((a) => a.status === 'completed');
+  const { requirement, audits, sectionKey, axis } = opts;
+  const mine = audits.filter((a) => a.sectionKey === sectionKey && a.axis === axis);
 
-  const sources = new Set(usable.map((a) => a.sourceId));
-  const classes = new Set(usable.map((a) => a.queryClass));
+  const failedAuditIds = mine.filter((a) => a.status === 'failed').map((a) => a.id);
+  const partialAuditIds = mine.filter((a) => a.status === 'partial').map((a) => a.id);
+  const usable = mine.filter((a) => a.status === 'completed');
 
-  const missingSourceGroups = requirement.sourceGroups.filter((g) => !g.some((s) => sources.has(s)));
-  const missingQueryClasses = requirement.requiredQueryClasses.filter((c) => !classes.has(c));
+  // A required source is satisfied only by an audit that ran a REQUIRED query
+  // class against it. Checking the source set and class set independently lets
+  // an unrelated query on the right source satisfy the requirement: searching
+  // ClinicalTrials for `mechanism` is not evidence about `target_modality`.
+  const missingSourceGroups = requirement.sourceGroups.filter(
+    (group) => !usable.some(
+      (a) => group.includes(a.sourceId) && requirement.requiredQueryClasses.includes(a.queryClass),
+    ),
+  );
+  const missingQueryClasses = requirement.requiredQueryClasses.filter(
+    (c) => !usable.some((a) => a.queryClass === c),
+  );
 
   return {
     adequate: missingSourceGroups.length === 0 && missingQueryClasses.length === 0,
