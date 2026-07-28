@@ -137,12 +137,12 @@ export async function runDeepResearch(opts: {
   emit({ type: 'completeness_verdict', complete, gaps: gaps.map((g) => g.question) });
   let finalSections = sections;
   if (!complete) {
-    for (const gap of gaps) {
+    for (const [gapOrdinal, gap] of gaps.entries()) {
       const idx = finalSections.findIndex((s) => s.id === gap.specialistId);
       if (idx === -1) continue;
       try {
         const claims = await fillGap({
-          gap, target, tools: literatureTools, store,
+          gap, gapOrdinal, target, tools: literatureTools, store,
           specialistModel: scopeGapModel(specialistModel, target, context), verifierModel, emit,
         });
         const resolveSourceIdentity = createSourceIdentityResolver(store.all());

@@ -34,6 +34,27 @@ export function looksLikeFreeText(query: string): boolean {
 // Extract the primary target symbol plus optional indication and modality from
 // a natural-language request. Never throws: on any failure the caller falls
 // back to treating the raw text as the target (prior behaviour).
+/**
+ * Recover a variant the model dropped.
+ *
+ * The parse prompt asks for a bare gene symbol, so "is KRAS G12C a good
+ * small-molecule target" comes back as target "KRAS" and the G12C is lost
+ * before identity resolution runs. Re-resolving against the RAW query keeps
+ * the variant when the raw text carries one for the same symbol.
+ */
+export function recoverTargetIdentity(modelTarget: string, rawQuery: string): TargetIdentity {
+  const fromModel = resolveTargetIdentity(modelTarget.trim());
+  if (fromModel.kind !== 'gene_or_protein' || fromModel.targetForm) return fromModel;
+  const symbol = fromModel.symbol;
+  const escaped = symbol.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const m = rawQuery.match(new RegExp(`\\b${escaped}\\s+([A-Za-z0-9*]+)`, 'i'));
+  if (m) {
+    const candidate = resolveTargetIdentity(`${symbol} ${m[1]}`);
+    if (candidate.kind === 'gene_or_protein' && candidate.targetForm) return candidate;
+  }
+  return fromModel;
+}
+
 export async function parseResearchQuery(
   model: StructuredModel,
   rawQuery: string,
@@ -54,7 +75,7 @@ export async function parseResearchQuery(
     const t = v?.trim();
     return t && t.toLowerCase() !== 'not specified' && t.toLowerCase() !== 'none' ? t : undefined;
   };
-  const identity = resolveTargetIdentity(parsed.target.trim());
+  const identity = recoverTargetIdentity(parsed.target, rawQuery);
   return {
     target: retrievalSymbolOf(identity, parsed.target.trim()),
     targetIdentity: identity,
