@@ -42,6 +42,27 @@ export interface OntologyIndex {
   candidatesFor?(normalizedLabel: string): Array<{ term: MondoTerm; reason: string }>;
 }
 
+/**
+ * The exact payload hashed into `canonicalContextId`.
+ *
+ * Exposed so a caller can recompute the id and prove no second hashing
+ * convention crept in. It is a derivation, not part of the stored contract:
+ * `DiseaseContextKeySchema` strips it.
+ */
+export interface NormalizedContextIdentity {
+  ontologyId: string | null;
+  unresolvedLabel: string | null;
+  mappingRelation: MappingRelation | 'unresolved' | null;
+  aliasSourceId: string | null;
+  biomarker: { gene: string | null; variant: string | null } | null;
+  diseaseSubtype: string | null;
+  treatmentSetting: string | null;
+}
+
+export type NormalizedDiseaseContext = DiseaseContextKey & {
+  normalizedIdentity: NormalizedContextIdentity;
+};
+
 export interface DiseaseContextInput {
   indication: string;
   biomarker?: { raw?: string; gene?: string; variant?: string };
@@ -84,7 +105,7 @@ function parseSourceId(raw: string): { source: CrossRefSource; sourceId: string 
 export function normalizeDiseaseContext(
   input: DiseaseContextInput,
   index: OntologyIndex,
-): DiseaseContextKey {
+): NormalizedDiseaseContext {
   const raw = input.indication;
   const label = normalizeLabel(raw);
 
@@ -109,19 +130,31 @@ export function normalizeDiseaseContext(
     resolved: { ontologyId?: string; canonicalName: string },
     mappingConfidence: DiseaseContextKey['mappingConfidence'],
     extras: Partial<DiseaseContextKey> = {},
-  ): DiseaseContextKey => {
+  ): NormalizedDiseaseContext => {
     // The id hashes NORMALIZED identity-bearing fields only. An unresolved
     // context still gets a stable id, derived from its raw label, so it can be
     // referenced and reconciled WITHOUT being merged into a neighbour.
-    const canonicalContextId = sha256CanonicalJson({
+    //
+    // A broad/narrow/related alias is identity-bearing too. `EFO:BROAD_LUNG_CANCER`
+    // maps INTO MONDO:0005233 without BEING it, so hashing the MONDO id alone
+    // would give the alias the same id as the exact term and silently merge a
+    // broader population into a narrower one - the exact wrong merge rule 5
+    // exists to prevent.
+    const relation = (extras.mappingRelation ?? null) as MappingRelation | 'unresolved' | null;
+    const aliasing = relation !== null && relation !== 'exact';
+    const normalizedIdentity: NormalizedContextIdentity = {
       ontologyId: resolved.ontologyId ?? null,
       unresolvedLabel: resolved.ontologyId ? null : label,
+      mappingRelation: aliasing ? relation : null,
+      aliasSourceId: aliasing ? (extras.matchedVia?.sourceId ?? label) : null,
       biomarker: biomarker ? { gene: biomarker.geneId ?? null, variant: biomarker.variantId ?? null } : null,
       diseaseSubtype: scaffold.diseaseSubtype ?? null,
       treatmentSetting: scaffold.treatmentSetting ?? null,
-    });
+    };
+    const canonicalContextId = sha256CanonicalJson(normalizedIdentity);
     return {
       canonicalContextId,
+      normalizedIdentity,
       ontologySource: ONTOLOGY_SOURCE,
       ontologyVersion: index.version,
       indication: {
@@ -134,7 +167,7 @@ export function normalizeDiseaseContext(
       ...(scaffold.treatmentSetting ? { treatmentSetting: scaffold.treatmentSetting } : {}),
       mappingConfidence,
       ...extras,
-    } as DiseaseContextKey;
+    } as NormalizedDiseaseContext;
   };
 
   // Rule 2: exact MONDO label, then exact synonym.
@@ -204,7 +237,15 @@ export function normalizeDiseaseContext(
  * ancestry is exposed separately for deliberate, directional aggregation.
  */
 export function contextsAreEquivalent(a: DiseaseContextKey, b: DiseaseContextKey): boolean {
-  return a.canonicalContextId === b.canonicalContextId;
+  if (a.canonicalContextId !== b.canonicalContextId) return false;
+  // Belt and braces. Aliasing already changes the id, so this cannot currently
+  // fire - but equivalence is the one predicate whose failure mode is a silent
+  // wrong merge, and it should not depend on the hash recipe staying correct.
+  return !isAliasMapping(a) && !isAliasMapping(b);
+}
+
+function isAliasMapping(c: DiseaseContextKey): boolean {
+  return c.mappingRelation === 'broad' || c.mappingRelation === 'narrow' || c.mappingRelation === 'related';
 }
 
 /**
@@ -245,7 +286,12 @@ export interface ReconciledContext {
   context: DiseaseContextKey;
   q1?: Q1ContextAssessment;
   q3?: Q3ContextAssessment;
-  status: 'evaluated_by_both' | 'only_q1' | 'only_q3' | 'ambiguous';
+  status: 'evaluated_by_both' | 'conflicting' | 'only_q1' | 'only_q3' | 'ambiguous';
+  /**
+   * Redundant with `status === 'conflicting'` by construction, and kept anyway:
+   * a caller that switches on status must not have to remember that
+   * `conflicting` is also a both-evaluated row.
+   */
   conflicting: boolean;
 }
 
@@ -274,11 +320,6 @@ export function reconcileContextAssessments(
   for (const a of opts.q3) { const e = put(a.context); e.q3 = a; }
 
   for (const entry of byId.values()) {
-    if (entry.context.mappingConfidence === 'unresolved') entry.status = 'ambiguous';
-    else if (entry.q1 && entry.q3) entry.status = 'evaluated_by_both';
-    else if (entry.q3) entry.status = 'only_q3';
-    else entry.status = 'only_q1';
-
     // Disagreement between biological validity and clinical attractiveness is
     // a REPORTED finding, not something to average away.
     if (entry.q1 && entry.q3) {
@@ -288,6 +329,15 @@ export function reconcileContextAssessments(
       const weakOpportunity = entry.q3.opportunity === 'weak' || entry.q3.opportunity === 'unsupported';
       entry.conflicting = (weakValidity && strongOpportunity) || (strongValidity && weakOpportunity);
     }
+
+    // Ambiguity outranks everything: an unresolved context must not be reported
+    // as jointly evaluated, because the join that would have produced that
+    // claim is exactly the merge we refused to make.
+    if (entry.context.mappingConfidence === 'unresolved') entry.status = 'ambiguous';
+    else if (entry.conflicting) entry.status = 'conflicting';
+    else if (entry.q1 && entry.q3) entry.status = 'evaluated_by_both';
+    else if (entry.q3) entry.status = 'only_q3';
+    else entry.status = 'only_q1';
   }
   return [...byId.values()];
 }

@@ -48,11 +48,11 @@ describe('Q1/Q3 reconciliation join', () => {
     );
     expect(rows).toHaveLength(3);
     expect(rows.find((row) => row.context.canonicalContextId === context('NSCLC').canonicalContextId))
-      .toMatchObject({ status: 'evaluated-by-both', q1: expect.any(Object), q3: expect.any(Object) });
+      .toMatchObject({ status: 'evaluated_by_both', q1: expect.any(Object), q3: expect.any(Object) });
     expect(rows.find((row) => row.context.canonicalContextId === context('PDAC').canonicalContextId))
-      .toMatchObject({ status: 'only-Q1', q1: expect.any(Object) });
+      .toMatchObject({ status: 'only_q1', q1: expect.any(Object) });
     expect(rows.find((row) => row.context.canonicalContextId === context('melanoma').canonicalContextId))
-      .toMatchObject({ status: 'only-Q3', q3: expect.any(Object) });
+      .toMatchObject({ status: 'only_q3', q3: expect.any(Object) });
   });
 
   it('reports conflicting favorable/unfavorable assessments', () => {
@@ -68,7 +68,7 @@ describe('Q1/Q3 reconciliation join', () => {
       [q1('non small lung adenocarcinom')],
       [q3('lung adenocarcinoma')],
     );
-    expect(rows.map((row) => row.status).sort()).toEqual(['ambiguous', 'only-Q3']);
+    expect(rows.map((row) => row.status).sort()).toEqual(['ambiguous', 'only_q3']);
     const ambiguous = rows.find((row) => row.status === 'ambiguous')!;
     expect(ambiguous.context.mappingConfidence).toBe('unresolved');
   });

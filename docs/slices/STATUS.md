@@ -15,13 +15,13 @@ acceptance checklists.
 | 1 | Shared contracts: axes, modality, target identity, scope, risk taxonomy, conclusions | MERGED `3b159a7` (#14) |
 | 2 | Evidence layer: neutral card snippets, full tractability, `unknown` fallback, claim ids, target identity | MERGED `f69f2cc` (#16) |
 | 3 | Deterministic rubric, modality lenses, single-strategy scope propagation | MERGED `5f89bd1` (#17) |
-| 4 | MONDO disease-context normalization | **WIP** `feat/slice4-disease-context-main`, 24/30 tests |
+| 4 | MONDO disease-context normalization | complete on `feat/slice4-disease-context-main`, 30/30 tests |
 | 5 | Conclusions, Q6 taxonomy, reconciliation, coverage-based abstention | not started |
 | 6 | Shared asset registry | not started |
 | 7 | Multi-variant fan-out infrastructure | not started |
 | 8 | Strategy nomination and bake-off | not started |
 
-674 tests pass on `main`.
+701 tests pass, 4 skipped.
 
 ## What is settled and should not be reopened
 
@@ -35,16 +35,32 @@ canonical disease namespace. EFO 3.91.0 and DOID/NCIt/Orphanet/MeSH are alias an
 mapping layers reachable only through explicit crossrefs. This cleared the human
 gate that was blocking slice 4.
 
+**Slice 4, decided while closing the last six tests:**
+
+- A broad/narrow/related crossref is **identity-bearing**. `EFO:BROAD_LUNG_CANCER`
+  maps into `MONDO:0005233` without being it, so the relation and the alias
+  source id are hashed into `canonicalContextId`. Hashing the resolved MONDO id
+  alone gave the alias the same id as the exact term - a silent merge of a
+  broader population into a narrower one, which is precisely what rule 5 exists
+  to prevent. `contextsAreEquivalent` also rejects alias mappings outright, so
+  the guarantee does not rest on the hash recipe staying correct.
+- `normalizeDiseaseContext` returns `normalizedIdentity`, the exact payload it
+  hashes, so a caller can recompute the id and prove no second hashing
+  convention appeared. It is a derivation, not stored contract:
+  `DiseaseContextKeySchema` strips it.
+- `conflicting` is a **status value**, not only a boolean flag, matching §8.3's
+  flat list. The boolean is kept alongside it so callers switching on status do
+  not have to remember that `conflicting` is also a both-evaluated row.
+  Status names stay snake_case (house convention); Codex's suite used kebab
+  with a capitalized `Q`, and the test was changed rather than the code.
+
 ## Open items, highest value first
 
 1. **The eval has not run against merged slices 2 and 3.** Snippet neutralization
    changed deterministic claim text, and slice 3 rewrote all six specialist briefs -
    the largest change to model-facing text in the project. "Output equivalence is
    not assumed" is still an untested position until this runs.
-2. Slice 4's six remaining test failures. API-shape and hash-composition
-   mismatches, not resolution-policy defects. Suite parked at
-   `docs/slices/slice4-pending-tests/` (`.test.ts.txt` so vitest skips it).
-3. Four `it.skip` deferrals from slice 2, reasons in-file: `resolveQueryScope().target`
+2. Four `it.skip` deferrals from slice 2, reasons in-file: `resolveQueryScope().target`
    becoming a `TargetIdentity`, and a run id for claim ids.
 
 ## How these slices are built
