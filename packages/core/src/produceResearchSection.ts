@@ -24,6 +24,9 @@ export async function produceResearchSection(opts: {
   const sources = [...new Set(supported.flatMap((c) => c.citations))];
   const section: Section = {
     kind: 'research', id: brief.id, title: brief.title, takeaway: findings.takeaway,
+    // Section identity comes from the brief that produced it, so an axis can
+    // never acquire a scope its rubric was not built under.
+    ...(brief.scope ? { scope: brief.scope } : {}),
     claims: supported, sources, rag: computeRag(shippable, verdicts, createSourceIdentityResolver(store.all())),
     critiques: findings.critiques,
   };

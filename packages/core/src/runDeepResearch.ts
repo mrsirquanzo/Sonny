@@ -15,7 +15,8 @@ import { mapSpecialtyLabs } from './kolDetector.js';
 import { createSourceIdentityResolver } from './rag.js';
 import { consolidateSectionClaims } from './consolidateClaims.js';
 import { mergeStructuredClaims } from './structuredClaims.js';
-import { composeRoster, inferModality, isAntibodyModality } from './planner.js';
+import { composeRoster, inferModality } from './planner.js';
+import { canonicalModalityOf } from './modalityCanon.js';
 
 export interface DeepResearchResult {
   target: string;
@@ -79,15 +80,16 @@ export async function runDeepResearch(opts: {
     }
   }
 
-  // `unknown` means the modality is UNRESOLVED, not that it is exotic. Composing
-  // a modality-specific roster for it would invent specialisation from nothing;
-  // an unresolved modality keeps the fixed roster and (from slice 3) the generic
-  // lens. Without this guard the `unknown` fallback silently routed every failed
-  // inference into the generative planner.
-  const modalityResolved = context?.modality && context.modality !== 'unknown';
-  if (modalityResolved && !isAntibodyModality(context!.modality)) {
-    roster = await composeRoster({ target, context, model: leadModel, emit });
-  }
+  // The rubric is now deterministic for EVERY modality, so there is no guard to
+  // route around a generative planner: `unknown` simply resolves the generic
+  // lens. The six axes always instantiate; modality conditions Q2 and Q6 only.
+  // Conditions the caller's rubric with the resolved lens; it does not replace
+  // it. The rubric is fixed, the lens is what modality changes.
+  roster = composeRoster({
+    target, context,
+    modality: canonicalModalityOf(context?.modality),
+    emit, baseRoster: roster,
+  });
 
   await seedStructuredEvidence({ target, tools: structuredTools, store, emit });
 

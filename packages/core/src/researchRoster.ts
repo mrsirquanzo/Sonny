@@ -1,34 +1,45 @@
 import type { ThreadBrief } from './researcher.js';
 
+/**
+ * The fixed six-axis spine, modality-NEUTRAL.
+ *
+ * These previously encoded ADC assumptions directly ("is the target
+ * antibody-bindable", "does the biology support an ADC mechanism"), so every
+ * non-antibody run inherited antibody framing before any lens was consulted.
+ * Modality conditioning now happens ONLY through the lens injected into Q2 and
+ * Q6 by composeRoster; the rubric itself asks modality-independent questions.
+ *
+ * Wording follows the specialist definitions in the spec (Q1-Q6).
+ */
 export const RESEARCH_ROSTER: ThreadBrief[] = [
   {
-    id: 'target_biology', title: 'Target Biology',
-    objective: 'Determine whether the target is antibody-bindable on tumour cells by establishing cell-surface localisation, accessible architecture, and expression abundance and prevalence in the scoped indication.',
-    promptHint: 'Answer one question: is the target actually on the tumour cell surface, and how abundant and prevalent is it in the indication? Establish gene and protein identity, antibody-relevant domain architecture, cell-surface localisation, and tumour expression level and prevalence. Use and cite structured evidence when present. BOUNDARY: Do not cover internalisation, normal-tissue selectivity, clinical programmes, competition, or developability - the other specialists own those questions.',
+    id: 'target_biology', title: 'Target Validation & Therapeutic Relevance',
+    objective: 'Determine whether the target is biologically linked to the disease in a way that supports its intended therapeutic role, and whether exploiting that role can produce a disease-relevant effect.',
+    promptHint: 'Answer one question: is the target valid for its intended therapeutic role? Weigh human genetic evidence, disease-associated alterations, functional dependency, pathway position, causal versus correlative association, redundancy and compensatory biology. Where the role is functional, assess whether perturbation produces the intended phenotype; where it is non-functional (delivery address, recognition antigen), assess the accessibility or specificity that role requires. Use and cite structured evidence when present. BOUNDARY: Do not assess whether a specific modality can execute the role, do not rank indications by clinical attractiveness, and do not assess normal-tissue toxicity, competition, or developability - other specialists own those.',
   },
   {
-    id: 'moa_pathway', title: 'Mechanism of Action & Pathway',
-    objective: 'Determine whether target internalisation, trafficking, and payload-response biology support an ADC mechanism.',
-    promptHint: 'Answer one question: does the biology support an ADC mechanism? Assess receptor internalisation or endocytosis after antibody binding, turnover and recycling, intracellular trafficking, and sensitivity or resistance mechanisms likely to shape payload response. Use and cite structured evidence when present. BOUNDARY: Do not re-describe tumour expression, indication prevalence, normal-tissue selectivity, clinical programmes, competition, or physical developability - those belong to other specialists.',
+    id: 'moa_pathway', title: 'Modality Feasibility & Mechanistic Execution',
+    objective: 'Determine whether the proposed modality can reach the target, produce the intended molecular intervention, sustain it at achievable exposure, and generate a disease-relevant effect.',
+    promptHint: 'Answer one question: can this modality execute the intended mechanism against this target? For every major step in the mechanistic chain state what must be true, summarize supporting and contradictory evidence, distinguish direct evidence from inference, and identify the weakest link. Use and cite structured evidence when present. BOUNDARY: Do not re-argue target validity, rank indications, assess competition, or perform the definitive safety assessment - Q6 owns risk, and other specialists own the rest.',
   },
   {
-    id: 'disease_indications', title: 'Disease & Indications',
-    objective: 'Determine whether the scoped indication is the strongest opportunity and whether tumour-versus-normal expression offers an ADC therapeutic window.',
-    promptHint: 'Answer one question: is the scoped indication the most credible opportunity, and is expression tumour-selective versus normal tissue? Weigh prevalence and subtype relevance in the indication, then judge the ADC therapeutic window from normal-tissue RNA and protein expression. Cite Open Targets baseline tissue expression, Human Protein Atlas tumour-vs-normal expression and subcellular localisation, and GTEx normal-tissue baseline cards when present; state selectivity concerns plainly. BOUNDARY: Do not cover surface architecture, internalisation, clinical assets, competition, or drug-format engineering - other specialists own those questions.',
+    id: 'disease_indications', title: 'Indication & Biomarker Prioritization',
+    objective: 'Determine which indication and biomarker-defined population offer the strongest clinical-development opportunity for a therapy directed at this target.',
+    promptHint: 'Answer one question: which indication and biomarker-defined population is the strongest development opportunity? Weigh alteration or expression prevalence by indication, biomarker-defined patient frequency, dependency within subgroups, disease stage and line of therapy, unmet need, standard of care, biomarker detectability, patient-selection feasibility, and trial practicality. Cite structured expression and association evidence when present. BOUNDARY: Do not rebuild the general causal case for the target, do not assess modality-specific mechanistic requirements, and do not cover competition, IP, or product engineering.',
   },
   {
-    id: 'clinical_landscape', title: 'Clinical Landscape',
-    objective: 'Determine whether clinical or translational ADC or antibody precedent validates the target, including assets, sponsors, trials, stages, and outcomes.',
-    promptHint: 'Answer one question: is there clinical or translational precedent for targeting this, especially with an ADC or antibody? Map relevant assets, sponsors, trial ids, phase or maximum clinical stage, status, and reported outcomes. Cite Open Targets clinical-candidate cards and ClinicalTrials.gov trial cards for precedent when present. If precedent is absent or thin, say so plainly - absence is a finding. BOUNDARY: Do not re-argue expression, mechanism, indication choice, competitive differentiation, patents, or physical developability - other specialists own those questions.',
+    id: 'clinical_landscape', title: 'Translational & Clinical Evidence',
+    objective: 'Determine what human, translational, and clinical evidence supports or challenges translation of the proposed therapeutic strategy.',
+    promptHint: 'Answer one question: has this strategy, or a relevant analogue, translated in humans? Interpret efficacy, safety, biomarker, pharmacodynamic, and failure evidence, separating same-modality precedent from cross-modality read-across. Cite clinical-candidate and trial evidence when present. Absence of precedent is itself a finding - state it plainly rather than implying it was not searched. BOUNDARY: Do not produce an exhaustive competitor map (Q5 owns that), and do not reassess target validity, mechanism, or indication choice.',
   },
   {
-    id: 'competitive_ip', title: 'Competitive & IP Landscape',
-    objective: 'Determine who is pursuing the target with ADCs or antibodies and what differentiation, epitope, patent, and freedom-to-operate signals remain.',
-    promptHint: 'Answer one question: who else is pursuing this target as an ADC or antibody, and what differentiation or freedom-to-operate signal remains? Compare competitor programmes and modalities, sponsors, epitopes or binding approaches, patents and exclusivity signals, and credible differentiation for the scoped modality. Use and cite structured clinical-candidate evidence and patent (Espacenet) cards for the IP/FTO landscape when present. BOUNDARY: Do not reassess target expression, internalisation, indication validity, clinical outcomes except as programme facts, or safety and developability - other specialists own those questions.',
+    id: 'competitive_ip', title: 'Competitive Positioning & IP',
+    objective: 'Determine who else is pursuing this target or mechanism, how a new programme could differentiate, and what public evidence suggests IP or freedom-to-operate constraints.',
+    promptHint: 'Answer one question: who else is pursuing this, and what differentiation or freedom-to-operate signal remains? Compare programmes, sponsors, binding or design approaches, patents and exclusivity signals, and credible differentiation for the proposed strategy. Cite clinical-candidate and patent evidence when present. Public patent analysis identifies possible constraints and areas needing counsel review; it is not a freedom-to-operate opinion. BOUNDARY: Do not reassess target validity, mechanism, or indication validity, and reference clinical outcomes only as attributes of competitor programmes.',
   },
   {
-    id: 'modality_developability', title: 'Modality & Developability',
-    objective: 'Determine whether safety, tractability, immunogenicity, format, linker, or payload liabilities make the target physically unsuitable for an ADC.',
-    promptHint: 'Answer one question: what safety or developability liability could invalidate an ADC? Assess on-target/off-tumour toxicity implied by normal-tissue expression, known safety liabilities, antibody and ADC tractability, immunogenicity and ADA risk, and payload, linker, Fc, format, dosing, and manufacturability fit. Cite Open Targets safety-liability, baseline-expression, and tractability-by-modality, Human Protein Atlas tumour-vs-normal expression and subcellular localisation, and GTEx normal-tissue baseline cards when present. BOUNDARY: Assess physical drug-ability only - do not cover tumour expression and prevalence, internalisation biology, indication choice, clinical precedent, or competition and IP, which other specialists own.',
+    id: 'modality_developability', title: 'Modality-Specific Risk & Development Feasibility',
+    objective: 'Determine what biological, pharmacologic, safety, delivery, resistance, manufacturing, or scalability liabilities could prevent a clinically viable product.',
+    promptHint: 'Answer one question: what could prevent a viable product? For each material liability describe the failure mechanism, estimate likelihood and impact separately, cite target-, modality-, or class-level evidence, and identify an experiment, biomarker, or development strategy that would reduce uncertainty. Cite structured safety and expression evidence when present. BOUNDARY: Assess development risk only - do not cover target validity, indication choice, clinical precedent, or competition and IP.',
   },
 ];

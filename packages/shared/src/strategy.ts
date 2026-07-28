@@ -242,3 +242,17 @@ export const ResolvedQueryScopeSchema = z.object({
   rawPrompt: z.string().min(1),
 });
 export type ResolvedQueryScope = z.infer<typeof ResolvedQueryScopeSchema>;
+
+/**
+ * The context a specialist thread actually runs under.
+ *
+ * A thread does not always belong to one strategy: Q1 belongs to a hypothesis
+ * reused across strategies, and Q3 is shared across all of them. Passing a bare
+ * TherapeuticStrategy to every specialist is wrong for two of the six axes.
+ *
+ * `kind` MUST agree with the section's SectionScope.kind.
+ */
+export type SpecialistExecutionContext =
+  | { kind: 'q1_hypothesis'; hypothesis: Q1Hypothesis; relatedStrategyFingerprints: string[] }
+  | { kind: 'shared'; queryScope: ResolvedQueryScope }
+  | { kind: 'strategy'; strategy: TherapeuticStrategy; strategyFingerprint: string; strategyVariantLabel?: string };
