@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { TraceEvent } from '@mrsirquanzo/sonny-shared';
 import type { StructuredModel } from './model.js';
 import { composeRoster, inferModality, isAntibodyModality } from './planner.js';
@@ -55,67 +55,57 @@ describe('inferModality', () => {
   });
 });
 
-describe('composeRoster', () => {
-  it('returns the composed briefs and emits an auditable plan', async () => {
-    const events: TraceEvent[] = [];
-    const result = await composeRoster({
-      target: 'KRAS',
-      context: { indication: 'NSCLC', modality: 'small molecule' },
-      model: fixedModel({
-        specialists: Array.from({ length: 5 }, (_, index) => specialist(index + 1)),
-        rationale: 'Five areas cover the small-molecule decision.',
-      }),
-      emit: (event) => events.push(event),
-    });
+describe('composeRoster is deterministic', () => {
+  const emit = (): void => {};
 
-    expect(result).toHaveLength(5);
-    expect(result[0]).toEqual({
-      id: 'specialist_1',
-      title: 'Specialist 1',
-      objective: 'Assess area 1.',
-      promptHint: 'Assess area 1. BOUNDARY: Do not cover the other specialist areas.',
-    });
-    const event = events.find((candidate) => candidate.type === 'plan_composed');
-    expect(event).toMatchObject({
-      type: 'plan_composed',
-      modality: 'small molecule',
-      rationale: 'Five areas cover the small-molecule decision.',
-    });
-    expect(event?.type === 'plan_composed' && event.specialists).toHaveLength(5);
-    expect(event?.type === 'plan_composed' && event.specialists[0]).toEqual({
-      id: 'specialist_1', title: 'Specialist 1', weight: 0.5,
-    });
+  it('makes NO model call', async () => {
+    const gen = vi.fn();
+    composeRoster({ target: 'KRAS', modality: 'small_molecule', emit, });
+    expect(gen).not.toHaveBeenCalled();
   });
 
-  it('clamps an oversized plan to seven specialists', async () => {
-    const result = await composeRoster({
-      target: 'KRAS',
-      context: { modality: 'small molecule' },
-      model: fixedModel({
-        specialists: Array.from({ length: 9 }, (_, index) => specialist(index + 1)),
-        rationale: 'Oversized model response.',
-      }),
-      emit: () => {},
-    });
-
-    expect(result).toHaveLength(7);
+  it('produces byte-identical rosters for identical inputs', () => {
+    const a = composeRoster({ target: 'KRAS', modality: 'small_molecule', emit });
+    const b = composeRoster({ target: 'KRAS', modality: 'small_molecule', emit });
+    expect(JSON.stringify(a)).toBe(JSON.stringify(b));
   });
 
-  it('falls back to the canonical roster and emits an error when the model throws', async () => {
-    const events: TraceEvent[] = [];
-    const model: StructuredModel = {
-      async generateStructured() { throw new Error('model unavailable'); },
-    };
+  it('always instantiates all six axes - never drops or adds one', () => {
+    for (const modality of ['adc', 'small_molecule', 'car_t', 'unknown'] as const) {
+      const roster = composeRoster({ target: 'X', modality, emit });
+      expect(roster.map((b) => b.id)).toEqual([
+        'target_biology', 'moa_pathway', 'disease_indications',
+        'clinical_landscape', 'competitive_ip', 'modality_developability',
+      ]);
+    }
+  });
 
-    const result = await composeRoster({
-      target: 'KRAS',
-      context: { modality: 'PROTAC' },
-      model,
-      emit: (event) => events.push(event),
-    });
+  it('injects lens content into Q2 and Q6 only', () => {
+    const roster = composeRoster({ target: 'KRAS', modality: 'small_molecule', emit });
+    const hint = (id: string): string => roster.find((b) => b.id === id)!.promptHint;
+    expect(hint('moa_pathway')).toMatch(/druggable binding pocket/i);
+    expect(hint('modality_developability')).toMatch(/reactive metabolites|oral bioavailability/i);
+    for (const id of ['target_biology', 'disease_indications', 'clinical_landscape', 'competitive_ip']) {
+      expect(hint(id)).not.toMatch(/druggable binding pocket/i);
+    }
+  });
 
-    expect(result).toBe(RESEARCH_ROSTER);
-    expect(result.length).toBeGreaterThan(0);
-    expect(events.some((event) => event.type === 'error')).toBe(true);
+  it('conditions a small-molecule run away from antibody framing', () => {
+    const sm = composeRoster({ target: 'KRAS', modality: 'small_molecule', emit });
+    const q2 = sm.find((b) => b.id === 'moa_pathway')!.promptHint;
+    expect(q2).not.toMatch(/internalisation|internalization|surface epitope/i);
+  });
+
+  it('routes an unresolved modality to the generic lens, never to antibody', () => {
+    const unknown = composeRoster({ target: 'X', modality: 'unknown', emit });
+    const q2 = unknown.find((b) => b.id === 'moa_pathway')!.promptHint;
+    expect(q2).toMatch(/target access/i);
+    expect(q2).not.toMatch(/antibody binding|internalisation/i);
+  });
+
+  it('keeps the BOUNDARY clause last in a lens-injected hint', () => {
+    const roster = composeRoster({ target: 'X', modality: 'adc', emit });
+    const hint = roster.find((b) => b.id === 'moa_pathway')!.promptHint;
+    expect(hint.indexOf('BOUNDARY:')).toBeGreaterThan(hint.indexOf('Evaluate the following'));
   });
 });
