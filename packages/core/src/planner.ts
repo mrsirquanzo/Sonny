@@ -47,7 +47,9 @@ export async function inferModality(
     });
     return InferModalitySchema.parse(inferred);
   } catch {
-    return { modality: 'antibody', rationale: 'inference failed; defaulted to antibody' };
+    // MUST NOT default to antibody: that reintroduces the wrong-rubric bug in
+    // the failure branch, and makes the generic fallback lens unreachable.
+    return { modality: 'unknown', rationale: 'inference failed; modality unresolved' };
   }
 }
 

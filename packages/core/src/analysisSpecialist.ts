@@ -22,7 +22,14 @@ import { groundClaims } from './grounding.js';
 import { createSourceIdentityResolver, computeRag } from './rag.js';
 import { reproducibilityGate, type ReproducibilityDrop } from './reproducibilityGate.js';
 import type { DeepResearchResult } from './runDeepResearch.js';
-import type { Specialist } from './specialists.js';
+/**
+ * Shape of a tool-using specialist. Previously in specialists.ts alongside a
+ * dead roster array that had zero consumers repo-wide; that array is deleted
+ * and the interface lives with its only user.
+ */
+export interface Specialist {
+  id: string; title: string; objective: string; toolNames: string[]; promptHint: string;
+}
 import { currentBackend, routerFor, type StructuredModel } from './model.js';
 
 export const ANALYSIS_SPECIALIST: Specialist = {

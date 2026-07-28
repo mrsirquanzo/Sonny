@@ -37,7 +37,7 @@ describe('produceResearchSection', () => {
 
     expect(section.id).toBe('target_biology');
     expect(section.takeaway).toBe('CDCP1 drives EMT.');
-    expect(section.claims.map((c) => c.id)).toEqual(['c1']);
+    expect(section.claims.map((c) => c.id)).toEqual(['target_biology#r0c1']);
     expect(section.sources).toContain('PMCID:PMC1#sec-1');
     expect(section.rag).toBe('amber'); // one supported claim, single source -> amber
     expect(events.some((e) => e.type === 'section_complete')).toBe(true);
