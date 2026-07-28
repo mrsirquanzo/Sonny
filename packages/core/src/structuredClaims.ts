@@ -15,15 +15,27 @@ import { computeRag, createSourceIdentityResolver, type SourceIdentityResolver }
  * snippet verbatim and the citation is the card id (which resolves in the store,
  * so the grounding gate passes).
  *
- * Routing (card id suffix -> section id):
- *   #localization, #domains  -> target_biology        (is it bindable on the surface?)
- *   #expression              -> disease_indications    (tumour-vs-normal selectivity window)
- *   #tractability, #safety   -> modality_developability(can it be drugged as an ADC, safely?)
+ * Routing is the ROUTES table below, which is normative (spec 7.3).
  */
-const ROUTES: Array<{ match: RegExp; section: string }> = [
-  { match: /#localization$|#domains$/, section: 'target_biology' },
-  { match: /#expression$/, section: 'disease_indications' },
-  { match: /#tractability$|#safety$/, section: 'modality_developability' },
+/**
+ * Spec section 7.3, normative. A card may reach MORE THAN ONE axis: the same
+ * neutral fact answers different questions, and the boundary is enforced by
+ * each axis's prompt, not by starving axes of evidence.
+ *
+ * `#expression` reaching Q6 is the one that matters most. Normal-tissue
+ * expression is the only fact grounding on-target/off-tumour liability, and
+ * routing it solely to `disease_indications` left the developability reviewer
+ * unable to see it at all.
+ *
+ * `#tractability` is Q2, not Q6: tractability is mechanistic feasibility, and
+ * Q6 owns liability rather than feasibility.
+ */
+const ROUTES: Array<{ match: RegExp; sections: readonly string[] }> = [
+  { match: /#domains$/, sections: ['target_biology'] },
+  { match: /#localization$/, sections: ['target_biology', 'moa_pathway'] },
+  { match: /#expression$/, sections: ['disease_indications', 'modality_developability'] },
+  { match: /#tractability$/, sections: ['moa_pathway'] },
+  { match: /#safety$/, sections: ['modality_developability'] },
 ];
 
 function isCurated(source?: string): boolean {
@@ -35,22 +47,29 @@ export function deriveStructuredClaims(store: EvidenceStore): Map<string, Claim[
   let n = 0;
   for (const e of store.all()) {
     if (!isCurated(e.source)) continue;
-    const route = ROUTES.find((r) => r.match.test(e.id));
-    if (!route) continue;
+    // `filter`, not `find`: a single match short-circuited multi-axis routing.
+    const sections = ROUTES.filter((r) => r.match.test(e.id)).flatMap((r) => r.sections);
+    if (!sections.length) continue;
     const text = (e.snippet ?? e.title ?? '').trim();
     if (!text) continue;
-    const claim: Claim = {
-      id: `struct-${++n}`,
-      text: `${text} (${e.source})`,
-      citations: [e.id],
-      confidence: 0.9,
-      // Asserted from the card, not verified by the verifier. Downstream gates
-      // that count verified findings must be able to tell the difference.
-      provenance: 'deterministic',
-    };
-    const list = bySection.get(route.section) ?? [];
-    list.push(claim);
-    bySection.set(route.section, list);
+    n++;
+    for (const section of sections) {
+      const claim: Claim = {
+        // Distinct per destination. Two sections carrying one claim id would
+        // collide anywhere claims are keyed by id, and consolidation would
+        // treat the second copy as a duplicate of the first and drop it.
+        id: sections.length > 1 ? `struct-${n}-${section}` : `struct-${n}`,
+        text: `${text} (${e.source})`,
+        citations: [e.id],
+        confidence: 0.9,
+        // Asserted from the card, not verified by the verifier. Downstream gates
+        // that count verified findings must be able to tell the difference.
+        provenance: 'deterministic',
+      };
+      const list = bySection.get(section) ?? [];
+      list.push(claim);
+      bySection.set(section, list);
+    }
   }
   return bySection;
 }

@@ -22,14 +22,59 @@ describe('deriveStructuredClaims', () => {
       { id: 'PMID:123', source: 'Europe PMC', snippet: 'Some literature claim.' },
     ]);
     const bySection = deriveStructuredClaims(store);
-    expect(bySection.get('target_biology')!.length).toBe(2); // OT + UniProt localisation
-    expect(bySection.get('disease_indications')!.length).toBe(1); // expression
-    expect(bySection.get('modality_developability')!.length).toBe(2); // tractability + safety
+    // Assert by citation, not by count. Counting let a routing swap through
+    // silently once already: moving #tractability off this axis and #expression
+    // onto it left the length at 2 while the contents changed completely.
+    const cited = (section: string): string[] =>
+      (bySection.get(section) ?? []).flatMap((c) => c.citations).sort();
+
+    expect(cited('target_biology')).toEqual(['ENSG1#localization', 'UNIPROT:Q1#localization']);
+    expect(cited('disease_indications')).toEqual(['ENSG1#expression']);
+    expect(cited('modality_developability')).toEqual(['ENSG1#expression', 'ENSG1#safety']);
     // every derived claim cites the curated card id, never the literature PMID
     for (const claims of bySection.values()) {
       for (const c of claims) expect(c.citations[0]).not.toBe('PMID:123');
     }
-    expect(bySection.get('disease_indications')![0].citations).toEqual(['ENSG1#expression']);
+  });
+
+  // Spec 7.3 is normative and multi-destination. `ROUTES.find` returned the
+  // first match, so a card reached exactly one axis - which is how the fact
+  // grounding on-target/off-tumour liability never reached the developability
+  // reviewer.
+  it('routes each curated card to every axis spec 7.3 assigns it', () => {
+    const store = storeWith([
+      { id: 'ENSG1#domains', source: 'Open Targets', snippet: 'Extracellular CUB domains.' },
+      { id: 'ENSG1#localization', source: 'Open Targets', snippet: 'A plasma-membrane annotation is present.' },
+      { id: 'ENSG1#expression', source: 'Open Targets', snippet: 'Protein expression in normal lung.' },
+      { id: 'ENSG1#tractability', source: 'Open Targets', snippet: 'Tractability buckets by modality.' },
+      { id: 'ENSG1#safety', source: 'Open Targets', snippet: 'A curated safety liability.' },
+    ]);
+    const bySection = deriveStructuredClaims(store);
+    const cited = (section: string): string[] =>
+      (bySection.get(section) ?? []).flatMap((c) => c.citations).sort();
+
+    expect(cited('target_biology')).toEqual(['ENSG1#domains', 'ENSG1#localization']);
+    expect(cited('moa_pathway')).toEqual(['ENSG1#localization', 'ENSG1#tractability']);
+    expect(cited('disease_indications')).toEqual(['ENSG1#expression']);
+    // The one that regressed developability_catch to zero.
+    expect(cited('modality_developability')).toEqual(['ENSG1#expression', 'ENSG1#safety']);
+    // Tractability is mechanistic feasibility; Q6 owns liability, not feasibility.
+    expect(cited('modality_developability')).not.toContain('ENSG1#tractability');
+  });
+
+  it('gives a multi-routed card a distinct claim id per destination', () => {
+    const store = storeWith([
+      { id: 'ENSG1#expression', source: 'Open Targets', snippet: 'Protein expression in normal lung.' },
+    ]);
+    const bySection = deriveStructuredClaims(store);
+    const q3 = bySection.get('disease_indications')![0];
+    const q6 = bySection.get('modality_developability')![0];
+    // Same evidence, same text, different claim id: a shared id collides
+    // wherever claims are keyed by id, and consolidation would drop the second
+    // copy as a duplicate of the first.
+    expect(q3.citations).toEqual(q6.citations);
+    expect(q3.text).toBe(q6.text);
+    expect(q3.id).not.toBe(q6.id);
   });
 
   it('merges structured claims to the front of the matching section, de-duped', () => {
