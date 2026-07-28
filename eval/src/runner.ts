@@ -70,17 +70,42 @@ export async function loadGolden(subset: EvalSubset): Promise<GoldenTarget[]> {
   return all.filter((t) => cfg.fast.includes(t.target));
 }
 
+/**
+ * Progress logging exists so a stalled run is distinguishable from a slow one.
+ * A full-subset run is minutes of network-bound work per repeat, and without a
+ * line per phase the only way to tell a wedged process from a working one is to
+ * inspect its sockets. Phase lines go to stderr so stdout stays parseable.
+ */
+function progress(message: string): void {
+  console.error(`[eval] ${message}`);
+}
+const secs = (startedAt: number) => `${((Date.now() - startedAt) / 1000).toFixed(1)}s`;
+
 async function scoreTarget(g: GoldenTarget, deps: EngineDeps): Promise<TargetScore> {
   // Run N times to measure stability; keep the last artifacts for the rest.
   const verdicts: string[] = [];
   let last: RunArtifacts | null = null;
   for (let i = 0; i < REPEATS; i++) {
-    const art = await deps.runOnce(g.target);
+    const startedAt = Date.now();
+    progress(`${g.target} repeat ${i + 1}/${REPEATS} start`);
+    let art: RunArtifacts;
+    try {
+      art = await deps.runOnce(g.target);
+    } catch (err) {
+      // Name the repeat before rethrowing: the stack alone does not say which
+      // one died, and a mid-subset failure is otherwise unattributable.
+      progress(`${g.target} repeat ${i + 1}/${REPEATS} FAILED after ${secs(startedAt)}`);
+      throw err;
+    }
     verdicts.push(art.briefing.verdict);
     last = art;
+    progress(`${g.target} repeat ${i + 1}/${REPEATS} done in ${secs(startedAt)} verdict=${art.briefing.verdict}`);
   }
   const a = last!;
   const judge = makeJudge(deps.judgeModel, deps.judgeModelId);
+
+  const judgeStartedAt = Date.now();
+  progress(`${g.target} scoring metrics`);
 
   const metrics: MetricResult[] = [
     groundingIntegrity(a),
@@ -96,6 +121,7 @@ async function scoreTarget(g: GoldenTarget, deps: EngineDeps): Promise<TargetSco
     await judge.unsupportedSentenceRatio(a),
     await judge.claimProbes(a, g),
   ];
+  progress(`${g.target} scored in ${secs(judgeStartedAt)}`);
 
   return {
     target: g.target,
@@ -120,8 +146,7 @@ export async function runEval(
   const golden = await loadGolden(subset);
   const targets: TargetScore[] = [];
   for (const g of golden) {
-    // eslint-disable-next-line no-console
-    console.log(`[eval] ${g.target} x${REPEATS}`);
+    progress(`${g.target} x${REPEATS} (target ${targets.length + 1}/${golden.length})`);
     targets.push(await scoreTarget(g, deps));
   }
 
