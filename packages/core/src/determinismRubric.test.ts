@@ -86,10 +86,19 @@ describe('slice 3 deterministic specialist spine', () => {
       )).toBe(true);
     }
 
-    // Modality changes may alter only deterministic lens-bearing Q2/Q6 copy.
+    // Modality changes may alter only deterministic lens-bearing Q2/Q6 COPY.
+    //
+    // Compares copy fields, not whole briefs: scope/context legitimately differ
+    // across modalities because an ADC strategy carries intent
+    // `exploit_as_delivery_address` and a small-molecule one `suppress_function`,
+    // so their Q1 HYPOTHESIS keys differ by design. That is the Q1-per-intent
+    // rule, not rubric drift.
     for (const id of ['target_biology', 'disease_indications', 'clinical_landscape', 'competitive_ip'] as const) {
-      const pick = (roster: typeof adc.roster) => roster.find((brief) => brief.id === id);
-      expect(pick(adc.roster)).toEqual(pick(smallMolecule.roster));
+      const copy = (roster: typeof adc.roster) => {
+        const b = roster.find((brief) => brief.id === id)!;
+        return { id: b.id, title: b.title, objective: b.objective, promptHint: b.promptHint };
+      };
+      expect(copy(adc.roster)).toEqual(copy(smallMolecule.roster));
     }
   });
 });

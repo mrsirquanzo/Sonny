@@ -148,7 +148,11 @@ export async function runResearcher(opts: {
 
   emit({ type: 'specialist_start', specialist: brief.id });
   const terms = targetTerms(store, target);
-  let openQuestions: ResearchQuestion[] = await planResearchQuestions(brief, target, model, context);
+  // A zero-budget thread can never research anything, so planning questions for
+  // it spends a model call to produce a list nothing will consume.
+  let openQuestions: ResearchQuestion[] = budget.maxRounds > 0
+    ? await planResearchQuestions(brief, target, model, context)
+    : [];
   emit({ type: 'research_plan', specialist: brief.id, questions: openQuestions.map((q) => q.question) });
 
   const claims: Claim[] = [];
