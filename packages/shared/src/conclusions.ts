@@ -245,6 +245,15 @@ const Q6Assessed = z.object({
   if (q6.overallDevelopmentRisk === 'low' && q6.topProgrammeKillingRiskIds.length > 0) {
     ctx.addIssue({ code: 'custom', message: 'a low overall risk cannot name programme-killing risks' });
   }
+  // Liability ids must be unique. With duplicates, `byId` keeps the LAST entry,
+  // so whether a programme-killing reference resolves to a high-severity or a
+  // low-severity liability depends on array order - a silent, order-dependent
+  // change of meaning in the field that names what could kill the programme.
+  const ids = q6.liabilities.map((l) => l.id);
+  const duplicated = [...new Set(ids.filter((id, i) => ids.indexOf(id) !== i))];
+  if (duplicated.length > 0) {
+    ctx.addIssue({ code: 'custom', path: ['liabilities'], message: `duplicate liability id(s): ${duplicated.join(', ')}` });
+  }
   const byId = new Map(q6.liabilities.map((l) => [l.id, l]));
   for (const id of q6.topProgrammeKillingRiskIds) {
     const l = byId.get(id);
@@ -262,6 +271,12 @@ const Q6Insufficient = z.object({
   evidenceGap: z.string().min(1),
   confidence: z.literal('low'),
   support: ConclusionSupportSchema,
+}).superRefine((q6, ctx) => {
+  const ids = q6.liabilities.map((l) => l.id);
+  const duplicated = [...new Set(ids.filter((id, i) => ids.indexOf(id) !== i))];
+  if (duplicated.length > 0) {
+    ctx.addIssue({ code: 'custom', path: ['liabilities'], message: `duplicate liability id(s): ${duplicated.join(', ')}` });
+  }
 });
 export const Q6ConclusionSchema = z.union([Q6Assessed, Q6Insufficient]);
 export type Q6Conclusion = z.infer<typeof Q6ConclusionSchema>;

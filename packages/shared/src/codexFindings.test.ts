@@ -104,3 +104,36 @@ describe('legacy developability risks survive migration', () => {
     expect((migrated as { developabilityRisks?: unknown[] }).developabilityRisks).toEqual([risk]);
   });
 });
+
+describe('liability ids are unique', () => {
+  const risk = (id: string, severity: 'low' | 'high') => ({
+    id, description: 'd',
+    category: { domain: 'safety' as const, code: 'common.off_target_activity' as const },
+    likelihood: 'moderate' as const, severity,
+    mitigability: 'design_manageable' as const, confidence: 'moderate' as const,
+    support: { supportingClaimIds: ['c1'], evidenceIds: ['e1'] },
+  });
+  const base = {
+    overallDevelopmentRisk: 'high' as const,
+    domainAssessments: [], topProgrammeKillingRiskIds: ['r1'],
+    highestPriorityRiskMitigationOrMonitoringStep: 'x',
+    earliestDecisiveDeRiskingStudy: 'y', confidence: 'moderate' as const,
+    support: { supportingClaimIds: ['c1'], evidenceIds: ['e1'] },
+  };
+
+  it('rejects duplicate liability ids so resolution cannot depend on array order', async () => {
+    const { Q6ConclusionSchema } = await import('./index.js');
+    // Without the uniqueness check, whether `r1` resolves to the high- or the
+    // low-severity entry depends purely on which comes last.
+    expect(Q6ConclusionSchema.safeParse({
+      ...base, liabilities: [risk('r1', 'high'), risk('r1', 'low')],
+    }).success).toBe(false);
+  });
+
+  it('still accepts distinct ids', async () => {
+    const { Q6ConclusionSchema } = await import('./index.js');
+    expect(Q6ConclusionSchema.safeParse({
+      ...base, liabilities: [risk('r1', 'high'), risk('r2', 'low')],
+    }).success).toBe(true);
+  });
+});
