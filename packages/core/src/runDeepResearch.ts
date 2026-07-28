@@ -17,6 +17,7 @@ import { consolidateSectionClaims } from './consolidateClaims.js';
 import { mergeStructuredClaims } from './structuredClaims.js';
 import { composeRoster, inferModality } from './planner.js';
 import { canonicalModalityOf } from './modalityCanon.js';
+import { resolveModalityLens } from './modalityLens.js';
 
 export interface DeepResearchResult {
   target: string;
@@ -85,11 +86,16 @@ export async function runDeepResearch(opts: {
   // lens. The six axes always instantiate; modality conditions Q2 and Q6 only.
   // Conditions the caller's rubric with the resolved lens; it does not replace
   // it. The rubric is fixed, the lens is what modality changes.
+  const canonicalModality = canonicalModalityOf(context?.modality);
   roster = composeRoster({
     target, context,
-    modality: canonicalModalityOf(context?.modality),
+    modality: canonicalModality,
     emit, baseRoster: roster,
   });
+  // Same resolution the planner performs, for the one Q6 consumer that runs
+  // outside the roster. Deterministic table lookup, so resolving it twice
+  // cannot disagree.
+  const q6Lens = resolveModalityLens({ modality: canonicalModality }).resolvedQ6Lens;
 
   await seedStructuredEvidence({ target, tools: structuredTools, store, emit });
 
@@ -178,7 +184,7 @@ export async function runDeepResearch(opts: {
   try {
     const mi = finalSections.findIndex((s) => s.id === 'modality_developability');
     if (mi !== -1) {
-      const risks = await assessDevelopability({ section: finalSections[mi], store, model: verifierModel, emit });
+      const risks = await assessDevelopability({ section: finalSections[mi], store, model: verifierModel, emit, q6Lens });
       finalSections = finalSections.map((s, i) => (i === mi ? { ...s, developabilityRisks: risks } : s));
     }
   } catch (err) {
