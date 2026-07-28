@@ -30,13 +30,13 @@ describe('uniProtTargetTool', () => {
     expect(out).toEqual([]);
   });
 
-  it('flags absence of surface topology honestly', async () => {
+  it('reports absence of surface topology as a fact, naming no modality', async () => {
     const out = await uniProtTargetTool.call({ symbol: 'TP53' }, fakeFetch({
       primaryAccession: 'P04637',
       comments: [{ commentType: 'SUBCELLULAR LOCATION', subcellularLocations: [{ location: { value: 'Nucleus' } }] }],
       features: [],
     }));
     const loc = out.find((e) => e.id.endsWith('#localization'));
-    expect(loc!.snippet).toMatch(/confirm surface accessibility/i);
+    expect(loc!.snippet).toMatch(/no transmembrane or extracellular topology is annotated/i);
   });
 });

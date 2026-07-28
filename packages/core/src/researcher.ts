@@ -56,8 +56,24 @@ const ExtractedClaimsSchema = z.object({
   })).default([]),
 });
 
+/**
+ * Scope for globally unique claim ids.
+ *
+ * `c1, c2, ...` per call collided across rounds and specialists, and verdicts
+ * match by claim id (`produceResearchSection.ts`, `rag.ts`, `weighing.ts`), so
+ * a collision misattributes a verdict to the wrong claim. Ids encode the
+ * section and round; the model is never asked for one (the prompt forbids an
+ * id field because small models 400 on strict schemas).
+ */
+export interface ClaimIdScope { sectionKey: string; round: number }
+
+export function claimId(scope: ClaimIdScope | undefined, index: number): string {
+  return scope ? `${scope.sectionKey}#r${scope.round}c${index}` : `c${index}`;
+}
+
 export async function extractClaims(
   question: string, evidenceList: string, model: StructuredModel, context?: ResearchContext,
+  idScope?: ClaimIdScope,
 ): Promise<Claim[]> {
   const { claims } = await model.generateStructured({
     system: withResearchScope(`You are a rigorous biomedical research specialist. Answer the research question using ONLY the provided evidence passages. Every claim MUST cite the evidence id(s) it rests on, copied verbatim. When the evidence includes CURATED DATABASE records (Open Targets, UniProt) that bear on the question - cell-surface localisation, normal-tissue expression and selectivity, tractability, or safety liabilities - you MUST use and cite them by their id, not only the literature. If the evidence conflicts, write a reconciliation claim that names the tension and states which way it leans and why. Do not state anything the evidence does not support.`, 'this target', context),
@@ -66,7 +82,7 @@ export async function extractClaims(
     model: MODEL_ROUTER.specialist,
   });
   return (claims ?? []).map((c, i) => ({
-    id: `c${i + 1}`,
+    id: claimId(idScope, i + 1),
     text: c.text,
     citations: c.citations ?? [],
     confidence: Math.max(0, Math.min(1, c.confidence ?? 0.7)),
@@ -208,7 +224,7 @@ export async function runResearcher(opts: {
       curated.length ? '\nLITERATURE EVIDENCE:' : '',
       ...literature.map(evidenceLine),
     ].filter(Boolean).join('\n');
-    const drafted = await extractClaims(item.question, evidenceList, model, context);
+    const drafted = await extractClaims(item.question, evidenceList, model, context, { sectionKey: brief.id, round });
     for (const c of drafted) {
       const flags = audited.filter((a) => c.citations.some((id) => a.ids.has(id))).flatMap((a) => a.redFlags);
       if (flags.length) c.redFlags = flags;

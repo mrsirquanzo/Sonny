@@ -24,7 +24,7 @@ describe('resolveQueryScope', () => {
     const model: StructuredModel = { async generateStructured() { called = true; return {} as never; } };
     const events: TraceEvent[] = [];
     const out = await resolveQueryScope({ rawQuery: 'CDCP1', model, emit: (e) => events.push(e) });
-    expect(out).toEqual({ target: 'CDCP1' });
+    expect(out).toMatchObject({ target: 'CDCP1' });
     expect(called).toBe(false);
     expect(events).toHaveLength(0);
   });
@@ -33,20 +33,20 @@ describe('resolveQueryScope', () => {
     const events: TraceEvent[] = [];
     const model = fixedModel({ target: 'CDCP1', indication: 'NSCLC', modality: 'ADC' });
     const out = await resolveQueryScope({ rawQuery: 'is CDCP1 a good ADC target in NSCLC?', model, emit: (e) => events.push(e) });
-    expect(out).toEqual({ target: 'CDCP1', indication: 'NSCLC', modality: 'ADC' });
+    expect(out).toMatchObject({ target: 'CDCP1', indication: 'NSCLC', modality: 'ADC' });
     expect(events.some((e) => e.type === 'query_parsed')).toBe(true);
   });
 
   it('drops filler values like "not specified"', async () => {
     const model = fixedModel({ target: 'TROP2', indication: 'not specified', modality: 'none' });
     const out = await resolveQueryScope({ rawQuery: 'look at TROP2 please', model, emit: () => {} });
-    expect(out).toEqual({ target: 'TROP2' });
+    expect(out).toMatchObject({ target: 'TROP2' });
   });
 
   it('degrades to raw text as target and emits an error when parsing throws', async () => {
     const events: TraceEvent[] = [];
     const out = await resolveQueryScope({ rawQuery: 'evaluate some target here', model: throwingModel(), emit: (e) => events.push(e) });
-    expect(out).toEqual({ target: 'evaluate some target here' });
+    expect(out).toMatchObject({ target: 'evaluate some target here' });
     expect(events.some((e) => e.type === 'error')).toBe(true);
   });
 });

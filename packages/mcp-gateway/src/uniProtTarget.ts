@@ -70,9 +70,12 @@ export const uniProtTargetTool: Tool = {
         snippet:
           (locations.length ? `Subcellular location: ${[...new Set(locations)].join('; ')}. ` : '') +
           (transmem.length ? `${transmem.length} transmembrane region(s)${extracellular ? ' with an extracellular domain' : ''}. ` : '') +
+          // Facts only, no modality named. Card snippets are asserted verbatim
+          // as deterministic claims, so editorializing here reaches every
+          // dossier regardless of the resolved modality.
           (surface
-            ? 'The extracellular/transmembrane topology supports an antibody- or ADC-accessible cell-surface epitope.'
-            : 'No transmembrane or extracellular topology annotated - confirm surface accessibility before an antibody/ADC approach.'),
+            ? 'Extracellular or transmembrane topology is annotated.'
+            : 'No transmembrane or extracellular topology is annotated.'),
         url,
         raw: { accession: acc, locations, topology, transmembraneCount: transmem.length, hasExtracellularDomain: extracellular },
         retrievedAt: now,

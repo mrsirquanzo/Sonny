@@ -43,11 +43,24 @@ interface TargetData {
   } };
 }
 
-/** Antibody/ADC-relevant tractability buckets that are actually achieved (value=true). */
-function antibodyTractability(tractability: Tractability[]): string[] {
-  return tractability
-    .filter((t) => t.value && /antibody|adc|cell.?surface|secreted|targetable/i.test(`${t.modality} ${t.label}`))
-    .map((t) => `${t.modality}: ${t.label}`);
+/**
+ * All achieved tractability buckets, grouped by the modality Open Targets
+ * assigns them to.
+ *
+ * Previously this filtered to antibody/ADC buckets only, which silently
+ * discarded small-molecule, PROTAC, and other-modality tractability before any
+ * specialist could read it. The router selects the buckets relevant to the
+ * resolved modality; retrieval must not decide that for it.
+ */
+function tractabilityByModality(tractability: Tractability[]): Map<string, { achieved: string[]; notAchieved: string[] }> {
+  const byModality = new Map<string, { achieved: string[]; notAchieved: string[] }>();
+  for (const t of tractability) {
+    const key = t.modality || 'unspecified';
+    const entry = byModality.get(key) ?? { achieved: [], notAchieved: [] };
+    (t.value ? entry.achieved : entry.notAchieved).push(t.label);
+    byModality.set(key, entry);
+  }
+  return byModality;
 }
 
 /**
@@ -67,7 +80,7 @@ function expressionSummary(rows: BaselineRow[]): { text: string; topTissues: Arr
   const text = top.length
     ? `Baseline expression across ${clean.length} normal biosamples (Open Targets: GTEx/HPA/single-cell). Highest-expressing normal tissues: ` +
       top.map((r) => `${r.tissue} (${r.median.toFixed(0)}${r.datatype ? `, ${r.datatype}` : ''})`).join('; ') + '.' +
-      (proteinTop.length ? ` Normal tissues with notable protein-level expression, an ADC on-target/off-tumour consideration: ${proteinTop.join(', ')}.` : '')
+      (proteinTop.length ? ` Normal tissues with notable protein-level expression: ${proteinTop.join(', ')}.` : '')
     : 'No baseline tissue-expression data available from Open Targets.';
   return { text, topTissues: top };
 }
@@ -87,7 +100,6 @@ export const openTargetsTargetTool: Tool = {
     const out: Evidence[] = [];
     const url = `https://platform.opentargets.org/target/${t.id}`;
     const tractability = t.tractability ?? [];
-    const abTract = antibodyTractability(tractability);
     out.push({
       id: t.id, kind: 'target', source: 'Open Targets', title: `${t.approvedSymbol} — ${t.approvedName}`,
       snippet: `tractability: ${tractability.length} modalities; safety liabilities: ${(t.safetyLiabilities ?? []).length}`,
@@ -110,8 +122,13 @@ export const openTargetsTargetTool: Tool = {
       out.push({
         id: `${t.id}#localization`, kind: 'target', source: 'Open Targets',
         title: `${t.approvedSymbol} subcellular localisation`,
+        // Facts only. Specialists interpret; cards do not. Naming a modality
+        // here put antibody framing into every non-antibody dossier via the
+        // deterministic structured-claim path, which no rubric can correct.
         snippet: `Subcellular location: ${[...new Set(locations)].join('; ')}.` +
-          (surface ? ' Consistent with a cell-surface / membrane target accessible to an antibody or ADC.' : ' No clear cell-surface annotation - confirm bindability before an antibody/ADC approach.'),
+          (surface
+            ? ' A cell-surface or membrane annotation is present.'
+            : ' No cell-surface or membrane annotation is present.'),
         url, raw: { locations }, retrievedAt: now,
       });
     }
@@ -129,15 +146,29 @@ export const openTargetsTargetTool: Tool = {
       });
     }
 
-    // Antibody/ADC tractability - is this target achievable by the intended modality?
+    // Tractability across ALL modalities Open Targets reports.
     if (tractability.length) {
+      const byModality = tractabilityByModality(tractability);
+      // Render achieved AND not-achieved. "Not achieved" is itself evidence for
+      // the modality it concerns, and dropping it is how the antibody filter
+      // hid small-molecule tractability in the first place.
+      const rendered = [...byModality.entries()]
+        .map(([modality, e]) => {
+          const parts: string[] = [];
+          if (e.achieved.length) parts.push(`achieved: ${[...new Set(e.achieved)].join(', ')}`);
+          if (e.notAchieved.length) parts.push(`not achieved: ${[...new Set(e.notAchieved)].join(', ')}`);
+          return `${modality} (${parts.join('; ')})`;
+        })
+        .sort();
       out.push({
         id: `${t.id}#tractability`, kind: 'target', source: 'Open Targets',
-        title: `${t.approvedSymbol} tractability (antibody / ADC)`,
-        snippet: abTract.length
-          ? `Antibody/ADC-relevant tractability buckets achieved: ${abTract.join('; ')}.`
-          : 'No antibody/ADC tractability bucket is flagged as achieved - a developability risk for an antibody-based modality.',
-        url: `${url}?tab=tractability`, raw: { tractability }, retrievedAt: now,
+        title: `${t.approvedSymbol} tractability by modality`,
+        snippet: rendered.length
+          ? `Tractability buckets by modality - ${rendered.join('; ')}.`
+          : 'No tractability buckets reported.',
+        url: `${url}?tab=tractability`,
+        raw: { tractability, byModality: Object.fromEntries(byModality) },
+        retrievedAt: now,
       });
     }
 

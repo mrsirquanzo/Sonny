@@ -10,7 +10,7 @@ export {
   type ReproducibilityGateResult,
   type ReproducibilityDrop,
 } from './reproducibilityGate.js';
-export { SPECIALISTS, type Specialist } from './specialists.js';
+export { type Specialist } from './analysisSpecialist.js';
 export { planResearchQuestions, extractClaims, reflectOnGaps, runResearcher,
   type ThreadBrief, type ThreadFindings, type ResearchBudget, type ResearchContext } from './researcher.js';
 export { produceResearchSection } from './produceResearchSection.js';
