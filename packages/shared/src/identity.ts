@@ -54,8 +54,25 @@ export function normalizeTargetIdentity(target: TargetIdentity): TargetIdentity 
 
 /** One lexical representation: uppercase, `HLA-` prefix, `*` and `:` separators. */
 export function normalizeHlaAllele(allele: string): string {
-  const t = allele.trim().toUpperCase().replace(/^HLA[-_]?/, '');
-  return `HLA-${t.replace(/[_]/g, ':')}`;
+  let t = allele.trim().toUpperCase().replace(/^HLA[-_]?/, '').replace(/_/g, ':').replace(/\s+/g, '');
+
+  // Insert the locus separator for common compact or partially formatted forms:
+  // A0201, A02:01 and DQB10602 become A*02:01 and DQB1*06:02.
+  if (!t.includes('*')) {
+    const compact = t.match(/^([A-Z][A-Z0-9]*?)(\d{2}):?(\d{2})(?::?(\d{2}))?$/);
+    if (compact) {
+      const [, locus, field1, field2, field3] = compact;
+      t = `${locus}*${field1}:${field2}${field3 ? `:${field3}` : ''}`;
+    }
+  } else {
+    const [locus, fields = ''] = t.split('*', 2);
+    const digits = fields.replace(/:/g, '');
+    if (/^\d{4}(?:\d{2})?$/.test(digits)) {
+      t = `${locus}*${digits.slice(0, 2)}:${digits.slice(2, 4)}${digits.length > 4 ? `:${digits.slice(4, 6)}` : ''}`;
+    }
+  }
+
+  return `HLA-${t}`;
 }
 
 function canonicalEngagement(e: TargetEngagement): unknown {

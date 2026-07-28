@@ -186,6 +186,22 @@ export const TherapeuticInterventionSchema = z.object({
    * the subject is EGFR, not CD3. Never inferred from array order.
    */
   subjectEngagementIndexes: z.array(z.number().int().nonnegative()).min(1).optional(),
+}).superRefine((intervention, ctx) => {
+  const indexes = intervention.subjectEngagementIndexes;
+  if (!indexes) return;
+
+  if (new Set(indexes).size !== indexes.length) {
+    ctx.addIssue({ code: 'custom', path: ['subjectEngagementIndexes'], message: 'subjectEngagementIndexes must be unique' });
+  }
+  for (const index of indexes) {
+    if (index >= intervention.engagements.length) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['subjectEngagementIndexes'],
+        message: `subject engagement index ${index} is outside engagements length ${intervention.engagements.length}`,
+      });
+    }
+  }
 });
 export type TherapeuticIntervention = z.infer<typeof TherapeuticInterventionSchema>;
 
