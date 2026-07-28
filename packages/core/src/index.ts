@@ -79,3 +79,4 @@ export {
 } from './patentWorkup.js';
 export { makeDecorrelatedVerifier, verifyNarrative, type Verifier } from './narrativeVerify.js';
 export { runPatentWorkup, type WorkupDeps } from './runPatentWorkup.js';
+export * from './diseaseContext.js';
