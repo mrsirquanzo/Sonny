@@ -5,7 +5,10 @@ import type { ResearchContext, ThreadBrief } from './researcher.js';
 import { RESEARCH_ROSTER } from './researchRoster.js';
 import { resolveModalityLens } from './modalityLens.js';
 import { canonicalModalityOf } from './modalityCanon.js';
-import { strategyFingerprint, sha256CanonicalJson, type CanonicalModality } from '@mrsirquanzo/sonny-shared';
+import {
+  strategyFingerprint, sha256CanonicalJson, q1HypothesesFor, isScopeLegalForAxis,
+  type CanonicalModality, type SectionScope, type SpecialistExecutionContext, type TargetIdentity,
+} from '@mrsirquanzo/sonny-shared';
 
 export const CANONICAL_CATEGORIES = [
   { id: 'target_biology', role: 'Establish the target biology and target-level evidence relevant to the modality.' },
@@ -77,10 +80,49 @@ export function composeRoster(opts: {
   const fingerprint = intervention
     ? strategyFingerprint(intervention as never)
     : sha256CanonicalJson({ target: opts.target, modality });
+  // Q1 is keyed by HYPOTHESIS, not by strategy: it is reused across every
+  // strategy sharing a (target, role, intent) triple, so it belongs to no
+  // single strategy. Q2/Q4/Q5/Q6 are strategy-scoped. Q3 is shared - the one
+  // comparative output spans strategies.
+  const hypotheses = intervention ? q1HypothesesFor(intervention as never) : [];
+  const q1Hypothesis = hypotheses[0];
+  // Without a resolved strategy there is no legal scope to assign: Q1 needs a
+  // hypothesis and the rest need a fingerprint derived from an intervention.
+  // Omit scope rather than fabricate one, so back-compat callers are unchanged
+  // and an illegal (axis, scope) pair is never constructed.
+  const scopeFor = (id: string): SectionScope | undefined => {
+    if (!intervention) return undefined;
+    if (id === 'target_biology') {
+      return q1Hypothesis
+        ? { kind: 'q1_hypothesis', q1HypothesisKey: q1Hypothesis.key, relatedStrategyFingerprints: [fingerprint] }
+        : undefined;
+    }
+    if (id === 'disease_indications') return { kind: 'shared' };
+    return { kind: 'strategy', strategyFingerprint: fingerprint };
+  };
+  const contextFor = (scope: SectionScope): SpecialistExecutionContext => {
+    switch (scope.kind) {
+      case 'q1_hypothesis':
+        return { kind: 'q1_hypothesis', hypothesis: q1Hypothesis!, relatedStrategyFingerprints: scope.relatedStrategyFingerprints };
+      case 'shared':
+        return { kind: 'shared', queryScope: { subjectTargets: subjectTargetsOf(intervention), rawPrompt: opts.target } };
+      case 'strategy':
+        return { kind: 'strategy', strategy: strategy as never, strategyFingerprint: scope.strategyFingerprint };
+    }
+  };
+
   const roster = (opts.baseRoster ?? RESEARCH_ROSTER).map((brief) => {
-    if (brief.id === 'moa_pathway') return withLens(brief, lens.resolvedQ2Lens);
-    if (brief.id === 'modality_developability') return withLens(brief, lens.resolvedQ6Lens);
-    return brief;
+    const withLensApplied = brief.id === 'moa_pathway'
+      ? withLens(brief, lens.resolvedQ2Lens)
+      : brief.id === 'modality_developability'
+        ? withLens(brief, lens.resolvedQ6Lens)
+        : brief;
+    const scope = scopeFor(brief.id);
+    if (!scope) return withLensApplied;
+    if (!isScopeLegalForAxis(brief.id as never, scope)) {
+      throw new Error(`axis ${brief.id} may not use scope ${scope.kind}`);
+    }
+    return { ...withLensApplied, scope, context: contextFor(scope) };
   });
   try {
     opts.emit({
@@ -117,4 +159,13 @@ function withLens(brief: ThreadBrief, lensItems: string[]): ThreadBrief {
       ? `${brief.promptHint} ${injected}`
       : `${brief.promptHint.slice(0, idx)}${injected}${brief.promptHint.slice(idx)}`,
   };
+}
+
+/** Targets the disease question is about. Never inferred from array order. */
+function subjectTargetsOf(intervention: unknown): TargetIdentity[] {
+  const iv = intervention as { engagements?: Array<{ target: TargetIdentity }>; subjectEngagementIndexes?: number[] } | undefined;
+  const engagements = iv?.engagements ?? [];
+  if (engagements.length === 0) return [{ kind: 'other', canonicalName: 'unspecified' }];
+  const idx = iv?.subjectEngagementIndexes;
+  return (idx?.length ? idx.map((i) => engagements[i]).filter(Boolean) : engagements).map((e) => e.target);
 }

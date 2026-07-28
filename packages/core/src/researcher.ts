@@ -6,7 +6,11 @@ import { targetTerms, relevanceGate, titleMentionsTarget } from './relevance.js'
 import { snowballCitations } from './snowball.js';
 import { retrieveResearchHits } from './hybridRetrieval.js';
 
-export interface ThreadBrief { id: string; title: string; objective: string; promptHint: string }
+export interface ThreadBrief {
+  /** Section identity for this thread. Attached by composeRoster. */
+  scope?: import('@mrsirquanzo/sonny-shared').SectionScope;
+  /** Execution context; its kind MUST match scope.kind. */
+  context?: import('@mrsirquanzo/sonny-shared').SpecialistExecutionContext; id: string; title: string; objective: string; promptHint: string }
 
 export interface ResearchQuestion { question: string; concept: string }
 
@@ -131,7 +135,16 @@ export async function runResearcher(opts: {
   const { brief, target, tools, store, model, verifierModel, emit, budget, context } = opts;
   const search = tools.find((t) => t.name === 'europepmc_search');
   const fulltext = tools.find((t) => t.name === 'pmc_fulltext');
-  if (!search || !fulltext) throw new Error('runResearcher requires europepmc_search and pmc_fulltext tools');
+  // Only required when rounds will actually run. A zero-budget thread performs
+  // no retrieval, so demanding search tools up front made it impossible to
+  // construct a section without them.
+  if (budget.maxRounds > 0 && (!search || !fulltext)) {
+    throw new Error('runResearcher requires europepmc_search and pmc_fulltext tools');
+  }
+  // Safe: the loop below never executes when maxRounds is 0, and the guard
+  // above rejects a missing tool whenever it does.
+  const searchTool = search!;
+  const fulltextTool = fulltext!;
 
   emit({ type: 'specialist_start', specialist: brief.id });
   const terms = targetTerms(store, target);
@@ -153,11 +166,11 @@ export async function runResearcher(opts: {
       question: item.question,
       concept: item.concept,
       terms,
-      search,
+      search: searchTool,
       model,
       emit,
     });
-    emit({ type: 'tool_result', tool: search.name, count: hits.length });
+    emit({ type: 'tool_result', tool: searchTool.name, count: hits.length });
     for (const h of hits) { store.register(h); emit({ type: 'evidence_registered', id: h.id, title: h.title }); }
     // This question's own evidence, collected locally (not store.all()) so the
     // extraction request stays small and relevant. The full store is retained
@@ -172,10 +185,10 @@ export async function runResearcher(opts: {
       (h.raw as { isOpenAccess?: boolean })?.isOpenAccess !== false);
     if (top) {
       const pmcid = (top.raw as { pmcid: string }).pmcid;
-      emit({ type: 'tool_call', tool: fulltext.name, args: { pmcid } });
+      emit({ type: 'tool_call', tool: fulltextTool.name, args: { pmcid } });
       // Gate the sections: a title-relevant paper still carries off-topic sections.
-      const passages = relevanceGate(await safeToolCall({ tool: fulltext, args: { pmcid }, emit }), terms);
-      emit({ type: 'tool_result', tool: fulltext.name, count: passages.length });
+      const passages = relevanceGate(await safeToolCall({ tool: fulltextTool, args: { pmcid }, emit }), terms);
+      emit({ type: 'tool_result', tool: fulltextTool.name, count: passages.length });
       for (const p of passages) {
         store.register(p);
         roundLiterature.push(p);
