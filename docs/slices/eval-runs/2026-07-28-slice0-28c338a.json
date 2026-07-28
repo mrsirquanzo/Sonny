@@ -1,0 +1,305 @@
+{
+  "runAt": "2026-07-28T18:39:11.291Z",
+  "backend": "openai",
+  "subset": "fast",
+  "targets": [
+    {
+      "target": "CDCP1",
+      "label": "watch",
+      "verdict": "watch",
+      "trap": false,
+      "metrics": [
+        {
+          "name": "grounding_integrity",
+          "score": 1,
+          "pass": true,
+          "detail": {
+            "total": 20,
+            "offenders": []
+          }
+        },
+        {
+          "name": "computation_grounding",
+          "score": 1,
+          "pass": true,
+          "detail": {
+            "total": 0,
+            "offenders": []
+          }
+        },
+        {
+          "name": "retrieval_recall",
+          "score": 1,
+          "pass": true,
+          "detail": {
+            "found": [
+              "23208492"
+            ],
+            "missed": []
+          }
+        },
+        {
+          "name": "kol_precision_at_k",
+          "score": 0.6666666666666666,
+          "pass": true,
+          "detail": {
+            "named": [
+              "hooper jd",
+              "wells ja",
+              "kryza t"
+            ],
+            "matched": [
+              "Hooper JD",
+              "Wells JA"
+            ],
+            "missedMust": []
+          }
+        },
+        {
+          "name": "developability_catch",
+          "score": 0.5,
+          "pass": true,
+          "detail": {
+            "caught": [
+              "immunogenicity"
+            ]
+          }
+        },
+        {
+          "name": "verdict_in_band",
+          "score": 1,
+          "pass": true,
+          "detail": {
+            "got": "watch",
+            "allowed": [
+              "watch",
+              "go"
+            ]
+          }
+        },
+        {
+          "name": "verdict_stability",
+          "score": 1,
+          "pass": true,
+          "detail": {
+            "distribution": {
+              "watch": 3
+            },
+            "flipRate": 0
+          }
+        },
+        {
+          "name": "cost_latency",
+          "score": 1,
+          "pass": true,
+          "detail": {
+            "elapsedMs": 507892
+          }
+        },
+        {
+          "name": "figure_grounding",
+          "score": 1,
+          "pass": true,
+          "detail": {
+            "n": 0,
+            "low": 0,
+            "gated": false,
+            "floor": 0.5
+          }
+        },
+        {
+          "name": "faithfulness",
+          "score": 0.85,
+          "pass": false,
+          "detail": {
+            "sampled": 20,
+            "failures": [
+              {
+                "text": "No evidence reports the absolute CDCP1 receptor density (copies per cell) in bladder cancer specimens across molecular subtypes.",
+                "verdict": "unsupported"
+              },
+              {
+                "text": "Quantitative cell‑surface density values for CDCP1 on tumor cells in key cancer types (e.g., pancreatic, colorectal, breast, lung, melanoma) are not provided in the supplied evidence; the literature reports high or elevated CDCP1 protein/mRNA expression in these malignancies qualitatively but without absolute copy‑number or density measurements.",
+                "verdict": "overreach"
+              },
+              {
+                "text": "The curated evidence does not provide quantitative cell‑surface copy numbers or density measurements for CDCP1 on tumor cells in pancreatic, colorectal, breast, lung, or melanoma indications, so a direct tumour‑vs‑normal comparison cannot be derived from the supplied data.",
+                "verdict": "unsupported"
+              }
+            ]
+          }
+        },
+        {
+          "name": "unsupported_sentence_ratio",
+          "score": 0.5882352941176471,
+          "pass": false,
+          "detail": {
+            "sentences": 17,
+            "ratio": 0.4117647058823529,
+            "offenders": [
+              "The central tension is that while preclinical data show ADC activity and bladder cancer expresses CDCP1 in ~53% of cases, normal‑tissue expression—especially in the pituitary gland—and the lack of quantitative tumor‑cell density, internalisation kinetics, and developability tractability create notable safety and feasibility uncertainties.",
+              "However, normal pituitary expression, lack of quantitative tumour density, and missing developability data create safety and feasibility uncertainties.",
+              "The target is most compelling for bladder cancer, especially the basal/squamous subtype, but the key unknowns are antigen density in patients and off‑target toxicity risk.",
+              "Further quantitative and safety data are needed before a clear go/no‑go decision can be made.",
+              "[ENSG00000163814#expression] Quantitative CDCP1 receptor density is lacking for bladder tumors across molecular subtypes and for other solid‑tumor indications, preventing a robust tumour‑vs‑normal exposure assessment.",
+              "[ENSG00000163814#tractability] (AUDIT note: methodological bias risk) Internalisation pathway details (clathrin‑mediated, caveolar, macropinocytosis) and shedding behavior are not described, limiting confidence in payload delivery consistency.",
+              "[PMID:36276654] There are no publicly disclosed ADC programs, patents, or safety data for CDCP1, meaning the competitive landscape and translational experience are undefined."
+            ]
+          }
+        },
+        {
+          "name": "claim_probes",
+          "score": 0,
+          "pass": false,
+          "detail": {
+            "failures": [
+              {
+                "probe": "CDCP1 is proteolytically cleaved, and the cleaved form promotes cancer cell migration and metastasis.",
+                "expected": "supported",
+                "got": "unsupported"
+              },
+              {
+                "probe": "CDCP1 is an approved drug target with a marketed therapy.",
+                "expected": "refuted",
+                "got": "unsupported"
+              },
+              {
+                "probe": "CDCP1 expression has no relationship to patient prognosis.",
+                "expected": "refuted",
+                "got": "unsupported"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "target": "ZXQR7",
+      "label": "insufficient-evidence",
+      "verdict": "insufficient-evidence",
+      "trap": true,
+      "metrics": [
+        {
+          "name": "grounding_integrity",
+          "score": 1,
+          "pass": true,
+          "detail": {
+            "total": 0,
+            "offenders": []
+          }
+        },
+        {
+          "name": "computation_grounding",
+          "score": 1,
+          "pass": true,
+          "detail": {
+            "total": 0,
+            "offenders": []
+          }
+        },
+        {
+          "name": "retrieval_recall",
+          "score": 1,
+          "pass": true,
+          "detail": "no gold PMIDs"
+        },
+        {
+          "name": "kol_precision_at_k",
+          "score": 0,
+          "pass": true,
+          "detail": {
+            "named": [],
+            "matched": [],
+            "missedMust": []
+          }
+        },
+        {
+          "name": "developability_catch",
+          "score": 1,
+          "pass": true,
+          "detail": "none expected"
+        },
+        {
+          "name": "verdict_in_band",
+          "score": 1,
+          "pass": true,
+          "detail": {
+            "got": "insufficient-evidence",
+            "allowed": [
+              "insufficient-evidence"
+            ]
+          }
+        },
+        {
+          "name": "verdict_stability",
+          "score": 1,
+          "pass": true,
+          "detail": {
+            "distribution": {
+              "insufficient-evidence": 3
+            },
+            "flipRate": 0
+          }
+        },
+        {
+          "name": "cost_latency",
+          "score": 1,
+          "pass": true,
+          "detail": {
+            "elapsedMs": 141190
+          }
+        },
+        {
+          "name": "figure_grounding",
+          "score": 1,
+          "pass": true,
+          "detail": {
+            "n": 0,
+            "low": 0,
+            "gated": false,
+            "floor": 0.5
+          }
+        },
+        {
+          "name": "faithfulness",
+          "score": 1,
+          "pass": true,
+          "detail": {
+            "sampled": 0,
+            "failures": []
+          }
+        },
+        {
+          "name": "unsupported_sentence_ratio",
+          "score": 1,
+          "pass": true,
+          "detail": {
+            "abstained": true
+          }
+        },
+        {
+          "name": "claim_probes",
+          "score": 1,
+          "pass": true,
+          "detail": {
+            "failures": []
+          }
+        }
+      ]
+    }
+  ],
+  "aggregates": {
+    "grounding_integrity": 1,
+    "computation_grounding": 1,
+    "retrieval_recall": 1,
+    "kol_precision_at_k": 0.3333333333333333,
+    "developability_catch": 0.75,
+    "verdict_in_band": 1,
+    "verdict_stability": 1,
+    "cost_latency": 1,
+    "figure_grounding": 1,
+    "faithfulness": 0.925,
+    "unsupported_sentence_ratio": 0.7941176470588236,
+    "claim_probes": 0.5
+  }
+}

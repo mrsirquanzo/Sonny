@@ -73,16 +73,62 @@ Results worth knowing regardless:
   Abstention holds.
 - `grounding_integrity`, `computation_grounding`, `retrieval_recall`,
   `faithfulness`, `figure_grounding` are all 1.000.
-- CDCP1 fails 5 of 12: `developability_catch` 0.000, `verdict_in_band` 0.000,
+- CDCP1 fails 5 of 12 (see the regression section below): `developability_catch` 0.000, `verdict_in_band` 0.000,
   `claim_probes` 0.000, `verdict_stability` 0.667,
   `unsupported_sentence_ratio` 0.591. Verdict `no-go`, expected `watch`.
   Those zeros are consistent with snippet neutralization having removed cues
   the metric keyed on - but with no baseline that is a hypothesis, not a
   finding.
 
-**Still open: is CDCP1 a regression or was it always this way?** A pre-slice
-baseline run at `28c338a` was in flight when the session ended and did not
-finish. To redo it (about 25 minutes on groq):
+## Slices 2-3 regressed CDCP1
+
+The pre-slice comparison ran at `28c338a` in an isolated worktree, same subset,
+same backend, 3 repeats. Scorecard at
+`docs/slices/eval-runs/2026-07-28-slice0-28c338a.{md,json}`. Only
+`eval/src/runner.ts` differs between the two commits (progress logging) and the
+goldens are byte-identical, so the engine change is what moved these numbers.
+
+**CDCP1 flipped from the correct verdict to the wrong one.** At `28c338a` it
+returned `watch` (expected `watch`) on all three repeats. At HEAD it returns
+`no-go`.
+
+| CDCP1 metric | `28c338a` | HEAD | delta |
+|---|---|---|---|
+| verdict_in_band | 1.000 | 0.000 | **-1.000** |
+| verdict_stability | 1.000 | 0.667 | **-0.333** |
+| developability_catch | 0.500 | 0.000 | **-0.500** |
+| faithfulness | 0.850 | 1.000 | +0.150 |
+| unsupported_sentence_ratio | 0.588 | 0.591 | +0.003 |
+| claim_probes | 0.000 | 0.000 | 0 |
+| grounding_integrity, computation_grounding, retrieval_recall, kol_precision_at_k, cost_latency, figure_grounding | unchanged | unchanged | 0 |
+
+ZXQR7 (trap) is identical across both: all 12 pass, `insufficient-evidence`.
+Abstention is unaffected.
+
+Reading this:
+
+- **`claim_probes` 0.000 is NOT a regression.** It was already 0.000 before
+  slices 2-3. It has been broken the whole time and is a separate bug.
+- **`faithfulness` improved**, 0.850 to 1.000. Neutral snippets appear to have
+  made the prose easier to ground, which is the change working as intended.
+- The damage is concentrated in verdict correctness and developability catch -
+  exactly where removing modality-shaped cues from card snippets and rewriting
+  the six briefs would be expected to bite.
+- Confidence: one paired run. `verdict_stability` 0.667 at HEAD means CDCP1 now
+  flips across repeats, so the effect size is noisy. But the baseline was
+  perfectly stable at `watch` (3/3) and HEAD's mode is `no-go`, which is a large
+  enough move to act on. Confirm with a second paired run before concluding
+  anything about the smaller deltas.
+
+Had `28c338a`'s scorecard been committed as `_baseline.json`, HEAD would fail
+the gate on `developability_catch` (0.25 drop vs 0.1 tolerance) and
+`verdict_stability` (0.167 vs 0.1).
+
+**`verdict_in_band` would NOT have caught it.** It appears nowhere in
+`REGRESSION_TOLERANCE`, so the single most important signal - did the system
+reach the right conclusion - is ungated even with a baseline present. See gap 3.
+
+To reproduce (about 25 minutes on groq):
 
 ```
 git worktree add <dir> 28c338a && cd <dir> && pnpm install   # a real install; a
@@ -92,15 +138,8 @@ SONNY_BACKEND=openai SONNY_EVAL_REPEATS=3 SONNY_EVAL_OUT=<out> \
   pnpm exec tsx src/runner.ts --subset fast
 ```
 
-Only `eval/src/runner.ts` differs between `28c338a` and HEAD (progress logging),
-and the goldens are byte-identical, so a wholesale checkout isolates the engine
-change cleanly. Verify isolation before trusting the run: `modalityLens.ts` and
-`modality.ts` must be absent, and `eval/node_modules/@mrsirquanzo/*` must
-resolve inside the worktree.
-
-Caveat on reading the diff: `verdict_stability` 0.667 means CDCP1 flips verdict
-across repeats. The zeros are wide enough to read through that noise; small
-deltas on the other metrics are not.
+Verify isolation before trusting it: `modalityLens.ts` and `modality.ts` must be
+absent, and `eval/node_modules/@mrsirquanzo/*` must resolve inside the worktree.
 
 ## Harness gaps found while reading the eval
 
@@ -113,15 +152,29 @@ deltas on the other metrics are not.
    (`figure_grounding`, `computation_grounding`). CDCP1 failed 5 metrics and the
    run still exited 0. Deciding which of the remaining 10 deserve floors, and at
    what values, is a judgment call about what the eval is for, not a bug fix.
+3. **Open.** `verdict_in_band` has no entry in `REGRESSION_TOLERANCE` and no
+   absolute floor, so a target can flip from the right verdict to the wrong one
+   and no gate fires. That is exactly what slices 2-3 did to CDCP1, and only
+   `developability_catch` and `verdict_stability` would have caught it. Whether
+   verdict correctness should be a hard failure or a tolerance is a policy call,
+   but ungated is not defensible.
 
 ## Open items, highest value first
 
-1. Finish the `28c338a` baseline comparison above and settle whether CDCP1
-   regressed. Until then "output equivalence is not assumed" remains untested.
-2. Commit a `_baseline.json` once a run is trusted, or the regression gate stays
-   permanently inert.
-3. Decide floors for the remaining 10 metrics (gap 2 above).
-4. Four `it.skip` deferrals from slice 2, reasons in-file: `resolveQueryScope().target`
+1. **Fix the CDCP1 regression from slices 2-3** (section above). Already on
+   `main`. Start from `developability_catch` 0.500 to 0.000: the neutralized
+   `tractabilityByModality` buckets and the rewritten briefs are the two
+   candidate causes, and the not-achieved bucket is the first thing to inspect.
+2. Confirm with a second paired run before trusting the smaller deltas. One
+   paired run, and HEAD's `verdict_stability` is 0.667.
+3. Commit a `_baseline.json` once a run is trusted, or the regression gate stays
+   permanently inert. `28c338a`'s scorecard is the honest choice; note it will
+   make CI red until item 1 is fixed, which is the point.
+4. Gate `verdict_in_band` (gap 3) and decide floors for the remaining metrics
+   (gap 2).
+5. `claim_probes` has been 0.000 on CDCP1 since before slices 2-3. Pre-existing,
+   unrelated to this regression, and unexplained.
+6. Four `it.skip` deferrals from slice 2, reasons in-file: `resolveQueryScope().target`
    becoming a `TargetIdentity`, and a run id for claim ids.
 
 ## How these slices are built
