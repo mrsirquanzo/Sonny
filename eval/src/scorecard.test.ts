@@ -28,6 +28,44 @@ describe('scorecard', () => {
     expect(reg.hardFailures).toEqual([]);
   });
 
+  it('reports that an empty regression list came from a missing baseline, not from measurement', async () => {
+    const missing = await checkRegression(card([target('a', 1, 0.95)]), '/nonexistent/_baseline.json');
+    expect(missing.baselineFound).toBe(false);
+
+    const path = await import('node:path');
+    const os = await import('node:os');
+    const fs = (await import('node:fs')).promises;
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'sonny-eval-baseline-'));
+    const file = path.join(dir, '_baseline.json');
+    await fs.writeFile(file, JSON.stringify(card([target('a', 1, 0.95)])), 'utf8');
+    try {
+      const found = await checkRegression(card([target('a', 1, 0.95)]), file);
+      expect(found.baselineFound).toBe(true);
+      expect(found.regressed).toEqual([]);
+    } finally {
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('detects a real regression once a baseline exists', async () => {
+    const path = await import('node:path');
+    const os = await import('node:os');
+    const fs = (await import('node:fs')).promises;
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'sonny-eval-baseline-'));
+    const file = path.join(dir, '_baseline.json');
+    await fs.writeFile(file, JSON.stringify(card([target('a', 1, 1.0)])), 'utf8');
+    try {
+      // faithfulness 1.0 -> 0.5, well past its 0.03 tolerance.
+      const reg = await checkRegression(card([target('a', 1, 0.5)]), file);
+      expect(reg.baselineFound).toBe(true);
+      expect(reg.regressed).toContainEqual({
+        metric: 'faithfulness', baseline: 1, current: 0.5, tolerance: 0.03,
+      });
+    } finally {
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+  });
+
   it('hard-fails when grounding_integrity fails on any target', async () => {
     const reg = await checkRegression(card([target('a', 0.5, 0.95)]), '/nonexistent/_baseline.json');
     expect(reg.hardFailures).toContain('a');

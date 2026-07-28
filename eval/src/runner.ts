@@ -160,6 +160,12 @@ export async function runEval(
   await writeScorecard(sc, OUT_DIR);
 
   const reg = await checkRegression(sc, BASELINE);
+  if (!reg.baselineFound) {
+    // Loud, because the alternative is a green run that measured nothing.
+    progress(`WARNING: no baseline at ${BASELINE}`);
+    progress('WARNING: the regression gate was SKIPPED, not passed. Only hard failures and absolute floors were checked.');
+    progress(`WARNING: to make later runs comparable, commit this scorecard: cp ${path.join(OUT_DIR, 'scorecard.json')} ${BASELINE}`);
+  }
   const failed = reg.hardFailures.length > 0 || reg.regressed.length > 0 || reg.belowFloor.length > 0;
   if (failed) {
     console.error("[eval] FAIL");
@@ -169,7 +175,7 @@ export async function runEval(
     if (reg.belowFloor.length) console.error("  below floor:", reg.belowFloor);
     return 1;
   }
-  console.log("[eval] PASS", sc.aggregates);
+  console.log(reg.baselineFound ? "[eval] PASS" : "[eval] PASS (NO BASELINE - regression gate skipped)", sc.aggregates);
   return 0;
 }
 
