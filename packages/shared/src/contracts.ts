@@ -171,6 +171,17 @@ export const DevelopabilityRiskSchema = z.object({
 });
 export type DevelopabilityRisk = z.infer<typeof DevelopabilityRiskSchema>;
 
+/**
+ * Backward reader for runs stored before the modality-agnostic risk taxonomy.
+ * The old enums are antibody-shaped and are being replaced by `ModalityRisk`,
+ * but stored dossiers still contain them: without an explicit reader zod strips
+ * the property and the content silently disappears on read.
+ */
+export const LegacyDevelopabilityCategorySchema = DevelopabilityCategorySchema;
+export const LegacyDevelopabilitySeveritySchema = DevelopabilitySeveritySchema;
+export const LegacyDevelopabilityRiskSchema = DevelopabilityRiskSchema;
+export type LegacyDevelopabilityRisk = z.infer<typeof LegacyDevelopabilityRiskSchema>;
+
 export const ExecutionModeSchema = z.enum(['live', 'cached']);
 export const ReplayVerificationSchema = z.enum(['verified', 'not_run']);
 export const OriginVerificationSchema = z.enum(['verified', 'none']);
