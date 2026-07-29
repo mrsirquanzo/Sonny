@@ -80,7 +80,47 @@ Results worth knowing regardless:
   the metric keyed on - but with no baseline that is a hypothesis, not a
   finding.
 
-## Slices 2-3 regressed CDCP1
+## READ FIRST: 11 of 12 metrics are single-draw
+
+`scoreTarget` (`eval/src/runner.ts`) runs each target `SONNY_EVAL_REPEATS` times
+but keeps only the last artifacts:
+
+```js
+for (let i = 0; i < REPEATS; i++) { const art = await deps.runOnce(...); verdicts.push(...); last = art }
+const a = last!;   // every metric below is computed from THIS ONE RUN
+```
+
+Only `verdict_stability` reads the full `verdicts` array. `developability_catch`,
+`claim_probes`, `faithfulness`, `unsupported_sentence_ratio` and the rest are
+n=1 no matter what `REPEATS` is set to. Setting it to 3 triples the cost and
+measures one draw.
+
+The pipeline is genuinely stochastic. Two full CDCP1 runs on the same commit
+(`5e8dd58`) produced `developabilityRisks: []` and
+`[off_target_toxicity/significant]` respectively. So a 0.500-to-0.000 move on
+that metric is one noisy draw against another, not a measured regression.
+
+**Fix this before drawing any further conclusion from a single metric delta.**
+Deterministic metrics should aggregate across repeats; judge-scored metrics
+(`faithfulness`, `claim_probes`, `unsupported_sentence_ratio`) cost a model call
+per repeat, so aggregating them is a real cost decision, not a free one.
+
+## Slices 2-3 and CDCP1: what actually holds up
+
+**Revised 2026-07-28 after the single-draw finding above.** The verdict
+regression holds; the `developability_catch` part does not.
+
+- **Holds:** the verdict flip. `verdict_stability` is the one metric computed
+  across all repeats, and it moved 1.000 to 0.667 while the mode verdict went
+  from `watch` to `no-go`. Baseline agreed `watch` 3/3.
+- **Does NOT hold:** `developability_catch` 0.500 to 0.000. Single draw on both
+  sides. A later run on `5e8dd58` produced the qualifying
+  `off_target_toxicity`/`significant` risk end to end, with no error in the
+  trace. The metric is noisy, not pinned at zero.
+
+The section below is the original comparison, kept for the numbers.
+
+## The original paired comparison
 
 The pre-slice comparison ran at `28c338a` in an isolated worktree, same subset,
 same backend, 3 repeats. Scorecard at
@@ -161,12 +201,13 @@ absent, and `eval/node_modules/@mrsirquanzo/*` must resolve inside the worktree.
 
 ## Open items, highest value first
 
-1. **Fix the CDCP1 regression from slices 2-3** (section above). Already on
-   `main`. Start from `developability_catch` 0.500 to 0.000: the neutralized
-   `tractabilityByModality` buckets and the rewritten briefs are the two
-   candidate causes, and the not-achieved bucket is the first thing to inspect.
-2. Confirm with a second paired run before trusting the smaller deltas. One
-   paired run, and HEAD's `verdict_stability` is 0.667.
+1. **Make metrics aggregate across repeats** (top section). Every conclusion
+   drawn from a single metric delta is unsafe until this lands, and a day was
+   spent chasing a `developability_catch` "regression" that a second draw did
+   not reproduce.
+2. Re-confirm the verdict flip once metrics aggregate. It is the best-supported
+   finding here, but it deserves a clean measurement rather than a mode over
+   three runs.
 3. Commit a `_baseline.json` once a run is trusted, or the regression gate stays
    permanently inert. `28c338a`'s scorecard is the honest choice; note it will
    make CI red until item 1 is fixed, which is the point.
