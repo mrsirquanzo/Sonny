@@ -4,12 +4,13 @@ import {
   type SpecialistConclusion,
   type TraceEvent,
   type ConclusionSupport,
+  type CanonicalModality,
 } from '@mrsirquanzo/sonny-shared';
 import type { EvidenceStore } from '../evidenceStore.js';
 import type { RetrievalAuditStore } from '@mrsirquanzo/sonny-shared';
 import { resolveSupport } from './support.js';
 import { rewriteAllSupport } from './rewriteSupport.js';
-import { absenceCoverageHolds } from './coverage.js';
+import { absenceCoverageHolds, criticalDomainCoverageHolds } from './coverage.js';
 
 /**
  * Deterministic validation and degradation. No model call.
@@ -37,6 +38,12 @@ export function validateAndDegrade(opts: {
    * two Q4 threads on the same axis would share each other's coverage.
    */
   sectionKey?: string;
+  /**
+   * Resolved modality for the strategy this conclusion belongs to. Required in
+   * practice for a `low` Q6: without it the critical-domain rule cannot be
+   * evaluated and the conclusion fails closed.
+   */
+  modality?: CanonicalModality;
   emit?: (e: TraceEvent) => void;
 }): SpecialistConclusion {
   const { conclusion, verifiedClaims, deterministicClaims = [], store, auditStore, emit } = opts;
@@ -58,6 +65,16 @@ export function validateAndDegrade(opts: {
   if (!coverage.adequate) {
     emit?.({ type: 'error', message: `conclusion ${conclusion.axis}: ${coverage.reason}, degrading` });
     return degrade(pruned, coverage.reason ?? 'absence lacks retrieval coverage');
+  }
+
+  // Degrades to insufficient_evidence rather than moderate. Moving a low Q6 to
+  // moderate would require inventing a liability to satisfy the schema, which
+  // is exactly the fabrication these gates exist to prevent - and a missing
+  // domain assessment establishes no liability at all.
+  const domains = criticalDomainCoverageHolds({ conclusion: pruned, modality: opts.modality });
+  if (!domains.adequate) {
+    emit?.({ type: 'error', message: `conclusion ${conclusion.axis}: ${domains.reason}, degrading` });
+    return degrade(pruned, domains.reason ?? 'critical risk domains not covered');
   }
 
   // Parse last: degradation must produce a schema-valid conclusion, and a

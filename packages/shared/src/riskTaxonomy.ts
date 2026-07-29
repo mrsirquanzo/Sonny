@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { CanonicalModality } from './modality.js';
 
 export const RiskDomainSchema = z.enum([
   'target_biology', 'safety', 'delivery_biodistribution', 'pk_pd',
@@ -153,3 +154,36 @@ export const COMMON_RISK_CODES = [
 export function isOtherCode(code: RiskCode): boolean {
   return code.startsWith('common.other_');
 }
+
+/**
+ * Critical risk domains per modality (spec 5.8, normative).
+ *
+ * A `low` Q6 requires EVERY critical domain here to carry a
+ * `RiskDomainAssessment` of `no_material_liability` or `manageable`.
+ * Enumerated, never inferred: "found no liability" is not evidence of low
+ * development risk, and that inference fails hardest on novel modalities where
+ * absent published liability reflects absent study rather than absent risk.
+ *
+ * Transcribed from the spec table so the two cannot drift.
+ */
+export const CRITICAL_RISK_DOMAINS_BY_MODALITY = {
+  adc:                 ['safety', 'target_biology', 'pk_pd', 'cmc'],
+  monoclonal_antibody: ['safety', 'pk_pd', 'immunogenicity'],
+  bispecific_antibody: ['safety', 'pk_pd', 'immunogenicity', 'cmc'],
+  small_molecule:      ['safety', 'pk_pd'],
+  protac:              ['safety', 'pk_pd', 'target_biology'],
+  molecular_glue:      ['safety', 'target_biology'],
+  sirna:               ['safety', 'delivery_biodistribution', 'pk_pd'],
+  aso:                 ['safety', 'delivery_biodistribution', 'pk_pd'],
+  car_t:               ['safety', 'target_biology', 'manufacturing'],
+  tcr_t:               ['safety', 'target_biology', 'manufacturing', 'clinical_operations'],
+  gene_editing:        ['safety', 'delivery_biodistribution', 'manufacturing'],
+  gene_replacement:    ['safety', 'immunogenicity', 'delivery_biodistribution', 'manufacturing'],
+  mrna:                ['safety', 'immunogenicity', 'delivery_biodistribution', 'manufacturing'],
+  radioligand:         ['safety', 'delivery_biodistribution', 'manufacturing'],
+  therapeutic_vaccine: ['immunogenicity', 'safety', 'clinical_operations'],
+  unknown:             ['safety'],
+} as const satisfies Record<CanonicalModality, readonly RiskDomain[]>;
+
+/** A critical domain is covered only by a status that asserts it was resolved. */
+export const ACCEPTABLE_CRITICAL_DOMAIN_STATUSES = ['no_material_liability', 'manageable'] as const;

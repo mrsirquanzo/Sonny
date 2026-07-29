@@ -7,6 +7,7 @@ import {
   type SpecialistExecutionContext,
   type SectionScope,
   type SpecialistAxisId,
+  type CanonicalModality,
   type TraceEvent,
 } from '@mrsirquanzo/sonny-shared';
 import type { EvidenceStore } from '../evidenceStore.js';
@@ -76,6 +77,7 @@ export async function draftSpecialistConclusion(opts: {
     store,
     auditStore,
     sectionKey: sectionKey(brief.id as SpecialistAxisId, toScope(context)),
+    modality: modalityOf(context),
     emit,
   });
 }
@@ -113,4 +115,19 @@ function toScope(context: SpecialistExecutionContext): SectionScope {
       relatedStrategyFingerprints: context.relatedStrategyFingerprints,
     };
   }
+}
+
+/**
+ * Resolved modality for this thread, or undefined when the scope has none.
+ *
+ * Only a strategy-scoped thread carries a modality; Q1 hypotheses and the
+ * shared Q3a scope deliberately do not, because they are reused across
+ * strategies with different modalities. Q6 is always strategy-scoped, so the
+ * one axis whose validation NEEDS a modality always has one - and a Q6 that
+ * somehow arrives without one fails closed rather than skipping the check.
+ */
+function modalityOf(context: SpecialistExecutionContext): CanonicalModality | undefined {
+  return context.kind === 'strategy'
+    ? context.strategy.interventions[0]?.modality
+    : undefined;
 }

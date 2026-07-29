@@ -80,9 +80,12 @@ describe('insufficient conclusion branches', () => {
     const base = { modalityFit: 'insufficient_evidence', confidence: 'low', evidenceGap: 'No exposure data.', support };
     expect(Q2ConclusionSchema.safeParse(base).success).toBe(true);
     expect(Q2ConclusionSchema.safeParse({ ...base, confidence: 'moderate' }).success).toBe(false);
-    expect(Q2ConclusionSchema.parse({
+    // Rejected, not stripped. Silent repair was the wrong failure mode: the
+    // model asserted a confident bottleneck while declaring insufficient
+    // evidence, and that contradiction should surface rather than be tidied.
+    expect(Q2ConclusionSchema.safeParse({
       ...base, mechanisticBottleneck: 'Fabricated bottleneck',
-    })).not.toHaveProperty('mechanisticBottleneck');
+    }).success).toBe(false);
   });
 
   it('pins Q6 insufficient confidence to low and does not carry fabricated mitigation fields', () => {
@@ -96,9 +99,10 @@ describe('insufficient conclusion branches', () => {
     };
     expect(Q6ConclusionSchema.safeParse(base).success).toBe(true);
     expect(Q6ConclusionSchema.safeParse({ ...base, confidence: 'moderate' }).success).toBe(false);
-    expect(Q6ConclusionSchema.parse({
+    // Rejected, not stripped - same reasoning as the Q2 case above.
+    expect(Q6ConclusionSchema.safeParse({
       ...base, highestPriorityRiskMitigationOrMonitoringStep: 'Invent a mitigation.',
-    })).not.toHaveProperty('highestPriorityRiskMitigationOrMonitoringStep');
+    }).success).toBe(false);
   });
 });
 

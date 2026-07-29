@@ -66,8 +66,11 @@ describe('Q2 discriminated conclusion branches', () => {
     }).success).toBe(false);
   });
 
-  it('does not retain an assessed-only mechanisticBottleneck on the insufficient branch', () => {
-    const parsed = Q2ConclusionSchema.parse({
+  it('REJECTS an assessed-only mechanisticBottleneck on the insufficient branch', () => {
+    // Strict branches now reject rather than strip. A model asserting a
+    // confident bottleneck while declaring insufficient evidence is a
+    // contradiction that should surface, not be silently tidied away.
+    const parsed = Q2ConclusionSchema.safeParse({
       modalityFit: 'insufficient_evidence',
       confidence: 'low',
       evidenceGap: 'No target-engagement data are available.',
@@ -80,13 +83,7 @@ describe('Q2 discriminated conclusion branches', () => {
       support: support([], []),
     });
 
-    expect(parsed).not.toHaveProperty('mechanisticBottleneck');
-    expect(parsed).not.toHaveProperty('mostDecisiveNextExperiment');
-    expect(parsed).not.toHaveProperty('weakestLink');
-    expect(parsed).toHaveProperty(
-      'evidenceGap',
-      'No target-engagement data are available.',
-    );
+    expect(parsed.success).toBe(false);
   });
 });
 
@@ -119,8 +116,9 @@ describe('Q6 discriminated conclusion branches', () => {
     }).success).toBe(false);
   });
 
-  it('does not retain assessed-only mitigation fields on the insufficient branch', () => {
-    const parsed = Q6ConclusionSchema.parse({
+  it('REJECTS assessed-only mitigation fields on the insufficient branch', () => {
+    // Strict branches reject rather than strip - same reasoning as Q2 above.
+    const parsed = Q6ConclusionSchema.safeParse({
       overallDevelopmentRisk: 'insufficient_evidence',
       liabilities: [],
       domainAssessments: [],
@@ -134,15 +132,7 @@ describe('Q6 discriminated conclusion branches', () => {
       support: support([], []),
     });
 
-    expect(parsed).not.toHaveProperty(
-      'highestPriorityRiskMitigationOrMonitoringStep',
-    );
-    expect(parsed).not.toHaveProperty('earliestDecisiveDeRiskingStudy');
-    expect(parsed).not.toHaveProperty('topProgrammeKillingRiskIds');
-    expect(parsed).toHaveProperty(
-      'evidenceGap',
-      'No modality-specific safety package is available.',
-    );
+    expect(parsed.success).toBe(false);
   });
 });
 

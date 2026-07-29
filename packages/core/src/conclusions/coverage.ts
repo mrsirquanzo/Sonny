@@ -1,6 +1,9 @@
 import {
   ABSENCE_COVERAGE_REQUIREMENTS,
+  ACCEPTABLE_CRITICAL_DOMAIN_STATUSES,
+  CRITICAL_RISK_DOMAINS_BY_MODALITY,
   evaluateRetrievalCoverage,
+  type CanonicalModality,
   type SpecialistConclusion,
   type Claim,
 } from '@mrsirquanzo/sonny-shared';
@@ -75,6 +78,66 @@ export function absenceCoverageHolds(opts: {
     return { adequate: false, reason: `${kind}: retrieval coverage inadequate (${missing})`, resolvedAuditIds, droppedAuditIds };
   }
   return { adequate: true, resolvedAuditIds, droppedAuditIds };
+}
+
+/**
+ * May a `low` Q6 stand? (spec 5.8, normative)
+ *
+ * Every critical domain FOR THE MODALITY must carry a `RiskDomainAssessment`
+ * of `no_material_liability` or `manageable`. "Found no liability" is not
+ * evidence of low development risk - the inference fails hardest on novel
+ * modalities, where absent published liability reflects absent study.
+ *
+ * Fails CLOSED when the modality is unknown to the caller. An optional
+ * parameter that silently skips the check would let any caller license a low
+ * risk rating by simply not threading modality through, which is the opposite
+ * of a normative requirement. Note this is distinct from the canonical
+ * `unknown` modality, which is a real enum member with its own (deliberately
+ * permissive) row in the table.
+ */
+export function criticalDomainCoverageHolds(opts: {
+  conclusion: SpecialistConclusion;
+  modality?: CanonicalModality;
+}): { adequate: boolean; reason?: string } {
+  const { conclusion, modality } = opts;
+  if (conclusion.axis !== 'modality_developability') return { adequate: true };
+  if (conclusion.assessment.overallDevelopmentRisk !== 'low') return { adequate: true };
+
+  // Spec 703: a low Q6 needs POSITIVE claims as well as coverage. Q4 `absent`
+  // may rest on retrieval coverage alone, but "we searched and found no
+  // liability" is not evidence of low development risk - the inference fails
+  // hardest on novel modalities, where silence means nobody has looked.
+  if (conclusion.assessment.support.supportingClaimIds.length === 0) {
+    return { adequate: false, reason: 'a low development risk requires positive supporting claims, not retrieval coverage alone' };
+  }
+
+  if (modality === undefined) {
+    return { adequate: false, reason: 'a low development risk requires the modality, which was not supplied, so its critical risk domains cannot be established' };
+  }
+
+  const required = CRITICAL_RISK_DOMAINS_BY_MODALITY[modality];
+  const assessments = conclusion.assessment.domainAssessments;
+  const acceptable: readonly string[] = ACCEPTABLE_CRITICAL_DOMAIN_STATUSES;
+
+  const missing: string[] = [];
+  const unacceptable: string[] = [];
+  for (const domain of required) {
+    const forDomain = assessments.filter((a) => a.domain === domain);
+    if (forDomain.length === 0) { missing.push(domain); continue; }
+    // EVERY assessment for the domain must be acceptable. With `some`, a
+    // duplicate `manageable` entry would mask a `material_liability_identified`
+    // one for the same domain.
+    if (!forDomain.every((a) => acceptable.includes(a.status))) unacceptable.push(domain);
+  }
+
+  if (missing.length || unacceptable.length) {
+    const parts = [
+      missing.length ? `no assessment for ${missing.join(', ')}` : '',
+      unacceptable.length ? `unacceptable status for ${unacceptable.join(', ')}` : '',
+    ].filter(Boolean).join('; ');
+    return { adequate: false, reason: `a low development risk for ${modality} requires every critical domain assessed: ${parts}` };
+  }
+  return { adequate: true };
 }
 
 /** Top-level status of a conclusion, for the coverage gate. */
