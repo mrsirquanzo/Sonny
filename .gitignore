@@ -14,3 +14,6 @@ packages/mcp-gateway/src/.docker-test-runs/
 .docker-test-runs/
 run
 *.tsbuildinfo
+
+# Eval run output. Scorecards worth keeping go to docs/slices/eval-runs/.
+eval/.eval-out/

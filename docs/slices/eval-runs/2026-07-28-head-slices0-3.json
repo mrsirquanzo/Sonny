@@ -1,0 +1,293 @@
+{
+  "runAt": "2026-07-28T02:26:34.665Z",
+  "backend": "openai",
+  "subset": "fast",
+  "targets": [
+    {
+      "target": "CDCP1",
+      "label": "watch",
+      "verdict": "no-go",
+      "trap": false,
+      "metrics": [
+        {
+          "name": "grounding_integrity",
+          "score": 1,
+          "pass": true,
+          "detail": {
+            "total": 22,
+            "offenders": []
+          }
+        },
+        {
+          "name": "computation_grounding",
+          "score": 1,
+          "pass": true,
+          "detail": {
+            "total": 0,
+            "offenders": []
+          }
+        },
+        {
+          "name": "retrieval_recall",
+          "score": 1,
+          "pass": true,
+          "detail": {
+            "found": [
+              "23208492"
+            ],
+            "missed": []
+          }
+        },
+        {
+          "name": "kol_precision_at_k",
+          "score": 0.6666666666666666,
+          "pass": true,
+          "detail": {
+            "named": [
+              "hooper jd",
+              "kryza t",
+              "wells ja"
+            ],
+            "matched": [
+              "Hooper JD",
+              "Wells JA"
+            ],
+            "missedMust": []
+          }
+        },
+        {
+          "name": "developability_catch",
+          "score": 0,
+          "pass": false,
+          "detail": {
+            "caught": []
+          }
+        },
+        {
+          "name": "verdict_in_band",
+          "score": 0,
+          "pass": false,
+          "detail": {
+            "got": "no-go",
+            "allowed": [
+              "watch",
+              "go"
+            ]
+          }
+        },
+        {
+          "name": "verdict_stability",
+          "score": 0.6666666666666666,
+          "pass": false,
+          "detail": {
+            "distribution": {
+              "no-go": 2,
+              "watch": 1
+            },
+            "flipRate": 0.33333333333333337
+          }
+        },
+        {
+          "name": "cost_latency",
+          "score": 1,
+          "pass": true,
+          "detail": {
+            "elapsedMs": 539108
+          }
+        },
+        {
+          "name": "figure_grounding",
+          "score": 1,
+          "pass": true,
+          "detail": {
+            "n": 0,
+            "low": 0,
+            "gated": false,
+            "floor": 0.5
+          }
+        },
+        {
+          "name": "faithfulness",
+          "score": 1,
+          "pass": true,
+          "detail": {
+            "sampled": 20,
+            "failures": []
+          }
+        },
+        {
+          "name": "unsupported_sentence_ratio",
+          "score": 0.5909090909090908,
+          "pass": false,
+          "detail": {
+            "sentences": 22,
+            "ratio": 0.4090909090909091,
+            "offenders": [
+              "However, the absence of quantitative cell‑surface density data across tumour types, limited normal‑tissue safety information, and noted manufacturability concerns create uncertainty about its translational feasibility.",
+              "Major concerns are the paucity of quantitative surface density data across indications, undefined safety windows in normal tissues, and flagged manufacturability challenges.",
+              "Addressing these data gaps will be critical for the team to gauge the true translational potential.",
+              "[PMID:36648492] Normal‑tissue safety data are absent; although pituitary gland shows the highest protein expression, the functional relevance and potential on‑target toxicity have not been evaluated.",
+              "[ENSG00000163814#expression] Developability assessment flags severe manufacturability concerns, as CDCP1 lacks any approved drugs, advanced clinical candidates, or phase‑1 programs across all modality buckets, indicating limited precedent for production.",
+              "[ENSG00000163814#tractability] Key gaps remain in normal‑tissue cleavage profiling and tumour heterogeneity of the cleaved epitope, which could affect ADC internalization efficiency and safety.",
+              "[ENSG00000163814#tractability] Potential resistance mechanisms (e.g., loss of CDCP1 expression, altered cleavage, or downstream signalling adaptations) have not been characterized, representing an unknown risk for sustained ADC efficacy.",
+              "[ENSG00000163814#tractability] Intellectual‑property landscape is unclear; the red‑flagged competitive positioning notes that CDCP1 has no known ADC programs but IP coverage and freedom‑to‑operate have not been defined.",
+              "[Competitive Positioning & IP]"
+            ]
+          }
+        },
+        {
+          "name": "claim_probes",
+          "score": 0,
+          "pass": false,
+          "detail": {
+            "failures": [
+              {
+                "probe": "CDCP1 is proteolytically cleaved, and the cleaved form promotes cancer cell migration and metastasis.",
+                "expected": "supported",
+                "got": "unsupported"
+              },
+              {
+                "probe": "CDCP1 is an approved drug target with a marketed therapy.",
+                "expected": "refuted",
+                "got": "unsupported"
+              },
+              {
+                "probe": "CDCP1 expression has no relationship to patient prognosis.",
+                "expected": "refuted",
+                "got": "unsupported"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "target": "ZXQR7",
+      "label": "insufficient-evidence",
+      "verdict": "insufficient-evidence",
+      "trap": true,
+      "metrics": [
+        {
+          "name": "grounding_integrity",
+          "score": 1,
+          "pass": true,
+          "detail": {
+            "total": 0,
+            "offenders": []
+          }
+        },
+        {
+          "name": "computation_grounding",
+          "score": 1,
+          "pass": true,
+          "detail": {
+            "total": 0,
+            "offenders": []
+          }
+        },
+        {
+          "name": "retrieval_recall",
+          "score": 1,
+          "pass": true,
+          "detail": "no gold PMIDs"
+        },
+        {
+          "name": "kol_precision_at_k",
+          "score": 0,
+          "pass": true,
+          "detail": {
+            "named": [],
+            "matched": [],
+            "missedMust": []
+          }
+        },
+        {
+          "name": "developability_catch",
+          "score": 1,
+          "pass": true,
+          "detail": "none expected"
+        },
+        {
+          "name": "verdict_in_band",
+          "score": 1,
+          "pass": true,
+          "detail": {
+            "got": "insufficient-evidence",
+            "allowed": [
+              "insufficient-evidence"
+            ]
+          }
+        },
+        {
+          "name": "verdict_stability",
+          "score": 1,
+          "pass": true,
+          "detail": {
+            "distribution": {
+              "insufficient-evidence": 3
+            },
+            "flipRate": 0
+          }
+        },
+        {
+          "name": "cost_latency",
+          "score": 1,
+          "pass": true,
+          "detail": {
+            "elapsedMs": 125711
+          }
+        },
+        {
+          "name": "figure_grounding",
+          "score": 1,
+          "pass": true,
+          "detail": {
+            "n": 0,
+            "low": 0,
+            "gated": false,
+            "floor": 0.5
+          }
+        },
+        {
+          "name": "faithfulness",
+          "score": 1,
+          "pass": true,
+          "detail": {
+            "sampled": 0,
+            "failures": []
+          }
+        },
+        {
+          "name": "unsupported_sentence_ratio",
+          "score": 1,
+          "pass": true,
+          "detail": {
+            "abstained": true
+          }
+        },
+        {
+          "name": "claim_probes",
+          "score": 1,
+          "pass": true,
+          "detail": {
+            "failures": []
+          }
+        }
+      ]
+    }
+  ],
+  "aggregates": {
+    "grounding_integrity": 1,
+    "computation_grounding": 1,
+    "retrieval_recall": 1,
+    "kol_precision_at_k": 0.3333333333333333,
+    "developability_catch": 0.5,
+    "verdict_in_band": 0.5,
+    "verdict_stability": 0.8333333333333333,
+    "cost_latency": 1,
+    "figure_grounding": 1,
+    "faithfulness": 1,
+    "unsupported_sentence_ratio": 0.7954545454545454,
+    "claim_probes": 0.5
+  }
+}

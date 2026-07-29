@@ -38,4 +38,38 @@ describe('assessDevelopability', () => {
     const risks = await assessDevelopability({ section: { ...section, claims: [] }, store: storeWith('PMID:9'), model, emit: () => {} });
     expect(risks).toEqual([]);
   });
+
+  // Q6 is a lens-reading axis. Curated cards no longer editorialize risk into
+  // their own text, so if the lens does not reach this prompt nothing tells the
+  // reviewer which bare facts constitute a liability - which is exactly how
+  // developability_catch fell from 0.500 to 0.000 on CDCP1.
+  it('puts every resolved Q6 lens factor into the system prompt', async () => {
+    let system = '';
+    const model: StructuredModel = {
+      async generateStructured(request) { system = request.system; return { risks: [] } as never; },
+    };
+    const q6Lens = ['on-target, off-tumour toxicity', 'normal-tissue antigen expression'];
+    await assessDevelopability({ section, store: storeWith('PMID:9'), model, emit: () => {}, q6Lens });
+    for (const factor of q6Lens) expect(system).toContain(factor);
+  });
+
+  it('instructs the reviewer to interpret bare facts rather than wait for the word "risk"', async () => {
+    let system = '';
+    const model: StructuredModel = {
+      async generateStructured(request) { system = request.system; return { risks: [] } as never; },
+    };
+    await assessDevelopability({ section, store: storeWith('PMID:9'), model, emit: () => {} });
+    expect(system).toMatch(/state facts without interpreting them/i);
+    // Grounding discipline must survive the added latitude.
+    expect(system).toMatch(/must rest on a stated fact/i);
+  });
+
+  it('omits the lens clause entirely when no lens is resolved', async () => {
+    let system = '';
+    const model: StructuredModel = {
+      async generateStructured(request) { system = request.system; return { risks: [] } as never; },
+    };
+    await assessDevelopability({ section, store: storeWith('PMID:9'), model, emit: () => {}, q6Lens: [] });
+    expect(system).not.toContain('modality-specific liability factors');
+  });
 });

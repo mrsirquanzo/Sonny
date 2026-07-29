@@ -36,6 +36,18 @@ export const DiseaseContextKeySchema = z.object({
   diseaseSubtype: z.string().optional(),
   treatmentSetting: z.string().optional(),
   mappingConfidence: z.enum(['exact', 'inferred', 'unresolved']),
+  /**
+   * How the identity was reached. `broad` / `narrow` / `related` are recorded
+   * as such and can NEVER be read back as equivalence - that is what makes the
+   * "never convert a broad mapping into equivalence" rule auditable rather than
+   * merely stated.
+   */
+  mappingRelation: z.enum(['exact', 'narrow', 'broad', 'related', 'unresolved']).optional(),
+  matchedVia: z.object({
+    source: z.enum(['MONDO', 'EFO', 'DOID', 'NCIT', 'ORPHANET', 'MESH']),
+    sourceId: z.string().optional(),
+    labelOrSynonym: z.string().min(1),
+  }).optional(),
   possibleMatches: z.array(z.object({
     canonicalContextId: z.string().min(1), reason: z.string().min(1),
   })).optional(),

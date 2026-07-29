@@ -91,6 +91,13 @@ export interface RegressionResult {
   regressed: { metric: string; baseline: number; current: number; tolerance: number }[];
   hardFailures: string[]; // targets with a failing must-pass metric (e.g. grounding)
   belowFloor: { metric: string; floor: number; current: number }[];
+  /**
+   * False when no baseline file was readable, which makes `regressed` empty by
+   * construction rather than by measurement. Callers MUST surface this: a run
+   * with no baseline passes the regression gate unconditionally, and that is
+   * indistinguishable from a run that passed it on merit.
+   */
+  baselineFound: boolean;
 }
 
 /** Compare current aggregates to a baseline; return regressions that should fail CI. */
@@ -124,5 +131,5 @@ export async function checkRegression(
     const cur = sc.aggregates[metric];
     if (cur !== undefined && cur < floor) belowFloor.push({ metric, floor, current: cur });
   }
-  return { regressed, hardFailures, belowFloor };
+  return { regressed, hardFailures, belowFloor, baselineFound: baseline !== null };
 }
