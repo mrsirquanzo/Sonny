@@ -3,10 +3,12 @@ import {
   type Claim,
   type SpecialistConclusion,
   type TraceEvent,
+  type ConclusionSupport,
 } from '@mrsirquanzo/sonny-shared';
 import type { EvidenceStore } from '../evidenceStore.js';
 import type { RetrievalAuditStore } from '@mrsirquanzo/sonny-shared';
 import { resolveSupport } from './support.js';
+import { rewriteAllSupport } from './rewriteSupport.js';
 import { absenceCoverageHolds } from './coverage.js';
 
 /**
@@ -93,8 +95,17 @@ function withResolvedSupport(
       };
     }
     case 'disease_indications': {
-      const r = resolve(supportOf(c));
-      return { conclusion: c, allSupportLost: r.allSupportLost };
+      // Support is nested two levels down (assessments[].rankedStrategies[]),
+      // so walk the tree rather than reaching for a fixed path.
+      const before: ConclusionSupport[] = [];
+      const after: ConclusionSupport[] = [];
+      const rewritten = rewriteAllSupport(c, [...ctx.verifiedClaims, ...ctx.deterministicClaims], ctx.store,
+        (b, a) => { before.push(b); after.push(a); });
+      return {
+        conclusion: rewritten,
+        // Any ranked strategy that cited claims and kept none is unsupported.
+        allSupportLost: before.some((b, i) => b.supportingClaimIds.length > 0 && after[i].supportingClaimIds.length === 0),
+      };
     }
     default: {
       const r = resolve(c.assessment.support);
@@ -138,11 +149,23 @@ function degrade(c: SpecialistConclusion, gap: string): SpecialistConclusion {
         },
       });
     case 'disease_indications':
+      // Q3 carries support per ranked strategy, so degrade at that granularity.
+      // Emptying `assessments` would delete the disease contexts themselves and
+      // lose the record that they were considered at all.
       return SpecialistConclusionSchema.parse({
         axis: c.axis,
-        conclusion: c.conclusion.mode === 'comparative'
-          ? { ...c.conclusion, assessments: [] }
-          : { ...c.conclusion, assessments: [] },
+        conclusion: {
+          ...c.conclusion,
+          assessments: c.conclusion.assessments.map((a) => ({
+            ...a,
+            ...('rankedStrategies' in a ? {
+              rankedStrategies: a.rankedStrategies.map((s) =>
+                s.support.supportingClaimIds.length === 0
+                  ? { ...s, opportunity: 'insufficient_evidence', confidence: 'low' }
+                  : s),
+            } : {}),
+          })),
+        },
       });
     case 'clinical_landscape':
       return SpecialistConclusionSchema.parse({
