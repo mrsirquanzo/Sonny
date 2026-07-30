@@ -12,3 +12,4 @@ export * from './riskTaxonomy.js';
 export * from './conclusions.js';
 export * from './retrievalAudit.js';
 export * from './sectionV2.js';
+export * from './questionLedger.js';

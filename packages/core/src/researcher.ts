@@ -97,11 +97,18 @@ import type { Evidence, TraceEvent, MethodologicalCritique } from '@mrsirquanzo/
 import type { EvidenceStore } from './evidenceStore.js';
 import type { Tool } from '@mrsirquanzo/sonny-mcp-gateway';
 import { safeToolCall } from './safeToolCall.js';
+import { QuestionLedger } from './questionLedger.js';
+import { groundClaims } from './grounding.js';
 import { runSkepticAudit } from './critique/skepticAudit.js';
 import { researchFigures } from './figureStep.js';
 
 export interface ResearchBudget { maxRounds: number }
-export interface ThreadFindings { takeaway: string; claims: Claim[]; openQuestions: string[]; critiques: MethodologicalCritique[] }
+export interface ThreadFindings {
+  takeaway: string; claims: Claim[]; openQuestions: string[]; critiques: MethodologicalCritique[];
+  /** The live ledger. `produceResearchSection` must call `applyVerification` on
+   *  it after verifying claims, so a snapshot would not be enough. */
+  ledger: QuestionLedger;
+}
 
 const ReflectSchema = z.object({
   done: z.boolean(),
@@ -114,10 +121,15 @@ const ReflectSchema = z.object({
 
 export async function reflectOnGaps(
   brief: ThreadBrief, claims: Claim[], model: StructuredModel, context?: ResearchContext,
+  /** The question just pursued. Reflection judged progress without knowing what
+   *  it had asked, which is most of why its `done` was unreliable. */
+  pursuedQuestion?: string,
 ): Promise<{ done: boolean; followups: ResearchQuestion[]; takeaway: string }> {
   return model.generateStructured({
     system: withResearchScope(`You are the ${brief.title} research lead reviewing your own progress. Decide whether the thread is sufficiently covered for expert-level assessment. If a critical question remains unanswered, or a source raised a new high-value thread (e.g. a resistance mechanism), list up to 3 follow-up questions. Each follow-up needs:\n- question: a precise research question\n- concept: ONE short topic facet of 1-2 words (no sentence, no keyword list) and do NOT include the target gene symbol - it is added automatically\nOtherwise set done=true. Always write a one-line takeaway summarizing the thread so far.`, 'this target', context),
-    prompt: `OBJECTIVE: ${brief.objective}\n\nCLAIMS SO FAR:\n${claims.map((c) => `- ${c.text}`).join('\n') || '(none yet)'}`,
+    prompt: `OBJECTIVE: ${brief.objective}`
+      + (pursuedQuestion ? `\nQUESTION JUST PURSUED: ${pursuedQuestion}` : '')
+      + `\n\nCLAIMS SO FAR:\n${claims.map((c) => `- ${c.text}`).join('\n') || '(none yet)'}`,
     schema: ReflectSchema,
     model: MODEL_ROUTER.specialist,
   });
@@ -150,10 +162,15 @@ export async function runResearcher(opts: {
   const terms = targetTerms(store, target);
   // A zero-budget thread can never research anything, so planning questions for
   // it spends a model call to produce a list nothing will consume.
-  let openQuestions: ResearchQuestion[] = budget.maxRounds > 0
-    ? await planResearchQuestions(brief, target, model, context)
-    : [];
-  emit({ type: 'research_plan', specialist: brief.id, questions: openQuestions.map((q) => q.question) });
+  // The ledger replaces a queue that was REASSIGNED every round. Previously
+  // `openQuestions = reflection.followups` discarded planned questions 2..N
+  // after round 0, so of up to five planned questions only the first was ever
+  // pursued and the rest vanished without trace.
+  const ledger = new QuestionLedger(brief.id);
+  if (budget.maxRounds > 0) {
+    ledger.add(await planResearchQuestions(brief, target, model, context), 'planned');
+  }
+  emit({ type: 'research_plan', specialist: brief.id, questions: ledger.all().map((q) => q.question) });
 
   const claims: Claim[] = [];
   let takeaway = '';
@@ -161,8 +178,9 @@ export async function runResearcher(opts: {
   const critiques: MethodologicalCritique[] = [];
   const audited: { ids: Set<string>; redFlags: MethodologicalCritique['redFlags'] }[] = [];
 
-  for (let round = 0; round < budget.maxRounds && openQuestions.length > 0; round++) {
-    const item = openQuestions[0];
+  for (let round = 0; round < budget.maxRounds; round++) {
+    const item = ledger.next();
+    if (!item) break;
 
     const hits = await retrieveResearchHits({
       specialist: brief.id,
@@ -242,6 +260,16 @@ export async function runResearcher(opts: {
       ...literature.map(evidenceLine),
     ].filter(Boolean).join('\n');
     const drafted = await extractClaims(item.question, evidenceList, model, context, { sectionKey: brief.id, round });
+    // `usableRetrieval` drives exhaustion: a question whose searches keep
+    // returning nothing is unanswerable from these sources, which is a finding.
+    // Drafting claims that fail to ground is a different problem and is caught
+    // by grounding, so it does not count toward exhaustion.
+    ledger.recordAttempt(item.id, {
+      claimIds: drafted.map((c) => c.id),
+      retrievalAuditIds: [],
+      usableRetrieval: roundLiterature.length > 0,
+      round,
+    });
     for (const c of drafted) {
       const flags = audited.filter((a) => c.citations.some((id) => a.ids.has(id))).flatMap((a) => a.redFlags);
       if (flags.length) c.redFlags = flags;
@@ -249,11 +277,20 @@ export async function runResearcher(opts: {
       emit({ type: 'claim_drafted', claim: c });
     }
 
-    const reflection = await reflectOnGaps(brief, claims, model, context);
+    // Sufficiency is decided in code, not by the model: a question with at
+    // least one grounded answering claim is answered. `reflectOnGaps` still
+    // proposes follow-ups and writes the takeaway, but its `done` no longer
+    // terminates the loop - a specialist whose search returned nothing could
+    // read its existing claims and declare itself finished.
+    ledger.applyGrounding(new Set(groundClaims(claims, store).shippable.map((c) => c.id)));
+
+    const reflection = await reflectOnGaps(brief, claims, model, context, item.question);
     takeaway = reflection.takeaway;
     emit({ type: 'research_reflect', specialist: brief.id, note: reflection.takeaway, followups: reflection.followups.map((f) => f.question) });
-    openQuestions = reflection.done ? [] : reflection.followups;
+    // Merge, never replace. Deduped in the ledger, so a reflection re-proposing
+    // an existing question cannot reset its attempts or revive an exhausted one.
+    if (!reflection.done) ledger.add(reflection.followups, 'followup');
   }
 
-  return { takeaway, claims, openQuestions: openQuestions.map((q) => q.question), critiques };
+  return { takeaway, claims, openQuestions: ledger.unanswered().map((q) => q.question), ledger, critiques };
 }
