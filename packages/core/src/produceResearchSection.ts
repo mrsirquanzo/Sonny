@@ -21,6 +21,12 @@ export async function produceResearchSection(opts: {
   for (const v of verdicts) emit({ type: 'verdict', verdict: v });
 
   const supported: Claim[] = shippable.filter((c) => verdicts.find((v) => v.claimId === c.id)?.status === 'supported');
+  // Reconcile the ledger BEFORE attaching it. The ledger marked questions
+  // answered on grounding, which is all `runResearcher` can test; a question
+  // whose answering claims the verifier then rejected must not ship as
+  // answered. The supported set is the SAME predicate as `section.claims`, so
+  // ledger status and shipped claims cannot disagree.
+  findings.ledger.applyVerification(new Set(supported.map((c) => c.id)));
   const sources = [...new Set(supported.flatMap((c) => c.citations))];
   const section: Section = {
     kind: 'research', id: brief.id, title: brief.title, takeaway: findings.takeaway,
@@ -29,6 +35,9 @@ export async function produceResearchSection(opts: {
     ...(brief.scope ? { scope: brief.scope } : {}),
     claims: supported, sources, rag: computeRag(shippable, verdicts, createSourceIdentityResolver(store.all())),
     critiques: findings.critiques,
+    // Named on the artifact, not dropped. A silently truncated investigation
+    // reads as a complete one.
+    questionLedger: findings.ledger.all(),
   };
   emit({ type: 'section_complete', section });
   return section;

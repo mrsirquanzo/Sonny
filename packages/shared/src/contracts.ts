@@ -6,6 +6,7 @@ import {
   CanonicalDatasetInputSchema, ImageDigestSchema, Sha256Schema, computationId,
   sha256CanonicalJson, sha256Text,
 } from './computationManifest.js';
+import { ResearchQuestionRecordSchema } from './questionLedger.js';
 
 export const EvidenceKindSchema = z.enum(['target', 'publication', 'trial', 'patent', 'dataset', 'disease', 'drug', 'figure', 'computation']);
 export type EvidenceKind = z.infer<typeof EvidenceKindSchema>;
@@ -356,6 +357,14 @@ const SectionBaseSchema = z.object({
   rag: RagRatingSchema,
   critiques: z.array(MethodologicalCritiqueSchema).optional(),
   developabilityRisks: z.array(DevelopabilityRiskSchema).optional(),
+  /**
+   * What this specialist asked, answered, and could not answer.
+   *
+   * A dossier may ship with open or exhausted questions, but they are named on
+   * the artifact rather than dropped: a silently truncated investigation reads
+   * as a complete one.
+   */
+  questionLedger: z.array(ResearchQuestionRecordSchema).optional(),
 });
 
 export const ResearchSectionSchema = SectionBaseSchema.extend({ kind: z.literal('research') });
