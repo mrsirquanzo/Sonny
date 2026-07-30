@@ -1,6 +1,6 @@
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { produceBriefing, RESEARCH_ROSTER, makeModel, resolveVerifier, pinVerifierModel } from '@mrsirquanzo/sonny-core';
+import { produceBriefing, RESEARCH_ROSTER, makeModel, resolveVerifier, pinVerifierModel, defaultResearchBudget,} from '@mrsirquanzo/sonny-core';
 import { europePmcSearchTool, pmcFullTextTool, openTargetsTargetTool, uniProtTargetTool, clinicalTrialsTool, patentSearchTool, europePmcCitationsTool } from '@mrsirquanzo/sonny-mcp-gateway';
 import { createServer, type ServerDeps } from './server.js';
 
@@ -18,7 +18,7 @@ export function buildDeps(publicDir: string): ServerDeps {
         verifierModel: pinVerifierModel(v.model, v.modelId),
         leadModel: makeModel(),
         emit,
-        budget: { maxRounds: 4 },
+        budget: defaultResearchBudget(),
       });
       return { verdict: briefing.recommendation.verdict, sections: briefing.sections };
     },

@@ -12,7 +12,8 @@ export {
 } from './reproducibilityGate.js';
 export { type Specialist } from './analysisSpecialist.js';
 export { planResearchQuestions, extractClaims, reflectOnGaps, runResearcher,
-  type ThreadBrief, type ThreadFindings, type ResearchBudget, type ResearchContext } from './researcher.js';
+  type ThreadBrief, type ThreadFindings, type ResearchBudget, type ResearchContext,
+  DEFAULT_MAX_ROUNDS, defaultResearchBudget } from './researcher.js';
 export { produceResearchSection } from './produceResearchSection.js';
 export { RESEARCH_ROSTER } from './researchRoster.js';
 export { composeRoster, inferModality, isAntibodyModality, CANONICAL_CATEGORIES } from './planner.js';

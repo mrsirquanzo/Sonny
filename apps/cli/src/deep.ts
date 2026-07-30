@@ -1,4 +1,4 @@
-import { makeModel, currentBackend, resolveVerifier, pinVerifierModel, produceBriefing, createUsageMeter, RESEARCH_ROSTER, type ResearchContext } from '@mrsirquanzo/sonny-core';
+import { makeModel, currentBackend, resolveVerifier, pinVerifierModel, produceBriefing, createUsageMeter, RESEARCH_ROSTER, type ResearchContext, defaultResearchBudget,} from '@mrsirquanzo/sonny-core';
 import { europePmcSearchTool, pmcFullTextTool, openTargetsTargetTool, uniProtTargetTool, clinicalTrialsTool, patentSearchTool, europePmcCitationsTool } from '@mrsirquanzo/sonny-mcp-gateway';
 import { formatTrace } from './run.js';
 
@@ -20,7 +20,7 @@ export async function runDeep(target: string, context?: ResearchContext): Promis
     structuredTools: [openTargetsTargetTool, uniProtTargetTool, clinicalTrialsTool, patentSearchTool],
     specialistModel: makeModel(meter), verifierModel: pinVerifierModel(verifier.model, verifier.modelId), leadModel: makeModel(meter),
     emit: (e) => process.stdout.write(formatTrace([e]) + '\n'),
-    budget: { maxRounds: 4 },
+    budget: defaultResearchBudget(),
     context,
     meter,
   });
