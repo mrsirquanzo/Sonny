@@ -1,6 +1,6 @@
 # Modality-agnostic redesign: slice status
 
-Last updated 2026-07-29.
+Last updated 2026-07-30.
 
 Spec lives outside this repo at `~/Downloads/Sonny_modality_agnostic_spec_draft5.6.md`.
 Its Appendix A is a 56-entry decision log recording every reversal and the reason.
@@ -17,11 +17,50 @@ acceptance checklists.
 | 3 | Deterministic rubric, modality lenses, single-strategy scope propagation | MERGED `5f89bd1` (#17) |
 | 4 | MONDO disease-context normalization | MERGED `598b671` (#18) |
 | 5 | Conclusions, Q6 taxonomy, reconciliation, coverage-based abstention | MERGED `f897a25` (#19) |
-| 6 | Shared asset registry | not started |
-| 7 | Multi-variant fan-out infrastructure | not started |
-| 8 | Strategy nomination and bake-off | not started |
+| 6 | Shared asset registry | **DEFERRED** - serves choosing, not digging |
+| 7 | Multi-variant fan-out infrastructure | **DEFERRED** - same |
+| 8 | Strategy nomination and bake-off | **DEFERRED** - same |
+| D1 | Question ledger, evidence-grounded termination | MERGED `6725ea3` (#20) |
+| D2 | Retrieval audits written by the retrieval layer | MERGED `fa78ade` (#21) |
+| D3 | `maxRounds` 4 to 10, one configurable default | MERGED `58401a4` (#22) |
 
-778 tests pass, 4 skipped.
+804 tests pass, 4 skipped.
+
+## Priority changed 2026-07-30: digging, not choosing
+
+Slices 6-8 all serve **choosing** a modality. The stated goal is **digging** -
+specialists that ask sharper questions until the evidence answers them - so they
+are deferred, not cancelled. Design:
+`docs/specs/2026-07-30-question-ledger-design.md`.
+
+What the digging work fixed, all three real defects in a loop that already
+planned questions and generated follow-ups:
+
+- Four of five planned questions were discarded. Each round pursued
+  `openQuestions[0]`, then `openQuestions = reflection.followups` replaced the
+  whole queue. The ledger merges.
+- Termination was self-reported against the wrong evidence. `reflectOnGaps` saw
+  the objective and claim texts, not the question being pursued or whether
+  retrieval returned anything. Sufficiency is now deterministic - a question
+  with at least one grounded answering claim is answered - and re-evaluated
+  after verification using the same predicate that builds `section.claims`.
+- Nothing recorded what was asked. Sections carry the full ledger and ship with
+  open and exhausted questions NAMED.
+
+**Exhaustion is bounded by attempts, not by unusable retrieval.** Codex's
+independent suite expected the latter; that left a question with usable
+retrieval whose claims never grounded open forever, with `next()` returning it
+every round, so one stubborn question could consume the whole budget - the same
+failure reshaped. `unusableAttempts` records why without changing whether it
+stops.
+
+**Retrieval audits are now written.** `partial` (hits returned, none survived
+the relevance gate) cannot satisfy a required source; a genuinely empty search
+is `completed`, because that is the finding an absence rests on; an unmapped
+axis or tool yields NO audit, since a fabricated one looks like coverage.
+
+**What this does NOT do:** make the questions themselves sharper.
+`planResearchQuestions` and `reflectOnGaps` prompts are unchanged.
 
 ## What is settled and should not be reopened
 
