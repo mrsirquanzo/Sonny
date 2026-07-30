@@ -6,15 +6,17 @@ import { groundClaims } from './grounding.js';
 import { verifyClaims } from './verifier.js';
 import { computeRag, createSourceIdentityResolver } from './rag.js';
 import { runResearcher, type ThreadBrief, type ResearchBudget, type ResearchContext } from './researcher.js';
+import type { RetrievalAuditStore } from '@mrsirquanzo/sonny-shared';
 
 export async function produceResearchSection(opts: {
   brief: ThreadBrief; target: string; tools: Tool[]; store: EvidenceStore;
   specialistModel: StructuredModel; verifierModel: StructuredModel;
   emit: (e: TraceEvent) => void; budget: ResearchBudget;
   context?: ResearchContext;
+  auditStore?: RetrievalAuditStore;
 }): Promise<Section> {
-  const { brief, target, tools, store, specialistModel, verifierModel, emit, budget, context } = opts;
-  const findings = await runResearcher({ brief, target, tools, store, model: specialistModel, verifierModel, emit, budget, context });
+  const { brief, target, tools, store, specialistModel, verifierModel, emit, budget, context, auditStore } = opts;
+  const findings = await runResearcher({ brief, target, tools, store, model: specialistModel, verifierModel, emit, budget, context, auditStore });
 
   const { shippable } = groundClaims(findings.claims, store);
   const verdicts = await verifyClaims(shippable, store, verifierModel);
