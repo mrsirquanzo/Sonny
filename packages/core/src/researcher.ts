@@ -98,6 +98,8 @@ import type { EvidenceStore } from './evidenceStore.js';
 import type { Tool } from '@mrsirquanzo/sonny-mcp-gateway';
 import { safeToolCall } from './safeToolCall.js';
 import { QuestionLedger } from './questionLedger.js';
+import { buildRetrievalAudit } from './retrievalAuditing.js';
+import type { RetrievalAuditStore } from '@mrsirquanzo/sonny-shared';
 import { groundClaims } from './grounding.js';
 import { runSkepticAudit } from './critique/skepticAudit.js';
 import { researchFigures } from './figureStep.js';
@@ -143,8 +145,12 @@ export async function runResearcher(opts: {
   brief: ThreadBrief; target: string; tools: Tool[]; store: EvidenceStore;
   model: StructuredModel; verifierModel: StructuredModel; emit: (e: TraceEvent) => void; budget: ResearchBudget;
   context?: ResearchContext;
+  /** Optional so existing callers and tests keep working. When absent no audits
+   *  are recorded, and an absence conclusion will correctly fail its coverage
+   *  check rather than pass unsubstantiated. */
+  auditStore?: RetrievalAuditStore;
 }): Promise<ThreadFindings> {
-  const { brief, target, tools, store, model, verifierModel, emit, budget, context } = opts;
+  const { brief, target, tools, store, model, verifierModel, emit, budget, context, auditStore } = opts;
   const search = tools.find((t) => t.name === 'europepmc_search');
   const fulltext = tools.find((t) => t.name === 'pmc_fulltext');
   // Only required when rounds will actually run. A zero-budget thread performs
@@ -182,6 +188,10 @@ export async function runResearcher(opts: {
     const item = ledger.next();
     if (!item) break;
 
+    // Audits for THIS attempt. An absence conclusion may only rest on searches
+    // recorded for its own section, so they are collected per attempt and
+    // handed to the ledger with the claims they produced.
+    const attemptAudits: string[] = [];
     const hits = await retrieveResearchHits({
       specialist: brief.id,
       target,
@@ -191,6 +201,22 @@ export async function runResearcher(opts: {
       search: searchTool,
       model,
       emit,
+      onSearch: (observation) => {
+        const audit = buildRetrievalAudit({
+          axis: brief.id,
+          sectionKey: brief.id,
+          toolName: searchTool.name,
+          renderedQuery: observation.renderedQuery,
+          normalizedQueryTerms: [...terms, item.concept],
+          rawResultCount: observation.rawResultCount,
+          relevantResultCount: observation.relevantResultCount,
+          executedAt: new Date().toISOString(),
+          failed: observation.status === 'failed',
+        });
+        if (!audit) return;
+        auditStore?.register(audit);
+        attemptAudits.push(audit.id);
+      },
     });
     emit({ type: 'tool_result', tool: searchTool.name, count: hits.length });
     for (const h of hits) { store.register(h); emit({ type: 'evidence_registered', id: h.id, title: h.title }); }
@@ -266,7 +292,7 @@ export async function runResearcher(opts: {
     // by grounding, so it does not count toward exhaustion.
     ledger.recordAttempt(item.id, {
       claimIds: drafted.map((c) => c.id),
-      retrievalAuditIds: [],
+      retrievalAuditIds: attemptAudits,
       usableRetrieval: roundLiterature.length > 0,
       round,
     });

@@ -17,6 +17,7 @@ import { consolidateSectionClaims } from './consolidateClaims.js';
 import { mergeStructuredClaims } from './structuredClaims.js';
 import { composeRoster, inferModality } from './planner.js';
 import { canonicalModalityOf } from './modalityCanon.js';
+import { RetrievalAuditStore } from '@mrsirquanzo/sonny-shared';
 import { resolveModalityLens } from './modalityLens.js';
 
 export interface DeepResearchResult {
@@ -52,6 +53,10 @@ export async function runDeepResearch(opts: {
   const { literatureTools, structuredTools, specialistModel, verifierModel, leadModel, emit, budget } = opts;
   let roster = opts.roster;
   const store = new EvidenceStore();
+  // Sibling to the EvidenceStore, same run lifetime. Written by retrieval,
+  // read by conclusion validation: it is the only thing that can substantiate
+  // an absence, because no citation can.
+  const auditStore = new RetrievalAuditStore();
 
   // Resolve the target symbol and scope from the request. When the caller passes
   // a free-form prompt (e.g. "assess CDCP1 as an ADC in NSCLC"), Sonny parses out
@@ -117,7 +122,7 @@ export async function runDeepResearch(opts: {
     let lastReason = 'unknown error';
     for (let attempt = 0; attempt <= sectionRetries; attempt++) {
       try {
-        return await produceResearchSection({ brief, target, tools: literatureTools, store, specialistModel, verifierModel, emit, budget, context });
+        return await produceResearchSection({ brief, target, tools: literatureTools, store, specialistModel, verifierModel, emit, budget, context, auditStore });
       } catch (err) {
         lastReason = String((err as { message?: string })?.message ?? err);
         emit({ type: 'error', message: `specialist ${brief.id} attempt ${attempt + 1}/${sectionRetries + 1} failed: ${lastReason}` });

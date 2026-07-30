@@ -64,6 +64,20 @@ export interface RetrieveResearchHitsOptions {
   embeddings?: Pick<OllamaEmbeddings, 'model' | 'embed'>;
   rewrite?: typeof rewriteResearchQuery;
   rerank?: (opts: { question: string; hits: Evidence[] }) => Promise<Evidence[]>;
+  /**
+   * Called once per executed search with the counts only observable here.
+   *
+   * An absence conclusion rests on searches that demonstrably ran, so those
+   * counts have to be captured where retrieval happens rather than inferred
+   * afterwards from how many hits survived. A callback keeps the return type -
+   * and every existing caller - unchanged.
+   */
+  onSearch?: (observation: {
+    renderedQuery: string;
+    rawResultCount: number;
+    relevantResultCount: number;
+    status: 'completed' | 'failed';
+  }) => void;
 }
 
 /** Retrieve, union, fuse, then pass the fused pool into the existing reranker. */
@@ -81,6 +95,7 @@ export async function retrieveResearchHits(opts: RetrieveResearchHitsOptions): P
       emit: opts.emit,
     });
     const gated = relevanceGate(raw, opts.terms);
+    opts.onSearch?.({ renderedQuery: query, rawResultCount: raw.length, relevantResultCount: gated.length, status: 'completed' });
     const ranked = rerankOn
       ? await rerankResearchHits({ specialist: opts.specialist, question: opts.question, hits: gated, emit: opts.emit, rerank: opts.rerank })
       : gated;
@@ -110,7 +125,11 @@ export async function retrieveResearchHits(opts: RetrieveResearchHitsOptions): P
     const query = buildSearchQuery(variant.target, variant.concept);
     opts.emit({ type: 'tool_call', tool: opts.search.name, args: { query } });
     const raw = await safeToolCall({ tool: opts.search, args: { query, pageSize }, emit: opts.emit });
-    lexicalLists.push(relevanceGate(raw, opts.terms));
+    const gated = relevanceGate(raw, opts.terms);
+    // One observation per variant: a rewrite that produced three queries ran
+    // three searches, and coverage should reflect what actually executed.
+    opts.onSearch?.({ renderedQuery: query, rawResultCount: raw.length, relevantResultCount: gated.length, status: 'completed' });
+    lexicalLists.push(gated);
   }
   const lexical = reciprocalRankFusion(
     lexicalLists.map((items) => ({ items })),
