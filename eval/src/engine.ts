@@ -1,7 +1,7 @@
 import type { Briefing, TraceEvent } from '@mrsirquanzo/sonny-shared';
 import {
   runDeepResearch, synthesizeRecommendation, assembleReferences,
-  makeModel, currentBackend, RESEARCH_ROSTER,
+  makeModel, currentBackend, RESEARCH_ROSTER, defaultResearchBudget,
 } from '@mrsirquanzo/sonny-core';
 import {
   europePmcSearchTool, pmcFullTextTool, europePmcCitationsTool,
@@ -31,7 +31,7 @@ export function makeRunOnce(): (target: string) => Promise<RunArtifacts> {
       verifierModel: makeModel(),
       leadModel,
       emit,
-      budget: { maxRounds: 4 },
+      budget: defaultResearchBudget(),
       context: { modality: 'ADC' },
     });
     const { recommendation, executiveRead } = await synthesizeRecommendation({

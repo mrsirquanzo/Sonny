@@ -105,6 +105,25 @@ import { runSkepticAudit } from './critique/skepticAudit.js';
 import { researchFigures } from './figureStep.js';
 
 export interface ResearchBudget { maxRounds: number }
+
+/**
+ * Rounds a specialist may spend, one question per round.
+ *
+ * 10, up from 4. A specialist plans up to five questions and each may take up to
+ * MAX_ATTEMPTS_PER_QUESTION attempts, so 4 rounds could not work through even
+ * the initial plan - it shipped with most questions labelled `open` and never
+ * attempted. Ten lets the plan complete and leaves room for follow-ups.
+ *
+ * This is the main cost lever in the pipeline: rounds multiply searches, deep
+ * reads, and model calls per specialist, and there are six specialists.
+ * Override with SONNY_MAX_ROUNDS.
+ */
+export const DEFAULT_MAX_ROUNDS = 10;
+
+export function defaultResearchBudget(): ResearchBudget {
+  const configured = Number(process.env.SONNY_MAX_ROUNDS);
+  return { maxRounds: Number.isInteger(configured) && configured >= 0 ? configured : DEFAULT_MAX_ROUNDS };
+}
 export interface ThreadFindings {
   takeaway: string; claims: Claim[]; openQuestions: string[]; critiques: MethodologicalCritique[];
   /** The live ledger. `produceResearchSection` must call `applyVerification` on
