@@ -174,13 +174,21 @@ const Q2Assessed = z.object({
   mechanisticBottleneck: z.string().min(1),
   mostDecisiveNextExperiment: z.string().min(1),
   support: ConclusionSupportSchema,
-});
+}).strict();
+/**
+ * Strict on BOTH branches. Plain objects strip unknown keys, so an
+ * insufficient conclusion carrying `mechanisticBottleneck` used to parse
+ * successfully with the field silently deleted. Silent repair is the wrong
+ * failure mode here: the model asserted a confident bottleneck while declaring
+ * it had insufficient evidence, and that contradiction should surface as a
+ * parse error, not be tidied away.
+ */
 const Q2Insufficient = z.object({
   modalityFit: z.literal('insufficient_evidence'),
   confidence: z.literal('low'),
   evidenceGap: z.string().min(1),
   support: ConclusionSupportSchema,
-});
+}).strict();
 export const Q2ConclusionSchema = z.union([Q2Assessed, Q2Insufficient]);
 export type Q2Conclusion = z.infer<typeof Q2ConclusionSchema>;
 
@@ -247,7 +255,7 @@ const Q6Assessed = z.object({
   earliestDecisiveDeRiskingStudy: z.string().min(1),
   confidence: Confidence,
   support: ConclusionSupportSchema,
-}).superRefine((q6, ctx) => {
+}).strict().superRefine((q6, ctx) => {
   if (q6.overallDevelopmentRisk !== 'low' && q6.liabilities.length === 0) {
     ctx.addIssue({ code: 'custom', message: 'moderate, high, or prohibitive risk requires at least one liability' });
   }
@@ -283,7 +291,7 @@ const Q6Insufficient = z.object({
   evidenceGap: z.string().min(1),
   confidence: z.literal('low'),
   support: ConclusionSupportSchema,
-}).superRefine((q6, ctx) => {
+}).strict().superRefine((q6, ctx) => {
   const ids = q6.liabilities.map((l) => l.id);
   const duplicated = [...new Set(ids.filter((id, i) => ids.indexOf(id) !== i))];
   if (duplicated.length > 0) {
