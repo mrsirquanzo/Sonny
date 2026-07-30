@@ -1,6 +1,6 @@
 # Modality-agnostic redesign: slice status
 
-Last updated 2026-07-28.
+Last updated 2026-07-29.
 
 Spec lives outside this repo at `~/Downloads/Sonny_modality_agnostic_spec_draft5.6.md`.
 Its Appendix A is a 56-entry decision log recording every reversal and the reason.
@@ -15,13 +15,13 @@ acceptance checklists.
 | 1 | Shared contracts: axes, modality, target identity, scope, risk taxonomy, conclusions | MERGED `3b159a7` (#14) |
 | 2 | Evidence layer: neutral card snippets, full tractability, `unknown` fallback, claim ids, target identity | MERGED `f69f2cc` (#16) |
 | 3 | Deterministic rubric, modality lenses, single-strategy scope propagation | MERGED `5f89bd1` (#17) |
-| 4 | MONDO disease-context normalization | PR #18 open, 30/30 tests |
-| 5 | Conclusions, Q6 taxonomy, reconciliation, coverage-based abstention | not started |
+| 4 | MONDO disease-context normalization | MERGED `598b671` (#18) |
+| 5 | Conclusions, Q6 taxonomy, reconciliation, coverage-based abstention | MERGED `f897a25` (#19) |
 | 6 | Shared asset registry | not started |
 | 7 | Multi-variant fan-out infrastructure | not started |
 | 8 | Strategy nomination and bake-off | not started |
 
-701 tests pass, 4 skipped.
+778 tests pass, 4 skipped.
 
 ## What is settled and should not be reopened
 
@@ -34,6 +34,29 @@ as identity, `strategyVariantLabel` as presentation only.
 canonical disease namespace. EFO 3.91.0 and DOID/NCIt/Orphanet/MeSH are alias and
 mapping layers reachable only through explicit crossrefs. This cleared the human
 gate that was blocking slice 4.
+
+**Slice 5, decided with the independent suite:**
+
+- Q2 and Q6 conclusion branches are `.strict()`. They were plain `z.object`, so an
+  `insufficient_evidence` Q2 carrying `mechanisticBottleneck` parsed cleanly with
+  the field silently stripped. `.strict()` must precede `.superRefine()`, which
+  returns a `ZodEffects` with no `.strict()`.
+- A `low` Q6 requires positive supporting claims AND every critical domain for
+  its modality at `no_material_liability` or `manageable`. Retrieval coverage
+  alone is not evidence of low risk.
+- **Absent modality fails closed.** An optional parameter that skipped the check
+  would let any caller license a low risk rating by not threading modality
+  through. Canonical `unknown` is different - a real enum member with its own
+  permissive row.
+- Degradation targets `insufficient_evidence`, never `moderate`. Moderate needs a
+  liability, a missing assessment establishes none, so degrading upward means
+  fabricating one.
+- Every assessment for a critical domain must be acceptable, not merely one, or a
+  duplicate `manageable` masks a `material_liability_identified`.
+- Unresolvable `retrievalAuditIds` are pruned and traced, not fatal - same
+  treatment as unresolvable `evidenceIds`.
+- Support is not at a fixed depth. Q3 comparative nests it at
+  `assessments[].rankedStrategies[].support`, so derivation walks the tree.
 
 **Slice 4, decided while closing the last six tests:**
 
