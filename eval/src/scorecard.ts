@@ -34,6 +34,11 @@ export const REGRESSION_TOLERANCE: Record<string, number> = {
   kol_precision_at_k: 0.1,
   developability_catch: 0.1,
   claim_probes: 0.1,
+  // Digging metrics. Derived from counts rather than a judge, so they tolerate
+  // less drift than the model-scored metrics above.
+  question_coverage: 0.1,
+  question_pursuit: 0.05,
+  retrieval_yield: 0.1,
   figure_grounding: 0.1,
 };
 
