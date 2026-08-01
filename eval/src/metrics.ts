@@ -57,6 +57,15 @@ export interface DevelopabilityRiskLike {
 export interface KOLClusterLike {
   labs: { investigator: string; institution?: string }[];
 }
+/** What the digging metrics need from a ledger record. */
+export interface QuestionRecordLike {
+  id: string;
+  status: 'open' | 'answered' | 'unanswered_exhausted';
+  attempts: number;
+  unusableAttempts: number;
+  firstAskedRound?: number;
+}
+
 export interface BriefingLike {
   verdict: GoldenTarget["label"];
   thesis?: string;
@@ -67,6 +76,7 @@ export interface BriefingLike {
     id: string;
     claims: ClaimLike[];
     developabilityRisks?: DevelopabilityRiskLike[];
+    questionLedger?: QuestionRecordLike[];
   }[];
   kolCluster?: KOLClusterLike;
 }
@@ -440,5 +450,90 @@ export function makeJudge(model: StructuredModelLike, judgeModel?: string): Judg
       const score = correct / g.claimProbes.length;
       return { name: "claim_probes", score, pass: score >= 0.8, detail: { failures } };
     },
+  };
+}
+
+// ---------------------------------------------------------------- digging
+
+function ledgerRecords(a: RunArtifacts): QuestionRecordLike[] {
+  return a.briefing.sections.flatMap((s) => s.questionLedger ?? []);
+}
+
+/**
+ * Of the questions specialists set themselves, how many did they answer?
+ *
+ * The first metric in this harness that measures INVESTIGATION rather than
+ * hygiene. Every other metric asks whether Sonny lied; this asks whether it
+ * found out. Derived from counts, so unlike the judged metrics it is not
+ * distorted by being computed from a single repeat.
+ */
+export function questionCoverage(a: RunArtifacts): MetricResult {
+  const records = ledgerRecords(a);
+  if (records.length === 0) {
+    // No ledger at all is not a perfect score. It means the run predates the
+    // ledger or never planned a question, and scoring that 1.0 would make the
+    // metric read best exactly where it knows least.
+    return { name: 'question_coverage', score: 0, pass: false, detail: 'no question ledger present' };
+  }
+  const answered = records.filter((r) => r.status === 'answered').length;
+  const score = answered / records.length;
+  return {
+    name: 'question_coverage',
+    score,
+    pass: score >= 0.5,
+    detail: {
+      answered,
+      exhausted: records.filter((r) => r.status === 'unanswered_exhausted').length,
+      open: records.filter((r) => r.status === 'open').length,
+      total: records.length,
+    },
+  };
+}
+
+/**
+ * How many planned questions were ever actually attempted?
+ *
+ * Separates "asked and could not answer" from "never got to it". A low score
+ * here means the round budget, not the evidence, is the binding constraint -
+ * which is precisely the condition that made `maxRounds: 4` invisible before
+ * the ledger existed.
+ */
+export function questionPursuit(a: RunArtifacts): MetricResult {
+  const records = ledgerRecords(a);
+  if (records.length === 0) {
+    return { name: 'question_pursuit', score: 0, pass: false, detail: 'no question ledger present' };
+  }
+  const attempted = records.filter((r) => r.attempts > 0).length;
+  const score = attempted / records.length;
+  return {
+    name: 'question_pursuit',
+    score,
+    pass: score >= 0.8,
+    detail: { attempted, neverAttempted: records.length - attempted, total: records.length },
+  };
+}
+
+/**
+ * When a question failed, was it because the sources were silent or because the
+ * claims did not hold up?
+ *
+ * Reported as the share of attempts that returned usable retrieval. A low value
+ * points at retrieval; a high value alongside low `question_coverage` points at
+ * extraction or grounding. Without this split, "the specialist could not answer"
+ * is one undifferentiated failure.
+ */
+export function retrievalYield(a: RunArtifacts): MetricResult {
+  const records = ledgerRecords(a);
+  const attempts = records.reduce((n, r) => n + r.attempts, 0);
+  if (attempts === 0) {
+    return { name: 'retrieval_yield', score: 0, pass: false, detail: 'no attempts recorded' };
+  }
+  const unusable = records.reduce((n, r) => n + r.unusableAttempts, 0);
+  const score = (attempts - unusable) / attempts;
+  return {
+    name: 'retrieval_yield',
+    score,
+    pass: score >= 0.5,
+    detail: { attempts, usable: attempts - unusable, unusable },
   };
 }

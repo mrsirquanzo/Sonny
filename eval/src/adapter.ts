@@ -22,6 +22,7 @@ export function toRunArtifacts(
       id: s.id,
       claims: s.claims,
       developabilityRisks: s.developabilityRisks,
+      questionLedger: s.questionLedger,
     })),
     kolCluster: briefing.kolCluster
       ? { labs: briefing.kolCluster.labs.map((l) => ({ investigator: l.investigator, institution: l.institution })) }
