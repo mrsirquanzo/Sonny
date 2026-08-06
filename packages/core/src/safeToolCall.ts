@@ -9,10 +9,25 @@ export function isTransient(err: unknown): boolean {
     || /(timeout|ETIMEDOUT|ECONNRESET|ECONNREFUSED|EAI_AGAIN|ENOTFOUND)/i.test(m);
 }
 
-export async function safeToolCall(opts: {
+/**
+ * Outcome of a tool call, distinguishing "ran and found nothing" from "failed".
+ *
+ * `safeToolCall` collapses both to `[]`, which is right for callers that just
+ * want evidence but catastrophic for retrieval audits: a timeout recorded as a
+ * completed zero-result search is indistinguishable from a real search that
+ * found nothing, and that is precisely the record an absence conclusion rests
+ * on. A tool outage must never become evidence of absence.
+ */
+export interface SafeToolCallResult {
+  ok: boolean;
+  evidence: Evidence[];
+  error?: string;
+}
+
+export async function safeToolCallResult(opts: {
   tool: Tool; args: Record<string, unknown>; emit: (e: TraceEvent) => void;
   retries?: number; backoffMs?: number; sleep?: (ms: number) => Promise<void>;
-}): Promise<Evidence[]> {
+}): Promise<SafeToolCallResult> {
   const { tool, args, emit } = opts;
   const retries = opts.retries ?? 2;
   const backoffMs = opts.backoffMs ?? 250;
@@ -21,7 +36,7 @@ export async function safeToolCall(opts: {
   let lastErr: unknown;
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
-      return await tool.call(args);
+      return { ok: true, evidence: await tool.call(args) };
     } catch (err) {
       lastErr = err;
       if (attempt < retries && isTransient(err)) {
@@ -31,6 +46,12 @@ export async function safeToolCall(opts: {
       break;
     }
   }
-  emit({ type: 'error', message: `tool ${tool.name} failed: ${String(lastErr)}` });
-  return [];
+  const error = String(lastErr);
+  emit({ type: 'error', message: `tool ${tool.name} failed: ${error}` });
+  return { ok: false, evidence: [], error };
+}
+
+/** Evidence-only view, for the many callers that cannot act on the distinction. */
+export async function safeToolCall(opts: Parameters<typeof safeToolCallResult>[0]): Promise<Evidence[]> {
+  return (await safeToolCallResult(opts)).evidence;
 }
