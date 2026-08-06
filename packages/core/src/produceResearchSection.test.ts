@@ -23,11 +23,17 @@ describe('produceResearchSection', () => {
     const specialistReplies = [
       { questions: [{ question: 'What is the MOA?', concept: 'mechanism' }] },
       { claims: [{ id: 'c1', text: 'CDCP1 promotes EMT.', citations: ['PMCID:PMC1#sec-1'], confidence: 0.8 }] },
-      { done: true, followups: [], takeaway: 'CDCP1 drives EMT.' },
+      { done: true, followups: [], takeaway: 'mid-research note, never shipped' },
+      // The section takeaway, written after verification from the supported claims.
+      { takeaway: 'CDCP1 drives EMT.' },
     ];
     let i = 0;
     const specialistModel = { async generateStructured() { return specialistReplies[i++] as never; } };
-    const verifierModel = { async generateStructured() { return { claimId: 'x', status: 'supported', rationale: 'ok' } as never; } };
+    const verifierModel = { async generateStructured(opts: { system: string }) {
+      return (opts.system.includes('SENTENCE')
+        ? { entailed: true, rationale: 'ok' }
+        : { claimId: 'x', status: 'supported', rationale: 'ok' }) as never;
+    } };
 
     const events: TraceEvent[] = [];
     const section = await produceResearchSection({
@@ -215,6 +221,7 @@ describe('produceResearchSection conclusions', () => {
       { questions: [{ question: 'What is the MOA?', concept: 'mechanism' }] },
       { claims: [{ id: 'c1', text: 'CDCP1 promotes EMT.', citations: ['PMCID:PMC1#sec-1'], confidence: 0.8 }] },
       { done: true, followups: [], takeaway: 'CDCP1 drives EMT.' },
+      { takeaway: 'CDCP1 promotes EMT.' },
       conclusion,
     ]);
 
@@ -231,8 +238,8 @@ describe('produceResearchSection conclusions', () => {
     expect(section.conclusion?.axis).toBe('target_biology');
 
     // Drafted exactly once, after research and verification.
-    expect(specialist.seen).toHaveLength(4);
-    const draftInput = specialist.seen[3];
+    expect(specialist.seen).toHaveLength(5);
+    const draftInput = specialist.seen[4];
 
     // The SAME set that builds section.claims.
     expect(section.claims.map((c) => c.id)).toEqual(['target_biology#r0c1']);
@@ -274,6 +281,9 @@ describe('produceResearchSection conclusions', () => {
     });
 
     expect(section.claims).toEqual([]);
+    // Index 3, not 4: with zero supported claims the takeaway writer
+    // short-circuits to a stated degradation without a model call, so the
+    // conclusion draft is the fourth call here and the fifth elsewhere.
     expect(specialist.seen[3]).not.toContain('cures everything');
     expect(section.conclusion?.axis).toBe('clinical_landscape');
   });
@@ -286,6 +296,9 @@ describe('produceResearchSection conclusions', () => {
         if (this.calls === 1) return { questions: [{ question: 'q', concept: 'c' }] } as never;
         if (this.calls === 2) return { claims: [{ id: 'c1', text: 'CDCP1 promotes EMT.', citations: ['PMCID:PMC1#sec-1'], confidence: 0.8 }] } as never;
         if (this.calls === 3) return { done: true, followups: [], takeaway: 'CDCP1 drives EMT.' } as never;
+        // Call 4 is the section-takeaway writer, which has its own degradation
+        // path. Only call 5, the conclusion draft, is the failure under test.
+        if (this.calls === 4) return { takeaway: 'CDCP1 promotes EMT.' } as never;
         throw new Error('drafter unavailable');
       },
     };

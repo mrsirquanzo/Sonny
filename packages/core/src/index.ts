@@ -2,6 +2,8 @@ export { EvidenceStore } from './evidenceStore.js';
 export { MODEL_ROUTER, AnthropicModel, makeModel, currentBackend, routerFor, modelFamily, resolveVerifier, pinVerifierModel, type ResolvedVerifier, type StructuredModel, type Backend, type UsageRecorder } from './model.js';
 export { OllamaModel } from './ollamaModel.js';
 export { groundClaims } from './grounding.js';
+export { groundNarrative, groundNarrativeOrDegrade, splitSentences,
+  type GroundedNarrative, type NarrativeMode } from './narrativeGrounding.js';
 export { verifyClaims } from './verifier.js';
 export { computeRag, createSourceIdentityResolver, type SourceIdentityResolver } from './rag.js';
 export {
