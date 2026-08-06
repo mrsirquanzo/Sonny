@@ -37,10 +37,30 @@ const QuestionsSchema = z.object({
 
 export async function planResearchQuestions(
   brief: ThreadBrief, target: string, model: StructuredModel, context?: ResearchContext,
+  /**
+   * What the curated databases already answer.
+   *
+   * Structured evidence is seeded before specialists run, so a question the
+   * cards already answer spends a whole round re-deriving a fact Sonny holds.
+   * Showing the specialist what is known is the difference between planning
+   * five questions and planning five USEFUL ones.
+   */
+  knownFacts: readonly string[] = [],
 ): Promise<ResearchQuestion[]> {
   const { questions } = await model.generateStructured({
-    system: withResearchScope(`You are the ${brief.title} research specialist. ${brief.promptHint}\nPlan the specific, answerable research questions you must investigate to assess this target at expert depth.\nFor each item return:\n- question: a precise, answerable research question\n- concept: ONE short topic facet of 1-2 words that narrows the search (examples: 'ADC', 'oncology', 'signaling', 'metastasis', 'resistance'). Do NOT include the target gene symbol - it is added automatically. Do NOT write a sentence or a list of keywords, just the single concept.`, target, context),
-    prompt: `BRIEF: ${brief.title}\nTARGET: ${target}\nOBJECTIVE: ${brief.objective}\nList up to 5 research questions, most important first. Each must have a question and a single short concept.`,
+    system: withResearchScope(
+      `You are the ${brief.title} research specialist. ${brief.promptHint}\n`
+      + `Plan the specific, answerable research questions you must investigate to assess this target at expert depth.\n`
+      + `A good question is DECISION-RELEVANT and DISCRIMINATING: its answer would change the assessment, and different answers point to different conclusions. `
+      + `"What is known about X" is a bad question - it cannot come back negative. "Does X hold in the population this programme targets" is a good one.\n`
+      + `Prefer questions the published literature can actually settle. A question no paper could answer will burn a round and return nothing.\n`
+      + `Do NOT ask what the ALREADY KNOWN facts below already answer; go past them.\n`
+      + `For each item return:\n- question: a precise, answerable research question\n`
+      + `- concept: ONE short topic facet of 1-2 words that narrows the search (examples: 'ADC', 'oncology', 'signaling', 'metastasis', 'resistance'). Do NOT include the target gene symbol - it is added automatically. Do NOT write a sentence or a list of keywords, just the single concept.`,
+      target, context),
+    prompt: `BRIEF: ${brief.title}\nTARGET: ${target}\nOBJECTIVE: ${brief.objective}\n`
+      + (knownFacts.length ? `\nALREADY KNOWN from curated databases - do not re-ask these:\n${knownFacts.map((f) => `- ${f}`).join('\n')}\n` : '')
+      + `\nList up to 5 research questions, most important first. Each must have a question and a single short concept.`,
     schema: QuestionsSchema,
     model: MODEL_ROUTER.specialist,
   });
@@ -131,6 +151,9 @@ export interface ThreadFindings {
   ledger: QuestionLedger;
 }
 
+/** Sources whose cards are deterministic facts, shown to the planner. */
+const CURATED_SOURCES_FOR_PLANNING = new Set(['Open Targets', 'UniProt']);
+
 const ReflectSchema = z.object({
   done: z.boolean(),
   followups: z.array(z.object({
@@ -145,12 +168,23 @@ export async function reflectOnGaps(
   /** The question just pursued. Reflection judged progress without knowing what
    *  it had asked, which is most of why its `done` was unreliable. */
   pursuedQuestion?: string,
+  /** Questions already queued. Follow-ups duplicating these are discarded by the
+   *  ledger, so proposing them wastes the three slots this call has. */
+  alreadyQueued: readonly string[] = [],
 ): Promise<{ done: boolean; followups: ResearchQuestion[]; takeaway: string }> {
   return model.generateStructured({
-    system: withResearchScope(`You are the ${brief.title} research lead reviewing your own progress. Decide whether the thread is sufficiently covered for expert-level assessment. If a critical question remains unanswered, or a source raised a new high-value thread (e.g. a resistance mechanism), list up to 3 follow-up questions. Each follow-up needs:\n- question: a precise research question\n- concept: ONE short topic facet of 1-2 words (no sentence, no keyword list) and do NOT include the target gene symbol - it is added automatically\nOtherwise set done=true. Always write a one-line takeaway summarizing the thread so far.`, 'this target', context),
+    system: withResearchScope(
+      `You are the ${brief.title} research lead reviewing your own progress. `
+      + `Propose up to 3 follow-up questions that attack the WEAKEST part of what you have found so far - a claim resting on one source, a mechanism asserted but not demonstrated, a result that would not replicate in the relevant population. `
+      + `A follow-up that merely restates a claim you already hold adds nothing.\n`
+      + `Each follow-up needs:\n- question: a precise research question\n`
+      + `- concept: ONE short topic facet of 1-2 words (no sentence, no keyword list) and do NOT include the target gene symbol - it is added automatically\n`
+      + `Set done=true only when the remaining questions would not change the assessment. Always write a one-line takeaway summarizing the thread so far.`,
+      'this target', context),
     prompt: `OBJECTIVE: ${brief.objective}`
       + (pursuedQuestion ? `\nQUESTION JUST PURSUED: ${pursuedQuestion}` : '')
-      + `\n\nCLAIMS SO FAR:\n${claims.map((c) => `- ${c.text}`).join('\n') || '(none yet)'}`,
+      + `\n\nCLAIMS SO FAR:\n${claims.map((c) => `- ${c.text}`).join('\n') || '(none yet)'}`
+      + (alreadyQueued.length ? `\n\nALREADY QUEUED - do not repeat:\n${alreadyQueued.map((q) => `- ${q}`).join('\n')}` : ''),
     schema: ReflectSchema,
     model: MODEL_ROUTER.specialist,
   });
@@ -193,7 +227,13 @@ export async function runResearcher(opts: {
   // pursued and the rest vanished without trace.
   const ledger = new QuestionLedger(brief.id);
   if (budget.maxRounds > 0) {
-    ledger.add(await planResearchQuestions(brief, target, model, context), 'planned');
+    // Curated cards are seeded before specialists run, so the plan can be made
+    // against what Sonny already holds rather than in ignorance of it.
+    const knownFacts = store.all()
+      .filter((e) => CURATED_SOURCES_FOR_PLANNING.has(e.source))
+      .map((e) => (e.snippet ?? e.title ?? '').trim())
+      .filter(Boolean);
+    ledger.add(await planResearchQuestions(brief, target, model, context, knownFacts), 'planned');
   }
   emit({ type: 'research_plan', specialist: brief.id, questions: ledger.all().map((q) => q.question) });
 
@@ -329,7 +369,7 @@ export async function runResearcher(opts: {
     // read its existing claims and declare itself finished.
     ledger.applyGrounding(new Set(groundClaims(claims, store).shippable.map((c) => c.id)));
 
-    const reflection = await reflectOnGaps(brief, claims, model, context, item.question);
+    const reflection = await reflectOnGaps(brief, claims, model, context, item.question, ledger.open().map((q) => q.question));
     takeaway = reflection.takeaway;
     emit({ type: 'research_reflect', specialist: brief.id, note: reflection.takeaway, followups: reflection.followups.map((f) => f.question) });
     // Merge, never replace. Deduped in the ledger, so a reflection re-proposing
