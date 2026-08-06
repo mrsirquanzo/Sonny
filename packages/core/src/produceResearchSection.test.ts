@@ -22,11 +22,17 @@ describe('produceResearchSection', () => {
     const specialistReplies = [
       { questions: [{ question: 'What is the MOA?', concept: 'mechanism' }] },
       { claims: [{ id: 'c1', text: 'CDCP1 promotes EMT.', citations: ['PMCID:PMC1#sec-1'], confidence: 0.8 }] },
-      { done: true, followups: [], takeaway: 'CDCP1 drives EMT.' },
+      { done: true, followups: [], takeaway: 'mid-research note, never shipped' },
+      // The section takeaway, written after verification from the supported claims.
+      { takeaway: 'CDCP1 drives EMT.' },
     ];
     let i = 0;
     const specialistModel = { async generateStructured() { return specialistReplies[i++] as never; } };
-    const verifierModel = { async generateStructured() { return { claimId: 'x', status: 'supported', rationale: 'ok' } as never; } };
+    const verifierModel = { async generateStructured(opts: { system: string }) {
+      return (opts.system.includes('SENTENCE')
+        ? { entailed: true, rationale: 'ok' }
+        : { claimId: 'x', status: 'supported', rationale: 'ok' }) as never;
+    } };
 
     const events: TraceEvent[] = [];
     const section = await produceResearchSection({

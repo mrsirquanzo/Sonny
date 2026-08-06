@@ -2,6 +2,7 @@ import { RecommendationSchema, type Recommendation, type Section, type Claim, ty
 import { z } from 'zod';
 import type { StructuredModel } from './model.js';
 import { MODEL_ROUTER } from './model.js';
+import { groundNarrative } from './narrativeGrounding.js';
 
 // The model produces a balanced, non-directive memo. `verdict` is kept as an
 // internal evidence-posture (for eval/abstention), never surfaced as advice.
@@ -39,12 +40,40 @@ function contradictionLines(flags: { endpoint: string; explanation: string; evid
     + flags.map((f) => `- ${f.endpoint}: ${f.explanation} [${f.evidenceIdA}] vs [${f.evidenceIdB}]`).join('\n');
 }
 
+/**
+ * Every fact the writer was shown, as plain text.
+ *
+ * This is the entailment set for the memo's free prose. It is exactly what the
+ * digest carries: verified section claims, verified cross-thread claims, the
+ * developability risks and the contradiction flags - each of which is bound to
+ * an evidence id elsewhere in the pipeline. The section takeaways are NOT here:
+ * they are summaries of these same claims, not independent facts.
+ */
+function groundingFacts(
+  sections: Section[], weighing: { claims: Claim[] }, contradictions: ContradictionFlag[],
+): string[] {
+  return [
+    ...sections.flatMap((s) => s.claims.map((c) => c.text)),
+    ...weighing.claims.map((c) => c.text),
+    ...sections.flatMap((s) => (s.developabilityRisks ?? [])
+      .filter((r) => r.severity !== 'manageable')
+      .map((r) => `${r.severity} ${r.category} developability risk: ${r.explanation}`)),
+    ...contradictions.map((f) => `Evidence conflict on ${f.endpoint}: ${f.explanation}`),
+  ];
+}
+
 export async function synthesizeRecommendation(opts: {
   target: string; sections: Section[]; weighing: { takeaway: string; claims: Claim[] };
   evidence: Evidence[]; model: StructuredModel; contradictions?: ContradictionFlag[];
+  /**
+   * Judge for the memo's free prose. Defaults to the writer, which checks the
+   * output but is NOT decorrelated; callers should pass a different family.
+   */
+  verifierModel?: StructuredModel;
 }): Promise<{ recommendation: Recommendation; executiveRead: string }> {
   const { target, sections, weighing, evidence, model } = opts;
   const contradictions = opts.contradictions ?? [];
+  const verifierModel = opts.verifierModel ?? model;
 
   // Abstention gate (deterministic, no model call). Counts verified research
   // findings: claims a specialist asserted and `verifyClaims` supported.
@@ -74,8 +103,11 @@ export async function synthesizeRecommendation(opts: {
     };
   }
 
-  const digest = sections.map((s) => `## ${s.title} [${s.rag}]\n${s.takeaway}\n${claimLines(s.claims)}`).join('\n\n')
-    + `\n\n## Cross-thread weighing\n${weighing.takeaway}\n${claimLines(weighing.claims)}`
+  // Claims only, no takeaways. A takeaway is a one-line summary of the claims
+  // beneath it and carries no citation; presenting it next to them let the
+  // writer lift an uncited sentence and treat it as an independent finding.
+  const digest = sections.map((s) => `## ${s.title} [${s.rag}]\n${claimLines(s.claims)}`).join('\n\n')
+    + `\n\n## Cross-thread weighing\n${claimLines(weighing.claims)}`
     + devLines(sections)
     + contradictionLines(contradictions);
 
@@ -97,19 +129,58 @@ Some findings carry an AUDIT note (a methodological bias risk). When you cite su
     model: MODEL_ROUTER.writer,
   });
 
-  const validIds = new Set(evidence.map((e) => e.id));
+  // A case point may cite only what the writer was actually shown: the evidence
+  // behind a verified claim, a developability risk, or a contradiction. The old
+  // gate accepted any id in the whole store, so a point resting on evidence that
+  // supported nothing kept a citation that looked like backing and was not.
+  const existingIds = new Set(evidence.map((e) => e.id));
+  const citableIds = new Set([
+    ...sections.flatMap((s) => s.claims.flatMap((c) => c.citations)),
+    ...weighing.claims.flatMap((c) => c.citations),
+    ...sections.flatMap((s) => (s.developabilityRisks ?? []).map((r) => r.evidenceId)),
+    ...contradictions.flatMap((f) => [f.evidenceIdA, f.evidenceIdB]),
+  ].filter((id) => existingIds.has(id)));
+  // Uncited points are DROPPED, not shipped bare. Filtering the id list without
+  // filtering the point is what let an entirely uncited bull/bear point into the
+  // memo - the exact thing "no citation, no claim" forbids.
   const clean = (points: { point: string; citations: string[] }[]) =>
-    points.map((p) => ({ point: p.point, citations: p.citations.filter((id) => validIds.has(id)) }));
+    points
+      .map((p) => ({ point: p.point, citations: p.citations.filter((id) => citableIds.has(id)) }))
+      .filter((p) => p.citations.length > 0);
+
+  // Free prose carries no citations at all, so it is held to entailment against
+  // the same verified findings instead. Sentences that assert more are dropped;
+  // if a whole passage goes, the memo says so rather than quietly narrowing.
+  const facts = groundingFacts(sections, weighing, contradictions);
+  const ground = (text: string, mode?: 'assertion' | 'proposal') =>
+    groundNarrative({ text, facts, model: verifierModel, ...(mode ? { mode } : {}) });
+  const [framing, bottomLine, executiveRead, conditions] = await Promise.all([
+    ground(draft.framing),
+    ground(draft.bottomLine),
+    ground(draft.executiveRead),
+    // Conditions are proposals, not assertions: "run a Phase 1 in PDAC" cannot
+    // be entailed by findings about today. Only the facts a condition asserts
+    // along the way are checked, or every condition would strip and the memo
+    // would lose the section that tells the team what to do next.
+    Promise.all(draft.conditions.map((c) => ground(c, 'proposal'))),
+  ]);
 
   const severe = sections.some((s) => (s.developabilityRisks ?? []).some((r) => r.severity === 'severe'));
+  const framingText = framing.text
+    || `Only the verified findings below can be stated about ${target}; a broader framing was not supported by them.`;
   const recommendation: Recommendation = {
     verdict: severe ? 'no-go' : draft.verdict,
     // thesis retained for schema/back-compat; the framing is the user-facing lead.
-    thesis: draft.framing,
-    framing: draft.framing,
+    thesis: framingText,
+    framing: framingText,
     bull: clean(draft.bull), bear: clean(draft.bear),
-    bottomLine: draft.bottomLine,
-    conditions: draft.conditions,
+    bottomLine: bottomLine.text
+      || `The verified findings do not support a bottom-line read on ${target} beyond the individual findings themselves.`,
+    conditions: conditions.map((c) => c.text).filter(Boolean),
   };
-  return { recommendation, executiveRead: draft.executiveRead };
+  return {
+    recommendation,
+    executiveRead: executiveRead.text
+      || `The verified findings do not support an executive read on ${target} beyond the individual findings themselves.`,
+  };
 }

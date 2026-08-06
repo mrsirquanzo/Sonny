@@ -17,21 +17,39 @@ const evidence: Evidence[] = [
   { id: 'PMID:1', kind: 'publication', source: 'Europe PMC', title: 'P', snippet: '', url: 'u', raw: {}, retrievedAt: 'now' },
 ];
 
+/**
+ * A model that answers the writer call with `draft` and every prose-entailment
+ * call with `entailed`.
+ *
+ * The narrative gate runs one judge call per sentence of framing, bottom line,
+ * executive read, and each condition, so a single-shape mock would feed the
+ * writer's own draft back as a verdict and fail closed on every sentence.
+ */
+function synthModel(
+  draft: unknown,
+  opts: { entailed?: boolean; onWrite?: (o: { prompt: string; system: string }) => void } = {},
+): StructuredModel {
+  return {
+    async generateStructured(o) {
+      if (o.system.includes('SENTENCE')) return { entailed: opts.entailed !== false, rationale: '' } as never;
+      opts.onWrite?.({ prompt: o.prompt, system: o.system });
+      return draft as never;
+    },
+  };
+}
+
 describe('synthesizeRecommendation', () => {
   it('produces a recommendation from verified claims and drops phantom citations', async () => {
     let prompt = '';
-    const model: StructuredModel = {
-      async generateStructured(opts) {
-        prompt = opts.prompt;
-        return {
-          verdict: 'watch', thesis: 'Mechanistically interesting, under-validated.',
-          bull: [{ point: 'Strong mechanism.', citations: ['PMID:1', 'PMID:999'] }], // PMID:999 is phantom
-          bear: [{ point: 'Weak genetics.', citations: ['PMID:1'] }],
-          conditions: ['A positive Phase 1 readout moves to GO.'],
-          executiveRead: 'CDCP1 is mechanistically compelling but genetically thin.',
-        } as never;
-      },
-    };
+    const model = synthModel({
+      verdict: 'watch', thesis: 'Mechanistically interesting, under-validated.',
+      framing: 'CDCP1 drives EMT but is genetically thin.',
+      bull: [{ point: 'Strong mechanism.', citations: ['PMID:1', 'PMID:999'] }], // PMID:999 is phantom
+      bear: [{ point: 'Weak genetics.', citations: ['PMID:1'] }],
+      bottomLine: 'The mechanism carries the case.',
+      conditions: ['A positive Phase 1 readout moves to GO.'],
+      executiveRead: 'CDCP1 is mechanistically compelling but genetically thin.',
+    }, { onWrite: (o) => { prompt = o.prompt; } });
     const { recommendation, executiveRead } = await synthesizeRecommendation({ target: 'CDCP1', sections, weighing, evidence, model });
     expect(recommendation.verdict).toBe('watch');
     // phantom citation dropped, real one kept
@@ -45,12 +63,10 @@ describe('synthesizeRecommendation', () => {
   it('passes moderate/high audit caveats to the writer and instructs surfacing them', async () => {
     let prompt = '';
     let system = '';
-    const model: StructuredModel = {
-      async generateStructured(opts) {
-        prompt = opts.prompt; system = opts.system;
-        return { verdict: 'watch', thesis: 't', bull: [], bear: [], conditions: [], executiveRead: 'er' } as never;
-      },
-    };
+    const model = synthModel(
+      { verdict: 'watch', thesis: 't', framing: 'f', bull: [], bear: [], bottomLine: 'bl', conditions: [], executiveRead: 'er' },
+      { onWrite: (o) => { prompt = o.prompt; system = o.system; } },
+    );
     const sections = [{
       kind: 'research', id: 'a', title: 'A', takeaway: 'tk', rag: 'amber', sources: ['PMID:1'],
       claims: [
@@ -72,10 +88,10 @@ describe('synthesizeRecommendation', () => {
 
   it('forces NO-GO when any section carries a severe developability risk, even on a go draft', async () => {
     let prompt = '';
-    const model: StructuredModel = {
-      async generateStructured(opts) { prompt = opts.prompt;
-        return { verdict: 'go', thesis: 'strong biology', bull: [], bear: [], conditions: [], executiveRead: 'er' } as never; },
-    };
+    const model = synthModel(
+      { verdict: 'go', thesis: 'strong biology', framing: 'f', bull: [], bear: [], bottomLine: 'bl', conditions: [], executiveRead: 'er' },
+      { onWrite: (o) => { prompt = o.prompt; } },
+    );
     const sections = [
       { kind: 'research', id: 'target_biology', title: 'Target Biology', takeaway: 'great', rag: 'green', sources: ['PMID:1'], claims: [
         { id: 'b1', text: 'Expressed in tumor.', citations: ['PMID:1'], confidence: 0.9 },
@@ -94,9 +110,7 @@ describe('synthesizeRecommendation', () => {
   });
 
   it('does not override the verdict for a significant-only developability risk', async () => {
-    const model: StructuredModel = {
-      async generateStructured() { return { verdict: 'go', thesis: 't', bull: [], bear: [], conditions: [], executiveRead: 'er' } as never; },
-    };
+    const model = synthModel({ verdict: 'go', thesis: 't', framing: 'f', bull: [], bear: [], bottomLine: 'bl', conditions: [], executiveRead: 'er' });
     const sections = [
       { kind: 'research', id: 'modality_developability', title: 'M', takeaway: 't', rag: 'amber', sources: ['PMID:9'], claims: [
         { id: 'm1', text: 'Feasible format.', citations: ['PMID:9'], confidence: 0.8 },
@@ -204,12 +218,15 @@ describe('synthesizeRecommendation abstention gate', () => {
   });
 
   it('takes the normal path with two or more supported claims', async () => {
-    const gen = vi.fn().mockResolvedValue(abstentionDraft);
+    // Counts WRITER calls: the narrative gate adds one judge call per prose
+    // sentence, so a raw call count no longer reads as "the memo was written once".
+    const writes = vi.fn();
+    const model = synthModel(abstentionDraft, { onWrite: writes });
     const { recommendation } = await synthesizeRecommendation({
       target: 'EGFR', sections: [section('a', 2)],
-      weighing: { takeaway: '', claims: [] }, evidence: abstentionEvidence, model: { generateStructured: gen } as any,
+      weighing: { takeaway: '', claims: [] }, evidence: abstentionEvidence, model,
     });
-    expect(gen).toHaveBeenCalledOnce();
+    expect(writes).toHaveBeenCalledOnce();
     expect(recommendation.verdict).toBe('watch');
     expect(recommendation.bull).toEqual([{ point: 'b', citations: ['PMID:1'] }]);
   });
@@ -218,8 +235,10 @@ describe('synthesizeRecommendation abstention gate', () => {
 describe('synthesizeRecommendation contradictions', () => {
   it('renders contradictions into the digest and instructs the bear case', async () => {
     let prompt = ''; let system = '';
-    const model = { async generateStructured(o: { prompt: string; system: string }) { prompt = o.prompt; system = o.system;
-      return { verdict: 'watch', thesis: 't', bull: [], bear: [], conditions: [], executiveRead: 'e' } as never; } };
+    const model = synthModel(
+      { verdict: 'watch', thesis: 't', framing: 'f', bull: [], bear: [], bottomLine: 'bl', conditions: [], executiveRead: 'e' },
+      { onWrite: (o) => { prompt = o.prompt; system = o.system; } },
+    );
     const contradictions: ContradictionFlag[] = [{ evidenceIdA: 'PMID:1', evidenceIdB: 'PMID:2', endpoint: 'OS', explanation: 'opposite OS effect' }];
     await synthesizeRecommendation({
       target: 'EGFR',

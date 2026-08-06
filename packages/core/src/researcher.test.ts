@@ -132,7 +132,7 @@ describe('runResearcher loop', () => {
       model, verifierModel: noFlagAudit, emit: (e) => events.push(e), budget: { maxRounds: 3 },
     });
 
-    expect(findings.takeaway).toBe('CDCP1 is an EMT driver.');
+    expect(findings.reflectionNote).toBe('CDCP1 is an EMT driver.');
     expect(findings.claims.map((c) => c.id)).toEqual(['target_biology#r0c1']);
     expect(events.map((e) => e.type)).toContain('research_plan');
     expect(events.map((e) => e.type)).toContain('research_read');
@@ -181,7 +181,7 @@ describe('runResearcher loop', () => {
       target: 'CDCP1', tools: [failingSearch, fulltext], store: new EvidenceStore(),
       model, verifierModel: noFlagAudit, emit: () => {}, budget: { maxRounds: 1 },
     });
-    expect(findings.takeaway).toBe('no data available'); // completed, did not throw
+    expect(findings.reflectionNote).toBe('no data available'); // completed, did not throw
   });
 
   it('does not deep-read a hit whose title lacks the target, but still drafts claims from abstracts', async () => {
@@ -356,7 +356,7 @@ describe('runResearcher loop', () => {
       target: 'CDCP1', tools: [search, fulltext], store: new EvidenceStore(),
       model, verifierModel, emit: () => {}, budget: { maxRounds: 1 },
     });
-    expect(findings.takeaway).toBe('t'); // completed despite the audit failure
+    expect(findings.reflectionNote).toBe('t'); // completed despite the audit failure
   });
 });
 

@@ -4,6 +4,7 @@ import type { EvidenceStore } from './evidenceStore.js';
 import type { StructuredModel } from './model.js';
 import { MODEL_ROUTER } from './model.js';
 import { groundClaims } from './grounding.js';
+import { groundNarrative } from './narrativeGrounding.js';
 import { verifyClaims } from './verifier.js';
 
 const WeighSchema = z.object({ takeaway: z.string(), claims: ClaimsSchema.shape.claims });
@@ -23,8 +24,12 @@ export async function weighAcrossThreads(opts: {
   };
   const claimLine = (c: { text: string; citations: string[] }) =>
     `- ${c.text} ${c.citations.map((id) => `[${id}]`).join(' ')} (GRADE: ${bestGrade(c.citations)})`;
+  // Section claims only. The section takeaway is a one-line SUMMARY of these
+  // same claims, carrying no citation of its own; feeding it in alongside them
+  // hands the lead a citation-free sentence it can weigh - and copy - as if it
+  // were an independent finding.
   const digest = sections.map((s) =>
-    `## ${s.title} [${s.rag}]\n${s.takeaway}\n${s.claims.map(claimLine).join('\n')}`,
+    `## ${s.title} [${s.rag}]\n${s.claims.map(claimLine).join('\n')}`,
   ).join('\n\n');
 
   const draft = await leadModel.generateStructured({
@@ -39,5 +44,18 @@ export async function weighAcrossThreads(opts: {
   const verdicts = await verifyClaims(shippable, store, verifierModel);
   for (const v of verdicts) emit({ type: 'verdict', verdict: v });
   const claims = shippable.filter((c) => verdicts.find((v) => v.claimId === c.id)?.status === 'supported');
-  return { takeaway: draft.takeaway, claims };
+
+  // The cross-thread takeaway was written alongside the draft claims, so it can
+  // assert a reconciliation that grounding or the verifier then rejected, and it
+  // ships into the memo digest as fact. Hold it to the claims that SURVIVED;
+  // when it does not, fall back to the strongest surviving one verbatim.
+  const grounded = await groundNarrative({
+    text: draft.takeaway,
+    facts: claims.map((c) => c.text),
+    model: verifierModel,
+  });
+  const takeaway = grounded.text
+    || claims[0]?.text
+    || 'No cross-thread reconciliation survived verification.';
+  return { takeaway, claims };
 }

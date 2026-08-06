@@ -145,7 +145,15 @@ export function defaultResearchBudget(): ResearchBudget {
   return { maxRounds: Number.isInteger(configured) && configured >= 0 ? configured : DEFAULT_MAX_ROUNDS };
 }
 export interface ThreadFindings {
-  takeaway: string; claims: Claim[]; openQuestions: string[]; critiques: MethodologicalCritique[];
+  /**
+   * The specialist's own mid-research progress note, for the trace.
+   *
+   * NOT the section takeaway. It is written while claims are still drafts, so
+   * it can summarize a claim the verifier later rejects. Named `reflectionNote`
+   * so it cannot be mistaken for shippable prose: `produceResearchSection`
+   * writes the section takeaway from the SUPPORTED claims instead.
+   */
+  reflectionNote: string; claims: Claim[]; openQuestions: string[]; critiques: MethodologicalCritique[];
   /** The live ledger. `produceResearchSection` must call `applyVerification` on
    *  it after verifying claims, so a snapshot would not be enough. */
   ledger: QuestionLedger;
@@ -163,6 +171,14 @@ const ReflectSchema = z.object({
   takeaway: z.string(),
 });
 
+/**
+ * Review progress and propose follow-ups.
+ *
+ * `claims` must be the GROUNDED subset. Reflection previously saw every drafted
+ * claim, so it planned follow-ups against - and wrote a takeaway over - text
+ * that grounding was about to strip, which is unverified reasoning steering the
+ * rest of the investigation.
+ */
 export async function reflectOnGaps(
   brief: ThreadBrief, claims: Claim[], model: StructuredModel, context?: ResearchContext,
   /** The question just pursued. Reflection judged progress without knowing what
@@ -183,7 +199,7 @@ export async function reflectOnGaps(
       'this target', context),
     prompt: `OBJECTIVE: ${brief.objective}`
       + (pursuedQuestion ? `\nQUESTION JUST PURSUED: ${pursuedQuestion}` : '')
-      + `\n\nCLAIMS SO FAR:\n${claims.map((c) => `- ${c.text}`).join('\n') || '(none yet)'}`
+      + `\n\nGROUNDED CLAIMS SO FAR (drafts without resolvable evidence were already discarded):\n${claims.map((c) => `- ${c.text}`).join('\n') || '(none yet)'}`
       + (alreadyQueued.length ? `\n\nALREADY QUEUED - do not repeat:\n${alreadyQueued.map((q) => `- ${q}`).join('\n')}` : ''),
     schema: ReflectSchema,
     model: MODEL_ROUTER.specialist,
@@ -238,7 +254,7 @@ export async function runResearcher(opts: {
   emit({ type: 'research_plan', specialist: brief.id, questions: ledger.all().map((q) => q.question) });
 
   const claims: Claim[] = [];
-  let takeaway = '';
+  let reflectionNote = '';
   let snowballed = false;
   const critiques: MethodologicalCritique[] = [];
   const audited: { ids: Set<string>; redFlags: MethodologicalCritique['redFlags'] }[] = [];
@@ -367,15 +383,20 @@ export async function runResearcher(opts: {
     // proposes follow-ups and writes the takeaway, but its `done` no longer
     // terminates the loop - a specialist whose search returned nothing could
     // read its existing claims and declare itself finished.
-    ledger.applyGrounding(new Set(groundClaims(claims, store).shippable.map((c) => c.id)));
+    const groundedIds = new Set(groundClaims(claims, store).shippable.map((c) => c.id));
+    ledger.applyGrounding(groundedIds);
 
-    const reflection = await reflectOnGaps(brief, claims, model, context, item.question, ledger.open().map((q) => q.question));
-    takeaway = reflection.takeaway;
+    // Reflection reasons over the GROUNDED subset only. Feeding it every draft
+    // let a claim that grounding was about to strip shape the follow-up plan
+    // and the progress note, which is unverified text steering the thread.
+    const grounded = claims.filter((c) => groundedIds.has(c.id));
+    const reflection = await reflectOnGaps(brief, grounded, model, context, item.question, ledger.open().map((q) => q.question));
+    reflectionNote = reflection.takeaway;
     emit({ type: 'research_reflect', specialist: brief.id, note: reflection.takeaway, followups: reflection.followups.map((f) => f.question) });
     // Merge, never replace. Deduped in the ledger, so a reflection re-proposing
     // an existing question cannot reset its attempts or revive an exhausted one.
     if (!reflection.done) ledger.add(reflection.followups, 'followup');
   }
 
-  return { takeaway, claims, openQuestions: ledger.unanswered().map((q) => q.question), ledger, critiques };
+  return { reflectionNote, claims, openQuestions: ledger.unanswered().map((q) => q.question), ledger, critiques };
 }
