@@ -1,4 +1,4 @@
-import type { Claim, Evidence, Section, TraceEvent, KOLCluster, ContradictionFlag } from '@mrsirquanzo/sonny-shared';
+import type { Claim, Evidence, Section, TraceEvent, KOLCluster, ContradictionFlag, SpecialistConclusion } from '@mrsirquanzo/sonny-shared';
 import { verifyEvidenceMetadata, type Tool } from '@mrsirquanzo/sonny-mcp-gateway';
 import { EvidenceStore } from './evidenceStore.js';
 import type { StructuredModel } from './model.js';
@@ -19,6 +19,7 @@ import { composeRoster, inferModality } from './planner.js';
 import { canonicalModalityOf } from './modalityCanon.js';
 import { RetrievalAuditStore } from '@mrsirquanzo/sonny-shared';
 import { resolveModalityLens } from './modalityLens.js';
+import { evaluateAbstention, type AbstentionVerdict } from './conclusions/coverage.js';
 
 export interface DeepResearchResult {
   target: string;
@@ -27,6 +28,19 @@ export interface DeepResearchResult {
   evidence: Evidence[];
   kolCluster: KOLCluster;
   contradictions: ContradictionFlag[];
+  /**
+   * Whether the run has enough to argue a case, and why not when it does not.
+   *
+   * Decided here rather than in synthesis: this is the only place that sees the
+   * conclusions the specialists drafted, and abstention is a property of what
+   * the research established, not of how the memo is written.
+   */
+  abstention: AbstentionVerdict;
+}
+
+/** Conclusions the specialists actually drafted, in section order. */
+export function sectionConclusions(sections: readonly Section[]): SpecialistConclusion[] {
+  return sections.flatMap((s) => (s.kind === 'research' && s.conclusion ? [s.conclusion] : []));
 }
 
 function placeholderSection(brief: ThreadBrief, reason: string): Section {
@@ -122,7 +136,7 @@ export async function runDeepResearch(opts: {
     let lastReason = 'unknown error';
     for (let attempt = 0; attempt <= sectionRetries; attempt++) {
       try {
-        return await produceResearchSection({ brief, target, tools: literatureTools, store, specialistModel, verifierModel, emit, budget, context, auditStore });
+        return await produceResearchSection({ brief, target, tools: literatureTools, store, specialistModel, verifierModel, emit, budget, context, auditStore, modality: canonicalModality });
       } catch (err) {
         lastReason = String((err as { message?: string })?.message ?? err);
         emit({ type: 'error', message: `specialist ${brief.id} attempt ${attempt + 1}/${sectionRetries + 1} failed: ${lastReason}` });
@@ -269,5 +283,19 @@ export async function runDeepResearch(opts: {
   const contradictions = await detectContradictions({
     claims: finalSections.flatMap((s) => s.claims), store, model: verifierModel, emit,
   });
-  return { target, sections: finalSections, weighing, evidence: store.all(), kolCluster, contradictions };
+
+  // Coverage-based abstention (spec 12.4), replacing the raw claim count.
+  // Evaluated last, on the sections that actually ship: gap-fill, consolidation
+  // and the curated-card merge all change `claims` after the specialists ran.
+  // `evaluateAbstention` excludes deterministic claims itself, so the whole
+  // shipped claim set is the honest input.
+  const abstention = evaluateAbstention({
+    conclusions: sectionConclusions(finalSections),
+    verifiedClaims: finalSections.flatMap((s) => s.claims),
+  });
+  if (!abstention.proceed) {
+    emit({ type: 'error', message: `abstention: ${abstention.reasons.join('; ')}` });
+  }
+
+  return { target, sections: finalSections, weighing, evidence: store.all(), kolCluster, contradictions, abstention };
 }

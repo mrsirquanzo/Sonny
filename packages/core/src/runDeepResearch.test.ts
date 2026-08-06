@@ -61,6 +61,102 @@ describe('runDeepResearch', () => {
   });
 });
 
+describe('runDeepResearch abstention', () => {
+  const axisRoster: ThreadBrief[] = [
+    { id: 'target_biology', title: 'Target Biology', objective: 'Assess target validity.', promptHint: 'h' },
+    { id: 'moa_pathway', title: 'MOA and Pathway', objective: 'Assess modality fit.', promptHint: 'h' },
+  ];
+
+  const q1 = (claimIds: string[], validity: 'strong' | 'insufficient_evidence') => ({
+    axis: 'target_biology',
+    assessments: [{
+      context: {
+        canonicalContextId: 'context-1', ontologySource: 'MONDO', ontologyVersion: '2026-06-02',
+        indication: { raw: 'NSCLC', canonicalName: 'non-small cell lung carcinoma' },
+        mappingConfidence: 'exact',
+      },
+      q1HypothesisKey: 'CDCP1|disease_driver|suppress_function',
+      target: { kind: 'gene_or_protein', symbol: 'CDCP1' },
+      targetRole: 'disease_driver',
+      biologicalIntent: 'suppress_function',
+      validity,
+      confidence: validity === 'strong' ? 'moderate' : 'low',
+      evidenceAvailability: validity === 'strong' ? 'rich' : 'absent',
+      support: { supportingClaimIds: validity === 'strong' ? claimIds : [], evidenceIds: [] },
+    }],
+  });
+
+  const q2 = (claimIds: string[]) => ({
+    axis: 'moa_pathway',
+    assessment: {
+      modalityFit: 'strong',
+      weakestLink: { mechanisticStatus: 'supported', mitigability: 'engineerable' },
+      confidence: 'moderate',
+      mechanisticBottleneck: 'Sustained target engagement.',
+      mostDecisiveNextExperiment: 'Measure target engagement.',
+      support: { supportingClaimIds: claimIds, evidenceIds: [] },
+    },
+  });
+
+  async function run(q1Validity: 'strong' | 'insufficient_evidence') {
+    const ot = tool('open_targets_target', [
+      { id: 'ENSG1', kind: 'target', source: 'Open Targets', title: 'T', snippet: '', passage: 'tractable', url: 'u', raw: {}, retrievedAt: 'now' },
+    ]);
+    const empty = tool('europepmc_search', []);
+    const fulltext = tool('pmc_fulltext', []);
+
+    const specialistModel = { async generateStructured(o: { system: string; prompt: string }) {
+      if (o.system.includes('structured conclusion')) {
+        const cited = [...o.prompt.matchAll(/^- \[([^\]]+)\]/gm)].map((m) => m[1]);
+        return (o.system.includes('target_biology') ? q1(cited, q1Validity) : q2(cited)) as never;
+      }
+      if (o.system.includes('Plan the specific')) {
+        return { questions: [{ question: o.prompt.includes('Target Biology') ? 'Is the target valid?' : 'Does the modality fit?', concept: 'kw' }] } as never;
+      }
+      if (o.system.includes('rigorous biomedical')) {
+        return { claims: [{
+          id: 'c1',
+          text: o.prompt.includes('Is the target valid?')
+            ? 'CDCP1 is over-expressed in tumour tissue.'
+            : 'CDCP1 is accessible to an antibody at the cell surface.',
+          citations: ['ENSG1'], confidence: 0.8,
+        }] } as never;
+      }
+      return { done: true, followups: [], takeaway: 'takeaway' } as never;
+    } };
+    const verifierModel = { async generateStructured(o: { system: string }) {
+      if (o.system.includes('consistency auditor')) return { contradictions: [] } as never;
+      return { claimId: 'x', status: 'supported', rationale: 'ok' } as never;
+    } };
+    const leadModel = { async generateStructured(o: { prompt: string }) {
+      if (o.prompt.includes('THREAD FINDINGS')) return { takeaway: '', claims: [] } as never;
+      return { complete: true, gaps: [] } as never;
+    } };
+
+    return runDeepResearch({
+      target: 'CDCP1', roster: axisRoster, literatureTools: [empty, fulltext], structuredTools: [ot],
+      specialistModel, verifierModel, leadModel, emit: () => {}, budget: { maxRounds: 1 },
+    });
+  }
+
+  it('proceeds when both critical axes drafted a materially covered conclusion', async () => {
+    const result = await run('strong');
+    // The conclusions reached the sections at all.
+    expect(result.sections.map((s) => s.conclusion?.axis)).toEqual(['target_biology', 'moa_pathway']);
+    expect(result.abstention).toEqual({ proceed: true, reasons: [] });
+  });
+
+  it('abstains on the conclusions, not the claim count, when a critical axis is insufficient', async () => {
+    // The claim count is IDENTICAL to the proceeding run. Only Q1's conclusion
+    // changed, so a raw-count gate could not tell these two runs apart.
+    const proceeding = await run('strong');
+    const result = await run('insufficient_evidence');
+    expect(result.sections.flatMap((s) => s.claims)).toHaveLength(proceeding.sections.flatMap((s) => s.claims).length);
+    expect(result.abstention.proceed).toBe(false);
+    expect(result.abstention.reasons.join(' ')).toContain('target_biology');
+  });
+});
+
 describe('runDeepResearch resilience', () => {
   it('turns a failing specialist into a RED placeholder and still completes', async () => {
     const ot: Tool = { name: 'open_targets_target', description: '', async call() { return []; } };

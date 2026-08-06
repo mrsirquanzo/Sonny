@@ -62,7 +62,11 @@ export async function produceBriefing(opts: {
   const result = await runDeepResearch(opts);
   const { recommendation, executiveRead } = await synthesizeRecommendation({
     target: result.target, sections: result.sections, weighing: result.weighing, evidence: result.evidence, model: opts.leadModel,
-    contradictions: result.contradictions,
+    contradictions: result.contradictions, abstention: result.abstention,
+    // The memo's prose gate must not be the writer grading its own output.
+    // Without this it silently defaults to `leadModel`, which checks the text
+    // but breaks the decorrelation rule the rest of the pipeline enforces.
+    verifierModel: opts.verifierModel,
   });
   opts.emit({ type: 'recommendation', verdict: recommendation.verdict });
   const completedAt = Date.now();

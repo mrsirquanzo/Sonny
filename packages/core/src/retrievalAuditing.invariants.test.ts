@@ -120,3 +120,34 @@ describe('audits actually satisfy the coverage evaluator', () => {
     expect(result.missingSourceGroups.some((g) => g.includes('clinicaltrials'))).toBe(true);
   });
 });
+
+describe('a tool outage must never become evidence of absence', () => {
+  it('records a failed search as failed, not as a completed empty one', () => {
+    const failed = buildRetrievalAudit({ ...base, rawResultCount: 0, relevantResultCount: 0, failed: true })!;
+    const genuinelyEmpty = buildRetrievalAudit({ ...base, rawResultCount: 0, relevantResultCount: 0 })!;
+    // Same counts, opposite meaning. Before this split, a timeout and a real
+    // search that found nothing produced the identical record - and the second
+    // is exactly what an absence conclusion is entitled to stand on.
+    expect(failed.status).toBe('failed');
+    expect(genuinelyEmpty.status).toBe('completed');
+  });
+
+  it('a failed audit cannot satisfy a coverage requirement', () => {
+    const store = new RetrievalAuditStore();
+    for (const spec of [
+      { toolName: 'clinicaltrials_search', renderedQuery: 'CDCP1 trials' },
+      { toolName: 'europepmc_search', renderedQuery: 'CDCP1 precedent' },
+      { toolName: 'opentargets_target', renderedQuery: 'CDCP1 target' },
+    ]) {
+      store.register(buildRetrievalAudit({ ...base, ...spec, failed: true, rawResultCount: 0, relevantResultCount: 0 })!);
+    }
+    const result = evaluateRetrievalCoverage({
+      requirement: ABSENCE_COVERAGE_REQUIREMENTS.q4_precedent_absent,
+      audits: store.all(),
+      sectionKey: 'clinical_landscape',
+      axis: 'clinical_landscape',
+    });
+    expect(result.adequate).toBe(false);
+    expect(result.failedAuditIds).toHaveLength(3);
+  });
+});

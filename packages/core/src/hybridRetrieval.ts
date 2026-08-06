@@ -3,7 +3,7 @@ import type { Tool } from '@mrsirquanzo/sonny-mcp-gateway';
 import type { StructuredModel } from './model.js';
 import { buildSearchQuery } from './searchQuery.js';
 import { relevanceGate } from './relevance.js';
-import { safeToolCall } from './safeToolCall.js';
+import { safeToolCall, safeToolCallResult } from './safeToolCall.js';
 import { cosineSimilarity, OllamaEmbeddings } from './embeddings.js';
 import { rewriteResearchQuery, type ResearchQueryVariant } from './queryRewrite.js';
 import { rerankResearchHits } from './rerankStep.js';
@@ -89,13 +89,19 @@ export async function retrieveResearchHits(opts: RetrieveResearchHitsOptions): P
   if (!hybrid) {
     const query = buildSearchQuery(opts.target, opts.concept);
     opts.emit({ type: 'tool_call', tool: opts.search.name, args: { query } });
-    const raw = await safeToolCall({
+    const outcome = await safeToolCallResult({
       tool: opts.search,
       args: { query, pageSize: opts.pageSize ?? (rerankOn ? 25 : topK) },
       emit: opts.emit,
     });
+    const raw = outcome.evidence;
     const gated = relevanceGate(raw, opts.terms);
-    opts.onSearch?.({ renderedQuery: query, rawResultCount: raw.length, relevantResultCount: gated.length, status: 'completed' });
+    // `failed`, not `completed`, when the tool errored. A search that never ran
+    // must not be reported as one that ran and found nothing.
+    opts.onSearch?.({
+      renderedQuery: query, rawResultCount: raw.length, relevantResultCount: gated.length,
+      status: outcome.ok ? 'completed' : 'failed',
+    });
     const ranked = rerankOn
       ? await rerankResearchHits({ specialist: opts.specialist, question: opts.question, hits: gated, emit: opts.emit, rerank: opts.rerank })
       : gated;
@@ -124,11 +130,15 @@ export async function retrieveResearchHits(opts: RetrieveResearchHitsOptions): P
   for (const variant of variants) {
     const query = buildSearchQuery(variant.target, variant.concept);
     opts.emit({ type: 'tool_call', tool: opts.search.name, args: { query } });
-    const raw = await safeToolCall({ tool: opts.search, args: { query, pageSize }, emit: opts.emit });
+    const outcome = await safeToolCallResult({ tool: opts.search, args: { query, pageSize }, emit: opts.emit });
+    const raw = outcome.evidence;
     const gated = relevanceGate(raw, opts.terms);
     // One observation per variant: a rewrite that produced three queries ran
     // three searches, and coverage should reflect what actually executed.
-    opts.onSearch?.({ renderedQuery: query, rawResultCount: raw.length, relevantResultCount: gated.length, status: 'completed' });
+    opts.onSearch?.({
+      renderedQuery: query, rawResultCount: raw.length, relevantResultCount: gated.length,
+      status: outcome.ok ? 'completed' : 'failed',
+    });
     lexicalLists.push(gated);
   }
   const lexical = reciprocalRankFusion(
