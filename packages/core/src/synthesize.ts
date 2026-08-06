@@ -2,6 +2,7 @@ import { RecommendationSchema, type Recommendation, type Section, type Claim, ty
 import { z } from 'zod';
 import type { StructuredModel } from './model.js';
 import { MODEL_ROUTER } from './model.js';
+import { evaluateAbstention, type AbstentionVerdict } from './conclusions/coverage.js';
 
 // The model produces a balanced, non-directive memo. `verdict` is kept as an
 // internal evidence-posture (for eval/abstention), never surfaced as advice.
@@ -42,35 +43,44 @@ function contradictionLines(flags: { endpoint: string; explanation: string; evid
 export async function synthesizeRecommendation(opts: {
   target: string; sections: Section[]; weighing: { takeaway: string; claims: Claim[] };
   evidence: Evidence[]; model: StructuredModel; contradictions?: ContradictionFlag[];
+  /**
+   * The run's abstention verdict, from `runDeepResearch`. Supplied by callers
+   * that ran the research; derived from the sections otherwise, so a caller
+   * that forgets to forward it still gets the coverage criterion rather than
+   * silently falling back to a claim count.
+   */
+  abstention?: AbstentionVerdict;
 }): Promise<{ recommendation: Recommendation; executiveRead: string }> {
   const { target, sections, weighing, evidence, model } = opts;
   const contradictions = opts.contradictions ?? [];
 
-  // Abstention gate (deterministic, no model call). Counts verified research
-  // findings: claims a specialist asserted and `verifyClaims` supported.
+  // Abstention gate (deterministic, no model call).
   //
-  // Curated database cards are merged into Section.claims AFTER verification
-  // (`mergeStructuredClaims`), carrying an assigned 0.9 confidence rather than
-  // a verifier verdict, so they are excluded here. Otherwise two Open Targets
-  // cards would clear the gate on a target whose every model-generated claim
-  // failed verification, and the memo would argue a case it cannot support.
-  //
-  // Fewer than two means there is nothing to weigh into a two-sided bull-and-bear.
-  const supportedCount = sections.reduce(
-    (n, s) => n + s.claims.filter((c) => c.provenance !== 'deterministic').length,
-    0,
-  );
-  if (supportedCount < 2) {
+  // The criterion is COVERAGE, not a claim count: two verified claims on one
+  // axis is not a dossier, and the count could not tell the difference. A run
+  // abstains unless at least two axes reached a real conclusion AND both
+  // critical axes (target validity, modality feasibility) did - without those
+  // there is no thesis to argue either way. `evaluateAbstention` still requires
+  // two verified non-deterministic claims, so curated database cards cannot
+  // clear the gate on their own; that guarantee is unchanged, it just no longer
+  // stands alone.
+  const abstention = opts.abstention ?? evaluateAbstention({
+    conclusions: sections.flatMap((s) => (s.kind === 'research' && s.conclusion ? [s.conclusion] : [])),
+    verifiedClaims: sections.flatMap((s) => s.claims),
+  });
+  if (!abstention.proceed) {
     const recommendation: Recommendation = {
       verdict: 'insufficient-evidence',
       thesis: `Insufficient verified evidence to assess ${target}.`,
       framing: `The retrieved evidence is too thin to characterize ${target} on the questions that matter; this memo abstains rather than argue a case in either direction.`,
       bull: [], bear: [], conditions: [],
-      bottomLine: `Not enough verified evidence to support an assessment. Treat any read on ${target} as premature until the gaps below are filled.`,
+      // The reasons are named, not summarized away. "Not enough evidence" and
+      // "Q2 reached no conclusion" call for different follow-up work.
+      bottomLine: `Not enough verified evidence to support an assessment (${abstention.reasons.join('; ')}). Treat any read on ${target} as premature until the gaps below are filled.`,
     };
     return {
       recommendation,
-      executiveRead: `Fewer than two verified findings support an assessment of ${target}; the dossier abstains rather than synthesize an unsupported read.`,
+      executiveRead: `The research did not establish enough to assess ${target} (${abstention.reasons.join('; ')}); the dossier abstains rather than synthesize an unsupported read.`,
     };
   }
 

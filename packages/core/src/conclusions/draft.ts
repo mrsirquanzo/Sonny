@@ -39,6 +39,22 @@ export async function draftSpecialistConclusion(opts: {
   auditStore: RetrievalAuditStore;
   model: StructuredModel;
   emit: (e: TraceEvent) => void;
+  /**
+   * Which section's retrieval audits may substantiate an absence here.
+   *
+   * Derived from the scope by default. A caller MUST override when retrieval
+   * recorded its audits under a different key, or the coverage gate looks in an
+   * empty bucket and degrades every absence conclusion the run legitimately
+   * earned.
+   */
+  sectionKey?: string;
+  /**
+   * Resolved modality, when the caller knows it and the execution context does
+   * not carry one. Only a strategy-scoped context can derive it, so a run that
+   * never resolved a therapeutic strategy has to supply it here or a low Q6
+   * fails closed for want of a modality rather than for want of evidence.
+   */
+  modality?: CanonicalModality;
 }): Promise<SpecialistConclusion> {
   const { brief, context, verifiedClaims, deterministicClaims, store, auditStore, model, emit } = opts;
   const usable = [...verifiedClaims, ...deterministicClaims];
@@ -76,8 +92,10 @@ export async function draftSpecialistConclusion(opts: {
     deterministicClaims,
     store,
     auditStore,
-    sectionKey: sectionKey(brief.id as SpecialistAxisId, toScope(context)),
-    modality: modalityOf(context),
+    sectionKey: opts.sectionKey ?? sectionKey(brief.id as SpecialistAxisId, toScope(context)),
+    // Context first: a strategy-scoped thread's own modality is the authority,
+    // and the override exists for the case where there is no strategy at all.
+    modality: modalityOf(context) ?? opts.modality,
     emit,
   });
 }

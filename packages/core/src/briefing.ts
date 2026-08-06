@@ -62,7 +62,7 @@ export async function produceBriefing(opts: {
   const result = await runDeepResearch(opts);
   const { recommendation, executiveRead } = await synthesizeRecommendation({
     target: result.target, sections: result.sections, weighing: result.weighing, evidence: result.evidence, model: opts.leadModel,
-    contradictions: result.contradictions,
+    contradictions: result.contradictions, abstention: result.abstention,
   });
   opts.emit({ type: 'recommendation', verdict: recommendation.verdict });
   const completedAt = Date.now();
