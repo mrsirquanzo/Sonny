@@ -167,6 +167,9 @@ export function isMateriallyCovered(c: SpecialistConclusion): boolean {
 /** Q1 and Q2: without target validity or modality feasibility there is no thesis to argue. */
 const CRITICAL_AXES = ['target_biology', 'moa_pathway'] as const;
 
+/** Whether a run may argue a case, and every reason it may not. */
+export type AbstentionVerdict = { proceed: boolean; reasons: string[] };
+
 /**
  * Coverage-based abstention (spec 12.4, normative).
  *
@@ -176,7 +179,7 @@ const CRITICAL_AXES = ['target_biology', 'moa_pathway'] as const;
 export function evaluateAbstention(opts: {
   conclusions: readonly SpecialistConclusion[];
   verifiedClaims: readonly Claim[];
-}): { proceed: boolean; reasons: string[] } {
+}): AbstentionVerdict {
   const { conclusions, verifiedClaims } = opts;
   const reasons: string[] = [];
 

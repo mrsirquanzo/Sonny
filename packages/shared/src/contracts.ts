@@ -7,6 +7,7 @@ import {
   sha256CanonicalJson, sha256Text,
 } from './computationManifest.js';
 import { ResearchQuestionRecordSchema } from './questionLedger.js';
+import { SpecialistConclusionSchema } from './conclusions.js';
 
 export const EvidenceKindSchema = z.enum(['target', 'publication', 'trial', 'patent', 'dataset', 'disease', 'drug', 'figure', 'computation']);
 export type EvidenceKind = z.infer<typeof EvidenceKindSchema>;
@@ -367,7 +368,18 @@ const SectionBaseSchema = z.object({
   questionLedger: z.array(ResearchQuestionRecordSchema).optional(),
 });
 
-export const ResearchSectionSchema = SectionBaseSchema.extend({ kind: z.literal('research') });
+export const ResearchSectionSchema = SectionBaseSchema.extend({
+  kind: z.literal('research'),
+  /**
+   * The specialist's structured answer to its axis question.
+   *
+   * Optional, and deliberately not on the analysis branch: only a research
+   * section answers one of the six axes. `LegacyResearchSectionSchema` already
+   * declares the same optional field, so a section carrying a conclusion round
+   * -trips through storage without a schema version bump or a migration.
+   */
+  conclusion: SpecialistConclusionSchema.optional(),
+});
 export const AnalysisSectionSchema = SectionBaseSchema.extend({
   kind: z.literal('analysis'),
   computationIds: z.array(Sha256Schema).min(1),
