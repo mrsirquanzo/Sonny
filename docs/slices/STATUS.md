@@ -1,6 +1,6 @@
 # Modality-agnostic redesign: slice status
 
-Last updated 2026-07-30.
+Last updated 2026-08-05.
 
 Spec lives outside this repo at `~/Downloads/Sonny_modality_agnostic_spec_draft5.6.md`.
 Its Appendix A is a 56-entry decision log recording every reversal and the reason.
@@ -260,6 +260,19 @@ absent, and `eval/node_modules/@mrsirquanzo/*` must resolve inside the worktree.
    `developability_catch` and `verdict_stability` would have caught it. Whether
    verdict correctness should be a hard failure or a tolerance is a policy call,
    but ungated is not defensible.
+
+## Digging metrics: the baseline commit
+
+`fc2215c` added `question_coverage`, `question_pursuit` and `retrieval_yield`
+and is the last commit BEFORE the question prompts were rewritten.
+It is the only clean pre-change point for measuring whether sharper prompts
+helped; `main` no longer has one, because the prompt change reached `main`
+through the README PR rather than through its own.
+Run the `fast` subset at `fc2215c` and again at `main` to get the comparison.
+
+Note the harness caveat that applies to everything else here does NOT apply to
+these three: they are counts, not judged scores, so the single-draw defect
+below does not distort them.
 
 ## Open items, highest value first
 
